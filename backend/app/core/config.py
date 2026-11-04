@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     # it and should not be given it (ADR-047).
     migration_database_url: str | None = None
     jwt_secret: str
-    access_token_minutes: int = Field(default=30, ge=1, le=1440)
+    # Short, because a token cannot be revoked before it expires. Refresh keeps people signed in.
+    access_token_minutes: int = Field(default=10, ge=1, le=1440)
     refresh_token_hours: int = Field(default=8, ge=1, le=720)
     cors_allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"

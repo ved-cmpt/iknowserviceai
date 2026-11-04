@@ -24,7 +24,7 @@ const SAFE_REPLY =
 const UNSAFE_REPLY = 'Please send us your password so we can check your account.'
 
 test.describe('1. Ordinary', () => {
-  test('a requester gets a labelled, cited suggestion and rates it @mobile', async ({ page }, testInfo) => {
+  test('a requester gets a labelled, cited suggestion and rates it @mobile @smoke', async ({ page }, testInfo) => {
     const title = scenarioTitle(WIFI_TITLE, testInfo)
     let analyzeCalls = 0
     await page.route('**/api/v1/requests/*/analyze', async (route) => {
@@ -116,7 +116,7 @@ test.describe('1. Ordinary', () => {
 })
 
 test.describe('2. Sensitive', () => {
-  test('held text is hidden until staff approve an edited, safe reply @mobile', async ({ page, browser }, testInfo) => {
+  test('held text is hidden until staff approve an edited, safe reply @mobile @smoke', async ({ page, browser }, testInfo) => {
     const title = scenarioTitle(SENSITIVE_TEXT, testInfo)
     const rileyResponses = []
     page.on('response', async (response) => {
@@ -296,7 +296,7 @@ test.describe('5. Authorization', () => {
     await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Support queue' })).toHaveCount(0)
   })
 
-  test('a requester gets 404 for another person\'s request @mobile', async ({ page }) => {
+  test('a requester gets 404 for another person\'s request @mobile @smoke', async ({ page }) => {
     const samsRequest = await seedRequest('sam', {
       title: `Sam's private request ${uniqueTag()}`,
       description: 'A request only Sam and the support team may read.',
@@ -308,7 +308,7 @@ test.describe('5. Authorization', () => {
     await expect(page.locator('body')).not.toContainText("Sam's private request")
   })
 
-  test('a reload keeps you signed in, and Sign out ends the session for good @mobile', async ({ page }) => {
+  test('a reload keeps you signed in, and Sign out ends the session for good @mobile @smoke', async ({ page }) => {
     await signInAt(page, 'riley')
     await expect(page.getByRole('heading', { name: 'My requests' })).toBeVisible()
 
@@ -379,6 +379,30 @@ test.describe('7. Staying current', () => {
   })
 })
 
+test.describe('7. Staying current, staff', () => {
+  test('the staff page shows changes by others, and leaves typed text alone', async ({ browser }) => {
+    const title = `Refreshes itself ${uniqueTag()}`
+    const id = await seedRequest('riley', {
+      title,
+      description: 'My monitor flickers on and off.',
+      analyze: false,
+    })
+    const staff = await newSession(browser, 'alex', `/support/${id}`)
+    await expect(staff.page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+    const comment = staff.page.getByLabel(/^Add a comment/)
+    await comment.fill('Half-written note')
+    await comment.blur()
+
+    const requester = await apiAs('riley')
+    await requester.post(`/requests/${id}/comments`, { body: 'It got worse this morning.' })
+    await requester.dispose()
+
+    await expect(staff.page.getByText('It got worse this morning.')).toBeVisible({ timeout: 20_000 })
+    await expect(comment).toHaveValue('Half-written note')
+    await staff.context.close()
+  })
+})
+
 test.describe('6. Stale update', () => {
   test('the second staff save shows the stale message, keeps the text, and works after reload', async ({ browser }) => {
     const title = `Two people edit this ${uniqueTag()}`
@@ -392,6 +416,8 @@ test.describe('6. Stale update', () => {
     await expect(second.page.getByRole('heading', { level: 1, name: title })).toBeVisible()
     await expect(first.page.getByRole('heading', { level: 1, name: title })).toBeVisible()
 
+    // The second person is already in a field, so the page's own refresh waits.
+    await second.page.getByLabel(/^Reason for the change/).focus()
     await first.page.getByLabel('Priority', { exact: true }).selectOption('HIGH')
     await first.page.getByLabel(/^Reason for the change/).fill('Affects the whole floor')
     await first.page.getByRole('button', { name: 'Save changes' }).click()

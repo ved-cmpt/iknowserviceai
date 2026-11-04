@@ -7,7 +7,7 @@ test.skip(!process.env.PRODUCTION, 'Runs against the production image only.')
 const BASE = process.env.API_URL.replace(/\/api\/v1$/, '')
 
 test.describe('Production image @mobile', () => {
-  test('sends the security headers, and hides the API docs', async () => {
+  test('sends the security headers, and hides the API docs @smoke', async () => {
     const api = await playwrightRequest.newContext()
     const page = await api.get(`${BASE}/`)
     expect(page.ok()).toBeTruthy()
@@ -96,7 +96,7 @@ test.describe('Production image @mobile', () => {
     expect(problems).toEqual([])
   })
 
-  test('the session cookie is HttpOnly, Secure and SameSite=Strict, on the auth path only', async ({ page, context }) => {
+  test('the session cookie is HttpOnly, Secure and SameSite=Strict, on the auth path only @smoke', async ({ page, context }) => {
     await signInAt(page, 'riley')
     const cookie = (await context.cookies('http://localhost:8080/api/v1/auth/refresh')).find(
       (item) => item.name === 'iks_refresh',

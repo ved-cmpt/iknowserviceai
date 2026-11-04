@@ -6,6 +6,7 @@ persists the result. A crash between them leaves a run that stale recovery can c
 """
 
 import logging
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -267,12 +268,19 @@ def _clean_model_text(value: str) -> str:
     return markdown_to_plain_text(value)
 
 
+def _name_articles(reply: str, retrieved: list[RetrievedArticle]) -> str:
+    """Article IDs mean nothing to a requester, and a live model wrote one into a reply (ADR-060)."""
+    for article in retrieved:
+        reply = re.sub(re.escape(str(article.id)), f'"{article.title}"', reply, flags=re.IGNORECASE)
+    return reply
+
+
 def _validated_output(
     db: Session, result: TriageResult, retrieved: list[RetrievedArticle]
 ) -> tuple[TriageResult, list[KnowledgeArticle], bool]:
     """Strip markup and keep only citations that were retrieved and are still published."""
     summary = _clean_model_text(result.summary)
-    reply = markdown_to_plain_lines(result.recommended_reply)
+    reply = _name_articles(markdown_to_plain_lines(result.recommended_reply), retrieved)
     if not summary or not reply:
         raise ProviderInvalidOutput
 

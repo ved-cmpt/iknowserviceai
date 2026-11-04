@@ -14,6 +14,7 @@ import ErrorState from '../components/ErrorState'
 import LoadingState from '../components/LoadingState'
 import { categoryLabel } from '../knowledge/categories'
 import { formatDateTime } from '../lib/format'
+import { usePolling } from '../lib/usePolling'
 import ActivitySection from '../requests/ActivitySection'
 import CommentsSection from '../requests/CommentsSection'
 import RunHistory from '../requests/RunHistory'
@@ -23,6 +24,18 @@ import ReviewPanel from '../support/ReviewPanel'
 import WorkflowControls from '../support/WorkflowControls'
 import ForbiddenPage from './ForbiddenPage'
 import NotFoundPage from './NotFoundPage'
+
+const POLL_INTERVAL_MS = 10000
+const POLL_MAX_DURATION_MS = 5 * 60 * 1000
+
+// A refresh never loses typed text (ADR-034), but it should not change the page under someone who
+// is in the middle of typing or deciding.
+function isBusyEditing() {
+  return Boolean(
+    document.activeElement?.matches?.('input, textarea, select') ||
+      document.querySelector('[role="dialog"]'),
+  )
+}
 
 function eventDetail(event) {
   return event.details?.reason ? `Reason: ${event.details.reason}` : null
@@ -38,6 +51,19 @@ function StaffDetail({ id }) {
     reload,
   })
   const autoPending = useAutoAnalyze(Boolean(data), analyze)
+
+  // Keeps the page current for work done by others. While a stale-update message is showing, the
+  // person decides when to reload.
+  const { expired, restart } = usePolling(
+    () => {
+      if (!loading && !isBusyEditing()) reload()
+    },
+    {
+      enabled: Boolean(data) && data.status !== 'CLOSED' && !running && !autoPending && !conflict,
+      intervalMs: POLL_INTERVAL_MS,
+      maxDurationMs: POLL_MAX_DURATION_MS,
+    },
+  )
 
   if (error?.status === 404) return <NotFoundPage message="This request does not exist." />
   if (error?.status === 403) return <ForbiddenPage />
@@ -85,6 +111,21 @@ function StaffDetail({ id }) {
         </Banner>
       )}
       {error && !loading && <ErrorState error={error} onRetry={reload} />}
+      {expired && (
+        <p className="meta">
+          Automatic updates have paused.{' '}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              restart()
+              reload()
+            }}
+          >
+            Check for updates
+          </Button>
+        </p>
+      )}
       <div className="detail-grid">
         <div>
           <Card title="Original request">

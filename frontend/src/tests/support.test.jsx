@@ -580,6 +580,79 @@ describe('staff detail: review', () => {
   })
 })
 
+describe('staff detail: refreshing by itself', () => {
+  const reads = (fetchMock) => callsTo(fetchMock, 'GET', '/requests/r1').length
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function renderPolling(detail = DETAIL) {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const fetchMock = mockFetch({ ...HEALTH, 'GET /requests/r1': () => jsonResponse(detail) })
+    renderSignedIn('/support/r1', AGENT_USER)
+    return fetchMock
+  }
+
+  it('picks up changes by others without a click', async () => {
+    let title = 'Someone accessed my account'
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    mockFetch({ ...HEALTH, 'GET /requests/r1': () => jsonResponse({ ...DETAIL, title }) })
+    renderSignedIn('/support/r1', AGENT_USER)
+    await screen.findByRole('heading', { level: 1, name: title })
+
+    title = 'Changed by someone else'
+    await vi.advanceTimersByTimeAsync(10100)
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument()
+  })
+
+  it('pauses while someone is typing in any field', async () => {
+    const fetchMock = renderPolling()
+    const reason = await screen.findByLabelText(/^Review reason/)
+    const first = reads(fetchMock)
+
+    reason.focus()
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(reads(fetchMock)).toBe(first)
+
+    reason.blur()
+    await vi.advanceTimersByTimeAsync(10100)
+    await waitFor(() => expect(reads(fetchMock)).toBe(first + 1))
+  })
+
+  it('keeps typed text through a refresh once the field loses focus', async () => {
+    const fetchMock = renderPolling()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const reply = await screen.findByLabelText(/^Reply to publish/)
+    await user.clear(reply)
+    await user.type(reply, 'My edited reply')
+    reply.blur()
+    const first = reads(fetchMock)
+
+    await vi.advanceTimersByTimeAsync(10100)
+    await waitFor(() => expect(reads(fetchMock)).toBe(first + 1))
+    expect(screen.getByLabelText(/^Reply to publish/)).toHaveValue('My edited reply')
+  })
+
+  it('does not poll a closed request', async () => {
+    const fetchMock = renderPolling({ ...DETAIL, status: 'CLOSED', suggestion: null })
+    await screen.findByText(/Closed is final/)
+    const first = reads(fetchMock)
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(reads(fetchMock)).toBe(first)
+  })
+
+  it('stops after about 5 minutes, and offers a way to check again', async () => {
+    const fetchMock = renderPolling()
+    await screen.findByLabelText(/^Review reason/)
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 10100)
+    expect(await screen.findByRole('button', { name: 'Check for updates' })).toBeInTheDocument()
+    const settled = reads(fetchMock)
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(reads(fetchMock)).toBe(settled)
+  })
+})
+
 describe('staff detail: status controls', () => {
   const LABELS = {
     TRIAGED: 'Move to Triaged',

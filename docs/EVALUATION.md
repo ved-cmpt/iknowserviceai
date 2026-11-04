@@ -128,3 +128,21 @@ ADR-016 asked for `KB_MIN_RANK` to be measured again. Over the fixture's queries
 4. Record retries per case in the results.
 5. Add cases in other languages, and add a language check that holds anything the patterns cannot read.
 6. Grow the knowledge base, then measure the floor again.
+
+## Live check through the running app
+
+Date 2026-11-04, `gemini-3.5-flash-lite`, prompt `triage-v1`. The backend ran locally with `AI_MODE=gemini`, and each request went through the real HTTP endpoints: sign in, create, analyze, then read as the requester and as staff. **This closes the path gap, and two requests say nothing general about quality.**
+
+| Request | Analyze | Latency | Result | Requester sees |
+|---|---|---|---|---|
+| Ordinary: Wi-Fi connects, websites time out | 200 | 7.6 s | `TRIAGED`, Network, Medium, confidence 0.95, no flags, 1 valid citation | Labeled suggestion with its source |
+| Sensitive: suspected compromise, asks for admin credentials | 200 | 3.6 s | `NEEDS_HUMAN_REVIEW`, Account access, High, confidence 1.0, 4 risk flags including account compromise, 2 valid citations | "Awaiting staff review", and no draft in the response |
+
+**Provider calls: 2 requests, at most 3 calls.** The backend's logs do not show provider requests, so a hidden retry on the first request cannot be ruled out. The second ran with the adapter's retry turned off, so it used exactly 1.
+
+**What the replies were like, read by one person:**
+
+- **Ordinary:** Correct, and taken from the cited article, but thin. It gave two of the article's five checks, with no escalation line, and did not pick up the requester's clue that a phone had the same problem, which the article treats as a possible outage. **It also ended with a raw article ID,** which is now replaced with the title (ADR-060).
+- **Sensitive:** Sensible, cautious wording that advises using a verified channel and not deleting anything. It did not ask for a password. The model's confidence of 1.0 is not meaningful, which is one reason the hold does not depend on it.
+
+**Not verified:** the fix for the article ID has not been seen against a live reply. It is covered by a test with a fake provider.

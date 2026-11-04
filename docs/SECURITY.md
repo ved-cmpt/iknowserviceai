@@ -132,12 +132,12 @@ So a compromised app on a demo database could erase that demo's synthetic data a
 - **Rate limits are per process.** They reset on restart and do not work across instances. Behind a proxy, `TRUSTED_PROXY_HOPS` must match the host, or all users share one address, or an address can be forged (ADR-048).
 - **Login limits can lock out a real user** for up to a minute if someone else tries that email from the same address.
 - **The triggers and grants do not stop the owner role** (ADR-025, ADR-047). Whoever holds `MIGRATION_DATABASE_URL` can change history, so keep it away from the running app.
-- **The access token cannot be revoked** before it expires, up to 30 minutes after sign-out, although a deactivated user is refused immediately.
+- **The access token cannot be revoked** before it expires, up to 10 minutes after sign-out (ADR-058), although a deactivated user is refused immediately.
 - **Sign-out needs the server.** If the logout call fails, the cookie stays until it expires, and a reload signs back in.
 - **A script injected into the page could still use the session** while the page is open, although it could not read the refresh token. The Content-Security-Policy is the defense against that, in production only.
 - **Staff replies are only scanned for credential requests.** A reviewer can still publish poor advice. Their identity and reason are recorded.
 - **`redacted_input` is stored indefinitely.** There is no retention job. The demo reset is the only cleanup.
-- **The live Gemini path has a small sample.** 10 synthetic cases through the orchestrator, plus the owner's smoke test. That is not evidence about quality or latency in general, and the running app's HTTP path has not been exercised in this mode. See [the evaluation](EVALUATION.md).
+- **The live Gemini path has a small sample.** 10 synthetic cases through the orchestrator, plus the owner's smoke test. That is not evidence about quality or latency in general, and 2 requests through the running app's HTTP endpoints. See [the evaluation](EVALUATION.md).
 
 ## Demo limitations
 

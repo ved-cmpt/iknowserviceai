@@ -435,4 +435,31 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Dark values appear twice in `tokens.css`,** once for the system preference and once for the manual choice. CSS has no way to share a block between a media query and a selector without a build step, and a build step is not worth it for this.
 - **Structure changes:** The sign-in page's demo-account select became four cards that fill the form, in a group that keeps the label "Demo account". Staff run history moved to a collapsed section in a sticky side column. The live region doubles as a visible toast, so there is one source of announcements.
 - **Stricter checks:** `expectAccessible` now fails on any axe finding, not only serious ones, and runs in both themes, at both viewports. Reduced motion is on during tests, so contrast is never measured mid-transition.
-- **Trade-offs:** Fonts add about 100 KB across their files, cached for a year. `<details>` hides run history from people who do not look for it, which suits something used only when investigating.
+- **Trade-offs:** Fonts add about 86 KB across four files, cached for a year. `<details>` hides run history from people who do not look for it, which suits something used only when investigating.
+
+## ADR-057: A fast browser subset on pull requests (amends ADR-050)
+
+- **Context:** Pull requests ran no browser tests, because the full suite builds every image.
+- **Decision:** A job, `e2e-smoke`, runs on pull requests only. It runs the tests tagged `@smoke` at desktop width against the production image: ordinary journey, sensitive journey, sessions, access to another person's request, security headers and cookie flags. The full suite on both stacks stays on pushes to `main`.
+- **Trade-offs:** It needs the production image build, about the same time as the existing `docker` job. A bug only the full suite would catch reaches `main` before CI finds it.
+
+## ADR-058: A 10 minute access token, with no per-request revocation check
+
+- **Context:** An access token stayed valid for up to 30 minutes after sign-out (ADR-045).
+- **Alternatives:** Checking the session family in the database on each request. It would be one more query per request, and access tokens carry no family ID today, so it also needs a token format change. Shortening the lifetime gets most of the benefit for a demo.
+- **Decision:** Lower the `ACCESS_TOKEN_MINUTES` default to 10. The refresh cookie renews it silently (ADR-045), so people notice nothing, and sign-in length is unchanged.
+- **Trade-offs:** A token copied before sign-out still works for up to 10 minutes. A deactivated user is refused at once either way, because users are read from the database on each request. There are about six refresh calls per signed-in hour, each rotating a row.
+
+## ADR-059: The staff page refreshes by itself, while nobody is editing (replaces part of ADR-041)
+
+- **Context:** ADR-041 left the staff page unpolled, to avoid disturbing a review. Staff then missed comments and changes until they reloaded.
+- **Decision:** Poll every 10 seconds, for up to 5 minutes, with "Check for updates" afterwards, using the same hook as the requester page. Skip a tick while focus is in any input, textarea or select, while a dialog is open, or while a request is in flight. Stop while a stale-update message is showing, so the person decides when to reload, and for closed requests.
+- **Why text is safe:** Reloads keep forms mounted, and drafts are held in state (ADR-034). Pausing is about not changing the page under someone mid-thought.
+- **Trade-offs:** Polling updates the page's `version`, so a person who has not started typing acts on the newest version, and sees the newest values first. `expected_version` still catches anyone slower than another person's save.
+
+## ADR-060: Replies name articles, and do not show their IDs
+
+- **Context:** The first live reply through the running app ended with "see article 8b41f3f4-...", because the prompt gives the model article IDs for citations. Nothing else caught it: it is not a contact detail, a credential request or an invented citation.
+- **Alternatives:** Changing the prompt, which could not be verified, because this run's live budget was spent. It remains worth trying in a later evaluation.
+- **Decision:** `_validated_output` replaces the ID of any retrieved article in the reply with its title, before policy checks and storage. It works for every provider, and needs no provider call to test.
+- **Trade-offs:** It covers only exact IDs of articles retrieved for this request. Any other odd wording in a reply is still shown.

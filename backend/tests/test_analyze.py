@@ -66,6 +66,20 @@ def _wifi_article_id(db: Session) -> uuid.UUID:
     )
 
 
+def test_a_reply_names_an_article_instead_of_showing_its_id(
+    client: TestClient, db: Session, seeded, wifi_request, requester
+) -> None:
+    """Seen in a live reply: "please see article <uuid>"."""
+    article_id = _wifi_article_id(db)
+    use_provider(
+        citing(article_id, recommended_reply=f"Restart it. For more, see article {article_id}.")
+    )
+    body = _analyze(client, wifi_request, requester).json()
+    reply = body["suggestion"]["reply"]
+    assert str(article_id) not in reply
+    assert 'see article "Wi-Fi connected but websites not loading".' in reply
+
+
 def _all_keys(value) -> set[str]:
     if isinstance(value, dict):
         return set(value) | {key for item in value.values() for key in _all_keys(item)}
