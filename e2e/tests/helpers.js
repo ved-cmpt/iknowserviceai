@@ -103,23 +103,25 @@ export async function submitNewRequest(page, title, description) {
   await page.getByRole('button', { name: 'Submit request' }).click()
 }
 
-const BLOCKING_IMPACTS = ['serious', 'critical']
-
-// Fails on serious or critical violations, and names them. Lesser findings go to the log, so
-// they are visible without blocking.
+// Fails on any finding, in the light and the dark theme, and names them.
 export async function expectAccessible(page, name) {
-  const { violations } = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze()
-  const blocking = violations.filter((item) => BLOCKING_IMPACTS.includes(item.impact))
-  const other = violations.filter((item) => !BLOCKING_IMPACTS.includes(item.impact))
   const describe = (item) =>
     `${item.id} (${item.impact}): ${item.help} [${item.nodes.map((node) => node.target.join(' ')).join(', ')}]`
-  console.log(
-    `axe ${name}: ${blocking.length} serious or critical, ${other.length} other` +
-      other.map((item) => `\n  other: ${describe(item)}`).join(''),
-  )
-  expect(blocking.map(describe), `axe violations on ${name}`).toEqual([])
+  const original = await page.evaluate(() => document.documentElement.dataset.theme ?? null)
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value
+    }, theme)
+    const { violations } = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+    console.log(`axe ${name} (${theme}): ${violations.length} findings`)
+    expect(violations.map(describe), `axe violations on ${name}, ${theme} theme`).toEqual([])
+  }
+  await page.evaluate((value) => {
+    if (value) document.documentElement.dataset.theme = value
+    else delete document.documentElement.dataset.theme
+  }, original)
 
   // The same pass checks the layout does not scroll sideways at this viewport.
   const overflow = await page.evaluate(

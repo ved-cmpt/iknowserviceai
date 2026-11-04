@@ -121,3 +121,23 @@ export function eventLabel(event) {
       return event.event_type
   }
 }
+
+const EVENT_ICONS = {
+  REQUEST_CREATED: 'plus',
+  ASSIGNED: 'user',
+  UNASSIGNED: 'user',
+  PRIORITY_CHANGED: 'flag',
+  CATEGORY_CHANGED: 'tag',
+  STATUS_CHANGED: 'activity',
+  COMMENT_ADDED: 'message',
+  AI_ANALYSIS_STARTED: 'sparkle',
+  AI_ANALYSIS_SUCCEEDED: 'sparkle',
+  AI_ANALYSIS_FAILED: 'alert',
+  SUGGESTION_REVIEWED: 'shield',
+  SUGGESTION_WITHHELD: 'shield',
+  FEEDBACK_ADDED: 'message',
+}
+
+export function eventIcon(eventType) {
+  return EVENT_ICONS[eventType] ?? 'activity'
+}

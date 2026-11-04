@@ -1,6 +1,6 @@
 import Card from '../components/Card'
 import Timeline from '../components/Timeline'
-import { eventLabel } from '../lib/labels'
+import { eventIcon, eventLabel } from '../lib/labels'
 
 export default function ActivitySection({ events, describeDetail }) {
   const items = events.map((event, index) => ({
@@ -8,6 +8,7 @@ export default function ActivitySection({ events, describeDetail }) {
     label: eventLabel(event),
     detail: describeDetail?.(event),
     time: event.created_at,
+    icon: eventIcon(event.event_type),
   }))
   return (
     <Card title="Timeline">

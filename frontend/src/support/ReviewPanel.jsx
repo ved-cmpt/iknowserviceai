@@ -8,6 +8,7 @@ import Card from '../components/Card'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ErrorState from '../components/ErrorState'
 import FormField from '../components/FormField'
+import Icon from '../components/icons'
 import { riskFlagLabel } from '../lib/labels'
 import { REASON_MAX, REASON_MIN, REPLY_MAX } from '../requests/limits'
 
@@ -94,31 +95,43 @@ export default function ReviewPanel({ request, onReviewed, onConflict }) {
     <Card title="Review the AI draft">
       {serverError && <ErrorState error={serverError} />}
       {outputFlags.length > 0 && (
-        <Banner tone="warning" title="Check this draft carefully before publishing">
+        <Banner tone="warning" title="Check this draft carefully before publishing" icon="alert">
           Flagged: {outputFlags.map(riskFlagLabel).join(', ')}.
         </Banner>
       )}
-      <h3>AI draft (read-only)</h3>
-      <div className="ai-reply preserve-lines" data-testid="ai-draft">
-        {suggestion.proposed_reply}
+      <div className="compare-grid">
+        <div className="compare-pane compare-pane-draft">
+          <h3 className="compare-title">
+            <span className="ai-mark">
+              <Icon name="sparkle" size={12} />
+              AI
+            </span>
+            AI draft (read-only)
+          </h3>
+          <div className="reply-text preserve-lines" data-testid="ai-draft">
+            {suggestion.proposed_reply}
+          </div>
+        </div>
+        <div className="compare-pane">
+          <FormField
+            label="Reply to publish"
+            required
+            hint="The requester sees exactly this text if you approve. It is not used if you reject."
+            error={errors.reply}
+            count={reply.length}
+            max={REPLY_MAX}
+          >
+            {(field) => (
+              <textarea
+                {...field}
+                rows={6}
+                value={reply}
+                onChange={(event) => setReplyDraft(event.target.value)}
+              />
+            )}
+          </FormField>
+        </div>
       </div>
-      <FormField
-        label="Reply to publish"
-        required
-        hint="The requester sees exactly this text if you approve. It is not used if you reject."
-        error={errors.reply}
-        count={reply.length}
-        max={REPLY_MAX}
-      >
-        {(field) => (
-          <textarea
-            {...field}
-            rows={6}
-            value={reply}
-            onChange={(event) => setReplyDraft(event.target.value)}
-          />
-        )}
-      </FormField>
       <FormField
         label="Review reason"
         required
@@ -161,7 +174,7 @@ export default function ReviewPanel({ request, onReviewed, onConflict }) {
           onCancel={() => setPendingDecision(null)}
         >
           <p>The requester will see this text:</p>
-          <div className="ai-reply preserve-lines">{reply.trim()}</div>
+          <div className="reply-text preserve-lines">{reply.trim()}</div>
         </ConfirmDialog>
       )}
       {pendingDecision === 'REJECTED' && (

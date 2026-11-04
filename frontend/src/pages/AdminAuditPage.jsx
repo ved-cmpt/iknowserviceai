@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 import { auditPath } from '../api/admin'
 import { useApiData } from '../api/useApiData'
+import Avatar from '../components/Avatar'
 import Card from '../components/Card'
 import EmptyState from '../components/EmptyState'
 import ErrorState from '../components/ErrorState'
 import FormField from '../components/FormField'
+import Icon from '../components/icons'
 import LoadingState from '../components/LoadingState'
 import Pagination from '../components/Pagination'
 import Table from '../components/Table'
@@ -43,10 +45,41 @@ function EntityCell({ row }) {
   return label
 }
 
+function actionIcon(action) {
+  if (action.startsWith('auth.')) return 'key'
+  if (action.startsWith('knowledge.')) return 'book'
+  if (action.includes('review') || action.includes('suggestion')) return 'shield'
+  if (action.startsWith('ai.') || action.includes('analysis')) return 'sparkle'
+  return 'ticket'
+}
+
 const COLUMNS = [
-  { key: 'time', header: 'Time', primary: true, render: (row) => formatDateTime(row.occurred_at) },
-  { key: 'actor', header: 'Actor', render: (row) => row.actor_name ?? 'System or unknown' },
-  { key: 'action', header: 'Action', render: (row) => auditActionLabel(row.action) },
+  {
+    key: 'time',
+    header: 'Time',
+    primary: true,
+    render: (row) => <span className="mono">{formatDateTime(row.occurred_at)}</span>,
+  },
+  {
+    key: 'actor',
+    header: 'Actor',
+    render: (row) => (
+      <span className="with-avatar">
+        <Avatar name={row.actor_name} />
+        {row.actor_name ?? 'System or unknown'}
+      </span>
+    ),
+  },
+  {
+    key: 'action',
+    header: 'Action',
+    render: (row) => (
+      <span className="with-avatar">
+        <Icon name={actionIcon(row.action)} size={14} />
+        {auditActionLabel(row.action)}
+      </span>
+    ),
+  },
   { key: 'entity', header: 'Entity', render: (row) => <EntityCell row={row} /> },
   { key: 'details', header: 'Details', render: (row) => <DetailsCell row={row} /> },
 ]

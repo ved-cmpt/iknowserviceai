@@ -6,6 +6,7 @@ import Banner from '../components/Banner'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import FormField from '../components/FormField'
+import Icon from '../components/icons'
 import { Spinner } from '../components/LoadingState'
 import { aiSectionState, AWAITING_REVIEW_TEXT, suggestionLabel } from './aiState'
 import AnalysisFailedPanel from './AnalysisFailedPanel'
@@ -67,7 +68,7 @@ function Feedback({ requestId, alreadySubmitted }) {
         </Button>
       </div>
       {done && (
-        <p className="meta" role="status" style={{ marginTop: 'var(--space-2)' }}>
+        <p className="meta space-top" role="status">
           {done}
         </p>
       )}
@@ -81,20 +82,38 @@ function Feedback({ requestId, alreadySubmitted }) {
 }
 
 function SuggestionCard({ requestId, suggestion }) {
+  // Anything unrecognized keeps the AI treatment, so a mistake errs towards caution.
+  const reviewed = suggestion.source === 'STAFF_REVIEWED'
   return (
-    <Card title="Suggested next steps">
-      <span className="ai-label">{suggestionLabel(suggestion)}</span>
+    <Card title="Suggested next steps" className={reviewed ? 'suggestion-reviewed' : 'suggestion-ai'}>
+      <p className="suggestion-note">
+        {reviewed ? (
+          <span className="staff-mark">
+            <Icon name="shield" size={12} />
+            Staff
+          </span>
+        ) : (
+          <span className="ai-mark">
+            <Icon name="sparkle" size={12} />
+            AI
+          </span>
+        )}
+        <span className="ai-label">{suggestionLabel(suggestion)}</span>
+      </p>
       {/* A plain text node with preserved line breaks. Model text is never treated as HTML. */}
-      <div className="ai-reply preserve-lines" data-testid="suggestion-reply">
+      <div className="reply-text preserve-lines" data-testid="suggestion-reply">
         {suggestion.reply}
       </div>
       {suggestion.citations.length > 0 && (
         <>
           <h3>Sources</h3>
-          <ul>
+          <ul className="source-list">
             {suggestion.citations.map((citation) => (
               <li key={citation.id}>
-                <Link to={`/knowledge/${citation.id}`}>{citation.title}</Link>
+                <Link className="source-chip" to={`/knowledge/${citation.id}`}>
+                  <Icon name="book" size={14} />
+                  {citation.title}
+                </Link>
               </li>
             ))}
           </ul>
@@ -157,7 +176,7 @@ export default function AiSection({ request, running, failure, onAnalyze, onChec
       )
     case 'awaiting':
       return (
-        <Banner tone="info" title="Awaiting staff review" role="status">
+        <Banner tone="info" title="Awaiting staff review" role="status" icon="clock">
           {AWAITING_REVIEW_TEXT}
         </Banner>
       )

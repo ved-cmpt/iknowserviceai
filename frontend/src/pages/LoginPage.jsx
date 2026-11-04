@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { friendlyMessage } from '../api/errors'
 import { useApiData } from '../api/useApiData'
@@ -7,15 +7,42 @@ import { homeFor } from '../auth/roles'
 import ApiStatus from '../components/ApiStatus'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
-import Card from '../components/Card'
 import DemoBanner from '../components/DemoBanner'
 import FormField from '../components/FormField'
+import Icon, { LogoMark } from '../components/icons'
+import ThemeToggle from '../components/ThemeToggle'
+
+const FEATURES = [
+  ['sparkle', 'Suggestions that cite your own knowledge base, or say nothing.'],
+  ['shield', 'Anything sensitive waits for a person, enforced by code and not by the model.'],
+  ['file', 'Every decision is on an append-only audit trail.'],
+]
 
 const DEMO_ACCOUNTS = [
-  { email: 'riley.morgan@demo.iknowservice.test', label: 'Riley Morgan (requester)' },
-  { email: 'sam.patel@demo.iknowservice.test', label: 'Sam Patel (requester)' },
-  { email: 'alex.chen@demo.iknowservice.test', label: 'Alex Chen (support agent)' },
-  { email: 'jordan.reyes@demo.iknowservice.test', label: 'Jordan Reyes (admin)' },
+  {
+    email: 'riley.morgan@demo.iknowservice.test',
+    name: 'Riley Morgan',
+    role: 'Requester',
+    tryThis: 'Report a problem and get a cited suggestion.',
+  },
+  {
+    email: 'sam.patel@demo.iknowservice.test',
+    name: 'Sam Patel',
+    role: 'Requester',
+    tryThis: "Sam can't see Riley's requests. Try it.",
+  },
+  {
+    email: 'alex.chen@demo.iknowservice.test',
+    name: 'Alex Chen',
+    role: 'Support agent',
+    tryThis: 'Review a held draft, and publish a safe reply.',
+  },
+  {
+    email: 'jordan.reyes@demo.iknowservice.test',
+    name: 'Jordan Reyes',
+    role: 'Admin',
+    tryThis: 'Publish an article, and read the audit log.',
+  },
 ]
 
 export default function LoginPage() {
@@ -28,6 +55,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const submitRef = useRef(null)
 
   // Signing in re-renders this page with a user, which redirects from here.
   if (user) return <Navigate to={location.state?.from ?? homeFor(user)} replace />
@@ -48,79 +76,109 @@ export default function LoginPage() {
     }
   }
 
+  function pickAccount(account) {
+    setEmail(account.email)
+    setPassword(config.demo_password_hint ?? '')
+    setError(null)
+    submitRef.current?.focus()
+  }
+
   return (
-    <main className="page page-narrow">
+    <>
       <DemoBanner />
-      <h1>Sign in to IknowServiceAI</h1>
-      {sessionExpired && (
-        <Banner tone="warning" role="status">
-          Your session ended. Sign in again to continue.
-        </Banner>
-      )}
-      <Card as="div">
-        <form onSubmit={handleSubmit} noValidate>
-          {error && (
-            <div role="alert" className="banner banner-danger">
-              {error}
+      <main className="login-page">
+        <div className="login-form-panel">
+          <div className="login-form">
+            <div className="login-form-top">
+              <ThemeToggle />
             </div>
-          )}
-          {demoMode && (
-            <FormField label="Demo account">
-              {(field) => (
-                <select
-                  {...field}
-                  value={DEMO_ACCOUNTS.some((account) => account.email === email) ? email : ''}
-                  onChange={(event) => setEmail(event.target.value)}
-                >
-                  <option value="">Choose an account…</option>
-                  {DEMO_ACCOUNTS.map((account) => (
-                    <option key={account.email} value={account.email}>
-                      {account.label}
-                    </option>
-                  ))}
-                </select>
+            <h1>Sign in to IknowServiceAI</h1>
+            <p className="meta">Use your account, or pick a demo account.</p>
+            {sessionExpired && (
+              <Banner tone="warning" role="status">
+                Your session ended. Sign in again to continue.
+              </Banner>
+            )}
+            <form onSubmit={handleSubmit} noValidate>
+              {error && (
+                <div role="alert" className="banner banner-danger">
+                  {error}
+                </div>
               )}
-            </FormField>
+              <FormField label="Email">
+                {(field) => (
+                  <input
+                    {...field}
+                    type="email"
+                    autoComplete="username"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                )}
+              </FormField>
+              <FormField
+                label="Password"
+                hint={
+                  demoMode
+                    ? config.demo_password_hint
+                      ? `Public demo password: ${config.demo_password_hint}`
+                      : 'The public demo password is in the README.'
+                    : undefined
+                }
+              >
+                {(field) => (
+                  <input
+                    {...field}
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                )}
+              </FormField>
+              <Button type="submit" busy={submitting} ref={submitRef}>
+                {submitting ? 'Signing in…' : 'Sign in'}
+              </Button>
+            </form>
+            <p className="meta space-top">
+              <ApiStatus />
+            </p>
+          </div>
+        </div>
+        <section className="login-pitch" aria-label="About IknowServiceAI">
+          <span className="brand">
+            <LogoMark size={32} />
+            IknowServiceAI
+          </span>
+          <p className="login-tagline">
+            An IT service desk where AI drafts the answer and people stay in charge.
+          </p>
+          <ul className="login-features">
+            {FEATURES.map(([icon, text]) => (
+              <li key={icon}>
+                <Icon name={icon} size={18} />
+                <span>{text}</span>
+              </li>
+            ))}
+          </ul>
+          {demoMode && (
+            <section aria-label="Demo account">
+              <h2>Try a demo account</h2>
+              <ul className="demo-accounts">
+                {DEMO_ACCOUNTS.map((account) => (
+                  <li key={account.email}>
+                    <button type="button" className="demo-card" onClick={() => pickAccount(account)}>
+                      <span className="demo-card-name">{account.name}</span>
+                      <span className="demo-card-role">{account.role}</span>
+                      {account.tryThis}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
-          <FormField label="Email">
-            {(field) => (
-              <input
-                {...field}
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField
-            label="Password"
-            hint={
-              demoMode
-                ? config.demo_password_hint
-                  ? `Public demo password: ${config.demo_password_hint}`
-                  : 'The public demo password is in the README.'
-                : undefined
-            }
-          >
-            {(field) => (
-              <input
-                {...field}
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            )}
-          </FormField>
-          <Button type="submit" busy={submitting}>
-            {submitting ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </form>
-      </Card>
-      <p className="meta">
-        <ApiStatus />
-      </p>
-    </main>
+        </section>
+      </main>
+    </>
   )
 }

@@ -5,6 +5,7 @@ import { requestPath, updateRequest } from '../api/requests'
 import { useApiData } from '../api/useApiData'
 import { useAuth } from '../auth/authContext'
 import { useAnnounce } from '../components/announcerContext'
+import Avatar from '../components/Avatar'
 import { PriorityBadge, StatusBadge } from '../components/Badge'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
@@ -15,6 +16,7 @@ import { categoryLabel } from '../knowledge/categories'
 import { formatDateTime } from '../lib/format'
 import ActivitySection from '../requests/ActivitySection'
 import CommentsSection from '../requests/CommentsSection'
+import RunHistory from '../requests/RunHistory'
 import { useAnalysis, useAutoAnalyze } from '../requests/useAnalysis'
 import AiAnalysisPanel from '../support/AiAnalysisPanel'
 import ReviewPanel from '../support/ReviewPanel'
@@ -63,10 +65,19 @@ function StaffDetail({ id }) {
   return (
     <>
       <p>
-        <Link to="/support">← Back to the support queue</Link>
+        <Link className="back-link" to="/support">
+          ← Back to the support queue
+        </Link>
       </p>
+      <div className="page-header">
+        <div>
+          <p className="eyebrow">Support request</p>
+          <h1>{data.title}</h1>
+        </div>
+        <StatusBadge status={data.status} />
+      </div>
       {conflict && (
-        <Banner tone="warning" title="This page is out of date" role="alert">
+        <Banner tone="warning" title="This page is out of date" role="alert" icon="alert">
           <p>{friendlyMessage(conflict)} Anything you typed here will stay.</p>
           <Button variant="secondary" size="sm" busy={loading} onClick={reloadLatest}>
             Reload
@@ -74,37 +85,6 @@ function StaffDetail({ id }) {
         </Banner>
       )}
       {error && !loading && <ErrorState error={error} onRetry={reload} />}
-      <Card as="div">
-        <p className="meta">Support request</p>
-        <div className="card-header">
-          <h1>{data.title}</h1>
-          <StatusBadge status={data.status} />
-        </div>
-        <dl className="fact-grid">
-          <div>
-            <dt>Requester</dt>
-            <dd>{data.requester.display_name}</dd>
-          </div>
-          <div>
-            <dt>Category</dt>
-            <dd>{categoryLabel(data.category)}</dd>
-          </div>
-          <div>
-            <dt>Priority</dt>
-            <dd>
-              <PriorityBadge priority={data.priority} />
-            </dd>
-          </div>
-          <div>
-            <dt>Created</dt>
-            <dd>{formatDateTime(data.created_at)}</dd>
-          </div>
-          <div>
-            <dt>Updated</dt>
-            <dd>{formatDateTime(data.updated_at)}</dd>
-          </div>
-        </dl>
-      </Card>
       <div className="detail-grid">
         <div>
           <Card title="Original request">
@@ -122,7 +102,7 @@ function StaffDetail({ id }) {
           />
           {reviewPending &&
             (selfSubmitted ? (
-              <Banner tone="info" title="Another team member must review this">
+              <Banner tone="info" title="Another team member must review this" icon="user">
                 You submitted this request, so you cannot review its AI suggestion.
               </Banner>
             ) : (
@@ -138,14 +118,44 @@ function StaffDetail({ id }) {
           <CommentsSection request={data} allowInternal onAdded={reload} />
           <ActivitySection events={data.events} describeDetail={eventDetail} />
         </div>
-        <div>
+        <aside className="detail-side" aria-label="Request details">
+          <Card title="Details" className="card-compact">
+            <dl className="fact-list">
+              <div>
+                <dt>Requester</dt>
+                <dd className="with-avatar">
+                  <Avatar name={data.requester.display_name} />
+                  {data.requester.display_name}
+                </dd>
+              </div>
+              <div>
+                <dt>Category</dt>
+                <dd>{categoryLabel(data.category)}</dd>
+              </div>
+              <div>
+                <dt>Priority</dt>
+                <dd>
+                  <PriorityBadge priority={data.priority} />
+                </dd>
+              </div>
+              <div>
+                <dt>Created</dt>
+                <dd className="mono">{formatDateTime(data.created_at)}</dd>
+              </div>
+              <div>
+                <dt>Updated</dt>
+                <dd className="mono">{formatDateTime(data.updated_at)}</dd>
+              </div>
+            </dl>
+          </Card>
           <WorkflowControls
             request={data}
             reviewPending={reviewPending && !selfSubmitted}
             onPatch={patch}
             onConflict={setConflict}
           />
-        </div>
+          <RunHistory runs={data.ai_runs} />
+        </aside>
       </div>
     </>
   )

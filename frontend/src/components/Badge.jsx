@@ -1,31 +1,47 @@
 import { priorityLabel, statusLabel } from '../lib/labels'
+import Icon from './icons'
 
-const STATUS_TONES = {
-  NEW: 'info',
-  ANALYZING: 'info',
-  TRIAGED: 'neutral',
-  NEEDS_HUMAN_REVIEW: 'warning',
-  IN_PROGRESS: 'info',
-  RESOLVED: 'success',
-  CLOSED: 'neutral',
+const STATUS_STYLES = {
+  NEW: ['info', 'inbox'],
+  ANALYZING: ['violet', 'sparkle'],
+  TRIAGED: ['teal', 'tag'],
+  NEEDS_HUMAN_REVIEW: ['warning', 'eye'],
+  IN_PROGRESS: ['info', 'activity'],
+  RESOLVED: ['success', 'checkCircle'],
+  CLOSED: ['neutral', 'lock'],
 }
 
-const PRIORITY_TONES = {
-  LOW: 'neutral',
-  MEDIUM: 'neutral',
-  HIGH: 'warning',
-  URGENT: 'danger',
+const PRIORITY_STYLES = {
+  LOW: ['neutral', 'arrowDown'],
+  MEDIUM: ['info', 'minus'],
+  HIGH: ['warning', 'arrowUp'],
+  URGENT: ['danger', 'alert'],
 }
 
-// The text carries the meaning. Color only reinforces it.
-export default function Badge({ tone = 'neutral', children }) {
-  return <span className={`badge badge-${tone}`}>{children}</span>
+// The text carries the meaning. Color and icons only reinforce it.
+export default function Badge({ tone = 'neutral', icon, children }) {
+  return (
+    <span className={`badge badge-${tone}`}>
+      {icon && <Icon name={icon} size={12} />}
+      {children}
+    </span>
+  )
 }
 
 export function StatusBadge({ status }) {
-  return <Badge tone={STATUS_TONES[status]}>{statusLabel(status)}</Badge>
+  const [tone, icon] = STATUS_STYLES[status] ?? []
+  return (
+    <Badge tone={tone} icon={icon}>
+      {statusLabel(status)}
+    </Badge>
+  )
 }
 
 export function PriorityBadge({ priority }) {
-  return <Badge tone={PRIORITY_TONES[priority]}>{priorityLabel(priority)}</Badge>
+  const [tone, icon] = PRIORITY_STYLES[priority] ?? []
+  return (
+    <Badge tone={tone} icon={icon}>
+      {priorityLabel(priority)}
+    </Badge>
+  )
 }

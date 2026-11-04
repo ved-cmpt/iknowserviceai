@@ -17,11 +17,9 @@ services:
       CI: "1"
       API_URL: http://backend:8000/api/v1
       DEMO_PASSWORD: ${DEMO_PASSWORD:?set in .env}
-      SCREENSHOT_DIR: /screenshots
     volumes:
       - ./e2e:/e2e
       - /e2e/node_modules
-      - ./assets/screenshots:/screenshots
     depends_on:
       backend:
         condition: service_healthy

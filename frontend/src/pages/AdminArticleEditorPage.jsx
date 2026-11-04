@@ -232,7 +232,9 @@ export default function AdminArticleEditorPage() {
   return (
     <>
       <p>
-        <Link to="/admin/knowledge">← Back to knowledge admin</Link>
+        <Link className="back-link" to="/admin/knowledge">
+          ← Back to knowledge admin
+        </Link>
       </p>
       {id ? <EditArticle key={id} id={id} /> : <NewArticle />}
     </>

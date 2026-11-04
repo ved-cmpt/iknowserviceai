@@ -2,13 +2,11 @@
 //
 // 1. Starts the stack with the high-limit E2E settings and AI_MODE=mock.
 // 2. Resets the demo data, runs the journeys and accessibility checks.
-// 3. Resets again and captures the README screenshots, so they hold no test clutter.
-// 4. Always restores the normal settings and fresh demo data, then reports the suite's result.
+// 3. Always restores the normal settings and fresh demo data, then reports the suite's result.
 //
-// Extra arguments go to Playwright for steps 2, and skip the screenshots:
+// Extra arguments go to Playwright for step 2:
 //   npm --prefix e2e run e2e -- --grep "Stale update"
 import { spawnSync } from 'node:child_process'
-import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -41,12 +39,11 @@ function playwright(label, args) {
   ])
 }
 
-mkdirSync(join(root, 'assets', 'screenshots'), { recursive: true })
-
 let exitCode = 1
 try {
   required('Start the stack with E2E settings', [
-    'compose', ...E2E_FILES, 'up', '-d', '--build', '--wait', 'db', 'backend', 'frontend',
+    // New anonymous volumes, or the frontend keeps the old node_modules after a dependency change.
+    'compose', ...E2E_FILES, 'up', '-d', '--build', '--renew-anon-volumes', '--wait', 'db', 'backend', 'frontend',
   ])
   required('Apply migrations', [
     'compose', ...E2E_FILES, 'exec', '-T', 'backend', 'alembic', 'upgrade', 'head',
@@ -54,18 +51,10 @@ try {
   required('Build the E2E image', ['compose', ...E2E_FILES, '--profile', 'e2e', 'build', 'e2e'])
 
   resetDemoData()
-  const journeys = playwright(
+  exitCode = playwright(
     'Journeys and accessibility',
     extraArgs.length > 0 ? ['--project=desktop', ...extraArgs] : ['--project=desktop', '--project=mobile'],
   )
-
-  let screenshots = 0
-  if (extraArgs.length === 0) {
-    resetDemoData()
-    screenshots = playwright('Screenshots', ['--project=screenshots'])
-  }
-  console.log(`\nJourneys exit code: ${journeys}. Screenshots exit code: ${screenshots}.`)
-  exitCode = journeys === 0 && screenshots === 0 ? 0 : 1
 } catch (error) {
   console.error(error.message)
 } finally {

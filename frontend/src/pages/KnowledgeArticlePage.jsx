@@ -16,7 +16,9 @@ export default function KnowledgeArticlePage() {
   return (
     <div className="page-medium">
       <p>
-        <Link to="/knowledge">← Back to knowledge base</Link>
+        <Link className="back-link" to="/knowledge">
+          ← Back to knowledge base
+        </Link>
       </p>
       {loading && !data && <LoadingState label="Loading article…" />}
       {error && <ErrorState error={error} onRetry={error.status === 404 ? undefined : retry} />}

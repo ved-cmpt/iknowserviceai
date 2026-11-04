@@ -1,12 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { homeFor, navItemsFor } from '../auth/roles'
 import { roleLabel } from '../lib/labels'
 import { AnnouncerContext } from './announcerContext'
 import ApiStatus from './ApiStatus'
+import Avatar from './Avatar'
 import Button from './Button'
 import DemoBanner from './DemoBanner'
+import { LogoMark } from './icons'
+import ThemeToggle from './ThemeToggle'
+
+const TOAST_MS = 4000
 
 export default function Layout() {
   const { user, logout } = useAuth()
@@ -16,6 +21,15 @@ export default function Layout() {
   const mainRef = useRef(null)
   const menuButtonRef = useRef(null)
   const previousPath = useRef(pathname)
+  const toastTimer = useRef(null)
+
+  // Screen readers hear the live region, and everyone else sees the same element as a brief toast.
+  const announce = useCallback((text) => {
+    setMessage(text)
+    clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setMessage(''), TOAST_MS)
+  }, [])
+  useEffect(() => () => clearTimeout(toastTimer.current), [])
 
   // A client-side navigation does not move focus, so keyboard and screen reader users would stay
   // on the old link. Move them to the new page instead.
@@ -28,7 +42,7 @@ export default function Layout() {
   }, [pathname])
 
   return (
-    <AnnouncerContext.Provider value={setMessage}>
+    <AnnouncerContext.Provider value={announce}>
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
@@ -36,6 +50,7 @@ export default function Layout() {
       <header className="topbar">
         <div className="topbar-inner">
           <Link to={homeFor(user)} className="brand">
+            <LogoMark />
             IknowServiceAI
           </Link>
           {/* CSS shows this button on narrow screens only, where it collapses the links below. */}
@@ -75,12 +90,18 @@ export default function Layout() {
             </ul>
           </nav>
           <div className="topbar-user">
-            <span>
-              {user.display_name} · {roleLabel(user.role)}
+            <span className="topbar-person">
+              <Avatar name={user.display_name} />
+              <span>
+                {user.display_name} · {roleLabel(user.role)}
+              </span>
             </span>
-            <Button variant="secondary" size="sm" onClick={logout}>
-              Sign out
-            </Button>
+            <span className="btn-group">
+              <ThemeToggle />
+              <Button variant="secondary" size="sm" onClick={logout}>
+                Sign out
+              </Button>
+            </span>
           </div>
         </div>
       </header>
@@ -90,7 +111,11 @@ export default function Layout() {
       <footer className="site-footer">
         <ApiStatus />
       </footer>
-      <div className="visually-hidden" aria-live="polite" data-testid="live-region">
+      <div
+        className={message ? 'toast' : 'visually-hidden'}
+        aria-live="polite"
+        data-testid="live-region"
+      >
         {message}
       </div>
     </AnnouncerContext.Provider>

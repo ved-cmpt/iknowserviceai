@@ -5,6 +5,7 @@ import { requestCountsPath, requestsPath, updateRequest } from '../api/requests'
 import { useApiData } from '../api/useApiData'
 import { useAuth } from '../auth/authContext'
 import { useAnnounce } from '../components/announcerContext'
+import Avatar from '../components/Avatar'
 import { PriorityBadge, StatusBadge } from '../components/Badge'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
@@ -12,6 +13,7 @@ import Card from '../components/Card'
 import EmptyState from '../components/EmptyState'
 import ErrorState from '../components/ErrorState'
 import FormField from '../components/FormField'
+import Icon from '../components/icons'
 import LoadingState from '../components/LoadingState'
 import Pagination from '../components/Pagination'
 import Table from '../components/Table'
@@ -49,6 +51,12 @@ function assigneeText(request, user) {
   return request.assigned_agent_name ?? 'Another team member'
 }
 
+function assigneeName(request, user) {
+  return request.assigned_agent_id === user.id
+    ? user.display_name
+    : (request.assigned_agent_name ?? 'Team member')
+}
+
 function Queue({ list, filtered, onPage }) {
   const { user } = useAuth()
   const announce = useAnnounce()
@@ -82,7 +90,12 @@ function Queue({ list, filtered, onPage }) {
       key: 'title',
       header: 'Title',
       primary: true,
-      render: (request) => <Link to={`/support/${request.id}`}>{request.title}</Link>,
+      render: (request) => (
+        <>
+          <Link to={`/support/${request.id}`}>{request.title}</Link>
+          <span className="row-id mono">{String(request.id).slice(0, 8)}</span>
+        </>
+      ),
     },
     { key: 'status', header: 'Status', render: (request) => <StatusBadge status={request.status} /> },
     {
@@ -91,8 +104,21 @@ function Queue({ list, filtered, onPage }) {
       render: (request) => <PriorityBadge priority={request.priority} />,
     },
     { key: 'category', header: 'Category', render: (request) => categoryLabel(request.category) },
-    { key: 'assignee', header: 'Assigned to', render: (request) => assigneeText(request, user) },
-    { key: 'created', header: 'Created', render: (request) => formatDate(request.created_at) },
+    {
+      key: 'assignee',
+      header: 'Assigned to',
+      render: (request) => (
+        <span className="with-avatar">
+          <Avatar name={request.assigned_agent_id ? assigneeName(request, user) : null} />
+          {assigneeText(request, user)}
+        </span>
+      ),
+    },
+    {
+      key: 'created',
+      header: 'Created',
+      render: (request) => <span className="mono">{formatDate(request.created_at)}</span>,
+    },
     {
       key: 'action',
       header: 'Action',
@@ -125,7 +151,12 @@ function Queue({ list, filtered, onPage }) {
         <EmptyState title={filtered ? 'No requests match these filters.' : 'The queue is empty.'} />
       ) : (
         <>
-          <Table caption="Support queue" columns={columns} rows={data.items} />
+          <Table
+            caption="Support queue"
+            columns={columns}
+            rows={data.items}
+            rowClassName={(request) => (request.status === REVIEW_STATUS ? 'row-attention' : undefined)}
+          />
           <Pagination total={data.total} limit={data.limit} offset={data.offset} onChange={onPage} />
         </>
       )}
@@ -166,6 +197,25 @@ export default function SupportQueuePage() {
       <div className="page-header">
         <h1>Support queue</h1>
         <div className="btn-group">
+          <div className="segment" role="group" aria-label="View">
+            <button
+              type="button"
+              className="segment-option"
+              aria-pressed={!filters.status}
+              onClick={() => setFilters({ status: '' })}
+            >
+              All requests
+            </button>
+            <button
+              type="button"
+              className="segment-option segment-attention"
+              aria-pressed={reviewActive}
+              onClick={() => setFilters({ status: reviewActive ? '' : REVIEW_STATUS })}
+            >
+              <Icon name="eye" size={14} />
+              Needs review{reviewCount !== undefined ? ` (${reviewCount})` : ''}
+            </button>
+          </div>
           <Button
             variant="secondary"
             onClick={() => {
@@ -173,15 +223,8 @@ export default function SupportQueuePage() {
               announce('Queue refreshed.')
             }}
           >
+            <Icon name="refresh" />
             Refresh
-          </Button>
-          <Button
-            variant="secondary"
-            className="btn-attention"
-            aria-pressed={reviewActive}
-            onClick={() => setFilters({ status: reviewActive ? '' : REVIEW_STATUS })}
-          >
-            Needs review{reviewCount !== undefined ? ` (${reviewCount})` : ''}
           </Button>
         </div>
       </div>

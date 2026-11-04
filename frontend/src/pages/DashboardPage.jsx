@@ -7,6 +7,7 @@ import Card from '../components/Card'
 import EmptyState from '../components/EmptyState'
 import ErrorState from '../components/ErrorState'
 import FormField from '../components/FormField'
+import Icon from '../components/icons'
 import LoadingState from '../components/LoadingState'
 import Pagination from '../components/Pagination'
 import Table from '../components/Table'
@@ -14,6 +15,7 @@ import { CATEGORIES, categoryLabel } from '../knowledge/categories'
 import { formatDate } from '../lib/format'
 import { STATUS_OPTIONS } from '../lib/labels'
 import { DEFAULT_SORT, PAGE_SIZE, SORT_OPTIONS, sortParams } from '../requests/options'
+import StatCards from '../requests/StatCards'
 import StatusCounts from '../requests/StatusCounts'
 import { useListParams } from '../requests/useListParams'
 
@@ -31,8 +33,16 @@ const COLUMNS = [
     header: 'Priority',
     render: (request) => <PriorityBadge priority={request.priority} />,
   },
-  { key: 'created', header: 'Created', render: (request) => formatDate(request.created_at) },
-  { key: 'updated', header: 'Updated', render: (request) => formatDate(request.updated_at) },
+  {
+    key: 'created',
+    header: 'Created',
+    render: (request) => <span className="mono">{formatDate(request.created_at)}</span>,
+  },
+  {
+    key: 'updated',
+    header: 'Updated',
+    render: (request) => <span className="mono">{formatDate(request.updated_at)}</span>,
+  },
 ]
 
 function RequestList({ params, filtered, onPage }) {
@@ -80,9 +90,16 @@ export default function DashboardPage() {
   return (
     <>
       <div className="page-header">
-        <h1>My requests</h1>
-        <ButtonLink to="/requests/new">New request</ButtonLink>
+        <div>
+          <h1>My requests</h1>
+          <p className="page-lede">Follow your IT requests, and see what the support team says.</p>
+        </div>
+        <ButtonLink to="/requests/new">
+          <Icon name="plus" />
+          New request
+        </ButtonLink>
       </div>
+      <StatCards data={counts} />
       <StatusCounts data={counts} />
       <Card as="div">
         <div className="filter-bar">

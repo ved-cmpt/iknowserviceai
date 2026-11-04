@@ -2,8 +2,8 @@
 // CSS `display` changes can strip table semantics, so the roles are stated explicitly.
 //
 // columns: [{ key, header, render(row), primary }]. `primary` marks the column shown as the card
-// heading on small screens.
-export default function Table({ caption, columns, rows, rowKey = (row) => row.id }) {
+// heading on small screens. `rowClassName(row)` can mark a row that needs attention.
+export default function Table({ caption, columns, rows, rowKey = (row) => row.id, rowClassName }) {
   return (
     <div className="table-wrap">
       <table className="data-table" role="table">
@@ -19,7 +19,7 @@ export default function Table({ caption, columns, rows, rowKey = (row) => row.id
         </thead>
         <tbody role="rowgroup">
           {rows.map((row) => (
-            <tr key={rowKey(row)} role="row">
+            <tr key={rowKey(row)} role="row" className={rowClassName?.(row)}>
               {columns.map((column) => (
                 <td
                   key={column.key}

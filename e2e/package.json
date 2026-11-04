@@ -6,7 +6,8 @@
   "description": "Browser E2E suite. Runs in Docker: npm --prefix e2e run e2e",
   "scripts": {
     "e2e": "node run.mjs",
-    "e2e:prod": "node run-prod.mjs"
+    "e2e:prod": "node run-prod.mjs",
+    "screenshots": "node run-prod.mjs --project=screenshots"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { callsTo, errorResponse, HEALTH, jsonResponse, mockFetch } from './helpers'
@@ -80,17 +80,18 @@ describe('login', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the server.')
   })
 
-  it('pre-fills the email from the demo selector and signs in', async () => {
+  it('fills the form from a demo account card and signs in', async () => {
     const fetchMock = mockFetch(signInRoutes())
     renderApp('/login')
 
-    await userEvent.selectOptions(
-      await screen.findByLabelText('Demo account'),
-      DEFAULT_USER.email,
-    )
+    const accounts = await screen.findByLabelText('Demo account')
+    expect(within(accounts).getAllByRole('button')).toHaveLength(4)
+    await userEvent.click(within(accounts).getByRole('button', { name: /Riley Morgan/ }))
     expect(screen.getByLabelText('Email')).toHaveValue(DEFAULT_USER.email)
-    expect(screen.getByLabelText('Password')).toHaveValue('')
+    expect(screen.getByLabelText('Password')).toHaveValue('public-demo-hint')
+    expect(screen.getByRole('button', { name: 'Sign in' })).toHaveFocus()
 
+    await userEvent.clear(screen.getByLabelText('Password'))
     await userEvent.type(screen.getByLabelText('Password'), 'demo-password')
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 

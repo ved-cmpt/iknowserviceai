@@ -37,6 +37,33 @@ test.describe('Production image @mobile', () => {
     await expectAccessible(page, 'production: shell with demo banner')
   })
 
+  test('the theme follows the system, and a choice survives a reload, with no violations', async ({ browser }) => {
+    const { baseURL, viewport, isMobile, hasTouch } = test.info().project.use
+    const context = await browser.newContext({ baseURL, viewport, isMobile, hasTouch, colorScheme: 'dark' })
+    const page = await context.newPage()
+    const problems = []
+    page.on('console', (message) => {
+      if (/Content Security Policy|Refused to/i.test(message.text())) problems.push(message.text())
+    })
+    const background = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+
+    await page.goto('/login')
+    await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
+    expect(await background()).toBe('rgb(12, 21, 34)')
+
+    await page.getByRole('button', { name: 'Switch to light theme' }).click()
+    expect(await background()).toBe('rgb(243, 245, 248)')
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
+    expect(await background()).toBe('rgb(243, 245, 248)')
+    await expect(page.getByRole('button', { name: 'Switch to dark theme' })).toBeVisible()
+
+    // Self-hosted fonts load under the policy, with no external request.
+    expect(await page.evaluate(() => document.fonts.check('16px "IBM Plex Sans"'))).toBe(true)
+    expect(problems).toEqual([])
+    await context.close()
+  })
+
   test('hashed assets are cached for a long time', async ({ page }) => {
     const assets = []
     page.on('response', (response) => {

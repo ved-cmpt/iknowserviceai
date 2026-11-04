@@ -12,9 +12,18 @@
   top: var(--space-2);
 }
 
+/* The header is dark in both themes */
 .topbar {
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--color-topbar);
+  color: var(--color-topbar-text);
+}
+
+.topbar a {
+  color: var(--color-topbar-text);
+}
+
+.topbar :focus-visible {
+  outline-color: var(--color-topbar-accent);
 }
 
 .topbar-inner {
@@ -28,9 +37,18 @@
 }
 
 .brand {
-  font-weight: 700;
-  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  font-size: var(--text-md);
+  letter-spacing: -0.01em;
   text-decoration: none;
+  color: inherit;
+}
+
+.brand-mark {
+  flex: none;
 }
 
 .topbar nav {
@@ -50,22 +68,22 @@
   display: block;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
-  color: var(--color-text);
   text-decoration: none;
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--color-topbar-muted);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .nav-list a:hover {
-  background: var(--color-surface-muted);
-  color: var(--color-text);
+  background: var(--color-topbar-hover);
+  color: var(--color-topbar-text);
 }
 
 .nav-list a[aria-current='page'] {
-  background: var(--color-accent-soft);
-  color: var(--color-accent-strong);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  background: var(--color-topbar-hover);
+  color: var(--color-topbar-text);
+  box-shadow: inset 0 -2px 0 var(--color-topbar-accent);
 }
 
 /* Two classes, so this outranks .btn, which sets its own display and loads later. */
@@ -73,7 +91,18 @@
   display: none;
 }
 
-@media (max-width: 720px) {
+.topbar .btn-secondary {
+  background: transparent;
+  border-color: var(--color-topbar-border);
+  color: var(--color-topbar-text);
+}
+
+.topbar .btn-secondary:hover:not(:disabled) {
+  background: var(--color-topbar-hover);
+  color: var(--color-topbar-text);
+}
+
+@media (max-width: 860px) {
   .topbar .nav-toggle {
     display: inline-flex;
     margin-left: auto;
@@ -100,16 +129,28 @@
   align-items: center;
   gap: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
+  color: var(--color-topbar-muted);
+}
+
+.topbar-person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 860px) {
+  .topbar-user {
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
 }
 
 .page {
+  flex: 1 0 auto;
+  width: 100%;
   max-width: var(--content-width);
   margin: 0 auto;
   padding: var(--space-5) var(--space-4);
-}
-
-.page-narrow {
-  max-width: 460px;
 }
 
 .page-medium {
@@ -129,20 +170,36 @@
   margin: 0;
 }
 
+.page-lede {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+}
+
+/* Main work area and a side column. The side column follows the scroll on wide screens. */
 .detail-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--space-4) var(--space-5);
   align-items: start;
 }
 
-@media (max-width: 860px) {
+.detail-side {
+  position: sticky;
+  top: var(--space-4);
+}
+
+@media (max-width: 1000px) {
   .detail-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detail-side {
+    position: static;
   }
 }
 
 .site-footer {
+  width: 100%;
   max-width: var(--content-width);
   margin: 0 auto;
   padding: 0 var(--space-4) var(--space-5);
@@ -161,4 +218,166 @@
 .api-status-unreachable {
   color: var(--color-danger-text);
   font-weight: 600;
+}
+
+/* Sign-in page: pitch on the left, form on the right. The form comes first on small screens. */
+.login-page {
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+
+.login-pitch {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: var(--space-7);
+  background: var(--color-topbar);
+  color: var(--color-topbar-text);
+}
+
+.login-pitch h2,
+.login-pitch h3 {
+  color: var(--color-topbar-text);
+}
+
+.login-tagline {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  max-width: 22ch;
+}
+
+.login-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.login-features li {
+  display: flex;
+  gap: var(--space-3);
+  color: var(--color-topbar-muted);
+}
+
+.login-features .icon {
+  color: var(--color-topbar-accent);
+  margin-top: 3px;
+}
+
+.login-form-panel {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-7) var(--space-6);
+  background: var(--color-surface);
+}
+
+.login-form {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.login-form-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: var(--space-5);
+}
+
+.login-form h1 {
+  margin-bottom: var(--space-1);
+}
+
+.login-form .btn-primary {
+  width: 100%;
+}
+
+.demo-accounts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.demo-card {
+  width: 100%;
+  height: 100%;
+  display: block;
+  padding: var(--space-3);
+  text-align: left;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-topbar-muted);
+  background: var(--color-pitch-card);
+  border: 1px solid var(--color-topbar-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.demo-card:hover {
+  border-color: var(--color-topbar-accent);
+  transform: translateY(-1px);
+}
+
+.demo-card:focus-visible {
+  outline-color: var(--color-topbar-accent);
+}
+
+.demo-card-name {
+  display: block;
+  font-weight: 600;
+  color: var(--color-topbar-text);
+}
+
+.demo-card-role {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--color-topbar-accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .login-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login-form-panel,
+  .login-pitch {
+    grid-column: 1;
+    grid-row: auto;
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .login-tagline {
+    font-size: var(--text-xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .demo-accounts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.page-narrow {
+  max-width: 460px;
+}
+
+.page-medium {
+  margin-inline: auto;
 }

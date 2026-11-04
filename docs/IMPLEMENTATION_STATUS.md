@@ -31,6 +31,7 @@ Current blockers: none.
 - **Checkpoint 18, public-demo safeguards: DONE.** `tests/test_demo_safeguards.py` (31 tests, including as `app_user`), production E2E banner check. See ADR-051.
 - **Checkpoint 19, Render and Neon settings: DONE.** `render.yaml` validates against the schema Render publishes; `tests/test_health.py`; production E2E 43 passed, 1 skipped. See ADR-052 and ADR-053. The Blueprint itself has not been applied to Render.
 - **Checkpoint 20, Neon provisioned: DONE.** `deploy/neon/provision.py`: role, migrations at `0007`, seed twice (4 users, 13 articles, 9 requests), all `app_user` checks passed, reset works as `app_user`. Production image on Neon: browser suite 43 passed, 1 skipped by design; demo data reset afterwards. Neon runs PostgreSQL 18, and development and CI use 17 (ADR-054); the backend suite passed on 18 too, 873 passed, 1 skipped. See `docs/DEPLOYMENT.md`.
+- **Checkpoint 21, visual redesign: DONE.** ADR-056. Frontend 237 passed. Dev browser suite 33 passed, 11 skipped by design. Production browser suite 45 passed, 1 skipped by design. axe now fails on any finding, in both themes, at 1440 and 375 px: 94 checks on the production image, all with 0 findings. Every screen reviewed by eye in both themes.
 
 ## Test results (clean state: `down -v`, rebuild, migrate, seed)
 

@@ -427,3 +427,12 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Neon detail:** Neon refuses pre-hashed passwords when a role is created by SQL ("Neon only supports being given plaintext passwords"), so the plain password travels inside the TLS connection. The role is created by SQL, so it is not a member of `neon_superuser`, which the script confirms.
 - **`channel_binding`:** The connection string keeps Neon's `channel_binding=require`. The image's driver accepted it, so nothing was dropped.
 - **Trade-offs:** A repeat rotates the password and JWT secret, so the host must be updated each time. That is deliberate: there is no state to drift, and the same command serves as rotation.
+
+## ADR-056: Visual design system, with two themes and no framework
+
+- **Context:** The interface was clean but generic. A portfolio piece is judged partly by how it looks, and the redesign must not disturb behavior, tests or accessibility.
+- **Decision:** Plain CSS custom properties, as before (ADR-034), now holding an ink-navy and teal palette in two themes. IBM Plex Sans and Mono are self-hosted through `@fontsource`, Latin subsets only, so `default-src 'self'` still holds. Icons are a small original set, in `components/icons/`, with no icon dependency. The theme follows `prefers-color-scheme` until someone uses the header toggle. The choice is kept in `localStorage`, guarded by `try`/`catch`, and `public/theme-init.js` applies it before first paint, as a separate file because the policy forbids inline scripts.
+- **Dark values appear twice in `tokens.css`,** once for the system preference and once for the manual choice. CSS has no way to share a block between a media query and a selector without a build step, and a build step is not worth it for this.
+- **Structure changes:** The sign-in page's demo-account select became four cards that fill the form, in a group that keeps the label "Demo account". Staff run history moved to a collapsed section in a sticky side column. The live region doubles as a visible toast, so there is one source of announcements.
+- **Stricter checks:** `expectAccessible` now fails on any axe finding, not only serious ones, and runs in both themes, at both viewports. Reduced motion is on during tests, so contrast is never measured mid-transition.
+- **Trade-offs:** Fonts add about 100 KB across their files, cached for a year. `<details>` hides run history from people who do not look for it, which suits something used only when investigating.

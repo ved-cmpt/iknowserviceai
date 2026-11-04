@@ -250,3 +250,41 @@ describe('narrow-screen menu', () => {
     expect(button).toHaveAttribute('aria-expanded', 'false')
   })
 })
+
+describe('theme', () => {
+  afterEach(() => {
+    delete document.documentElement.dataset.theme
+    localStorage.clear()
+  })
+
+  it('switches theme from the header, and remembers the choice', async () => {
+    mockFetch(ROUTES)
+    renderSignedIn('/knowledge', DEFAULT_USER)
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }))
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(localStorage.getItem('iks-theme')).toBe('dark')
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to light theme' }))
+    expect(document.documentElement.dataset.theme).toBe('light')
+    expect(localStorage.getItem('iks-theme')).toBe('light')
+  })
+
+  it('still switches when storage is blocked', async () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    mockFetch(ROUTES)
+    renderSignedIn('/knowledge', DEFAULT_USER)
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }))
+    expect(document.documentElement.dataset.theme).toBe('dark')
+  })
+
+  it('shows announcements as a toast through the same live region', async () => {
+    mockFetch(ROUTES)
+    renderSignedIn('/support', AGENT_USER)
+    await userEvent.click(await screen.findByRole('button', { name: 'Refresh' }))
+    const region = screen.getByTestId('live-region')
+    expect(region).toHaveTextContent('Queue refreshed.')
+    expect(region).toHaveClass('toast')
+    expect(region).toHaveAttribute('aria-live', 'polite')
+  })
+})

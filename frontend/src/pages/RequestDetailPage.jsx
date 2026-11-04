@@ -51,65 +51,73 @@ function RequesterDetail({ id }) {
   return (
     <>
       <p>
-        <Link to="/dashboard">← Back to my requests</Link>
+        <Link className="back-link" to="/dashboard">
+          ← Back to my requests
+        </Link>
       </p>
+      <div className="page-header">
+        <h1>{data.title}</h1>
+        <StatusBadge status={data.status} />
+      </div>
       {error && !loading && <ErrorState error={error} onRetry={reload} />}
-      <Card as="div">
-        <div className="card-header">
-          <h1>{data.title}</h1>
-          <StatusBadge status={data.status} />
-        </div>
-        <dl className="fact-grid">
-          <div>
-            <dt>Category</dt>
-            <dd>{categoryLabel(data.category)}</dd>
-          </div>
-          <div>
-            <dt>Priority</dt>
-            <dd>
-              <PriorityBadge priority={data.priority} />
-            </dd>
-          </div>
-          <div>
-            <dt>Created</dt>
-            <dd>{formatDateTime(data.created_at)}</dd>
-          </div>
-          <div>
-            <dt>Updated</dt>
-            <dd>{formatDateTime(data.updated_at)}</dd>
-          </div>
-        </dl>
-      </Card>
-      <AiSection
-        request={data}
-        running={running || autoPending}
-        failure={failure}
-        onAnalyze={analyze}
-        onCheckAgain={() => {
-          clearFailure()
-          reload()
-        }}
-      />
-      {expired && (
-        <p className="meta">
-          Automatic updates have paused.{' '}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              restart()
+      <div className="detail-grid">
+        <div>
+          <AiSection
+            request={data}
+            running={running || autoPending}
+            failure={failure}
+            onAnalyze={analyze}
+            onCheckAgain={() => {
+              clearFailure()
               reload()
             }}
-          >
-            Check for updates
-          </Button>
-        </p>
-      )}
-      <Card title="Your description">
-        <div className="preserve-lines">{data.description}</div>
-      </Card>
-      <CommentsSection request={data} onAdded={reload} />
-      <ActivitySection events={data.events} />
+          />
+          {expired && (
+            <p className="meta">
+              Automatic updates have paused.{' '}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  restart()
+                  reload()
+                }}
+              >
+                Check for updates
+              </Button>
+            </p>
+          )}
+          <Card title="Your description">
+            <div className="preserve-lines">{data.description}</div>
+          </Card>
+          <CommentsSection request={data} onAdded={reload} />
+        </div>
+        <aside className="detail-side" aria-label="Request details">
+          <Card title="Details" className="card-compact">
+            <dl className="fact-list">
+              <div>
+                <dt>Category</dt>
+                <dd>{categoryLabel(data.category)}</dd>
+              </div>
+              <div>
+                <dt>Priority</dt>
+                <dd>
+                  <PriorityBadge priority={data.priority} />
+                </dd>
+              </div>
+              <div>
+                <dt>Created</dt>
+                <dd className="mono">{formatDateTime(data.created_at)}</dd>
+              </div>
+              <div>
+                <dt>Updated</dt>
+                <dd className="mono">{formatDateTime(data.updated_at)}</dd>
+              </div>
+            </dl>
+          </Card>
+          <ActivitySection events={data.events} />
+        </aside>
+      </div>
     </>
   )
 }

@@ -18,6 +18,8 @@ export default defineConfig({
   outputDir: './test-results',
   use: {
     baseURL,
+    // Motion off, so contrast is never measured halfway through a transition.
+    contextOptions: { reducedMotion: 'reduce' },
     launchOptions: { args: [`--host-resolver-rules=${hostRules}`] },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

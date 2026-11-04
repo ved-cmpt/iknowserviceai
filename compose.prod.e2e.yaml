@@ -28,9 +28,12 @@ services:
       API_URL: http://app:8000/api/v1
       PRODUCTION: "1"
       DEMO_PASSWORD: ${DEMO_PASSWORD:?set in the env file}
+      SCREENSHOT_DIR: /screenshots
+      SCREENSHOT_ALL_DARK: ${SCREENSHOT_ALL_DARK:-}
     volumes:
       - ./e2e:/e2e
       - /e2e/node_modules
+      - ${SCREENSHOT_HOST_DIR:-./assets/screenshots}:/screenshots
     depends_on:
       app:
         condition: service_healthy

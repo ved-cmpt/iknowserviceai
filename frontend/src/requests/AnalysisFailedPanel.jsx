@@ -5,7 +5,7 @@ import { describeFailure } from './analysisFailure'
 export default function AnalysisFailedPanel({ failure, running, staff = false, onAnalyze, onCheckAgain }) {
   const view = describeFailure(failure, { staff })
   return (
-    <Banner tone={view.tone} title="Analysis did not finish" role="alert">
+    <Banner tone={view.tone} title="Analysis did not finish" role="alert" icon="alert">
       <p>{view.message}</p>
       {view.action === 'retry' && (
         <>

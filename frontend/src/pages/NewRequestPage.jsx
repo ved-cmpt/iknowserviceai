@@ -69,7 +69,9 @@ export default function NewRequestPage() {
   return (
     <div className="page-medium">
       <p>
-        <Link to="/dashboard">← Back to my requests</Link>
+        <Link className="back-link" to="/dashboard">
+          ← Back to my requests
+        </Link>
       </p>
       <h1>New request</h1>
       <p className="muted">
