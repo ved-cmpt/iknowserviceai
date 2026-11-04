@@ -1,5 +1,6 @@
 // Checks that only make sense against the production image. Other runs skip this file.
-import { expect, request as playwrightRequest, test } from '@playwright/test'
+import { request as playwrightRequest } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { expectAccessible, fillSignIn, signInAt } from './helpers'
 
 test.skip(!process.env.PRODUCTION, 'Runs against the production image only.')
@@ -96,9 +97,9 @@ test.describe('Production image @mobile', () => {
     expect(problems).toEqual([])
   })
 
-  test('the session cookie is HttpOnly, Secure and SameSite=Strict, on the auth path only @smoke', async ({ page, context }) => {
+  test('the session cookie is HttpOnly, Secure and SameSite=Strict, on the auth path only @smoke', async ({ page, context, baseURL }) => {
     await signInAt(page, 'riley')
-    const cookie = (await context.cookies('http://localhost:8080/api/v1/auth/refresh')).find(
+    const cookie = (await context.cookies(`${baseURL}/api/v1/auth/refresh`)).find(
       (item) => item.name === 'iks_refresh',
     )
     expect(cookie).toBeTruthy()

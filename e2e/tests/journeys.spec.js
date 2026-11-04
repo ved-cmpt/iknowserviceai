@@ -1,11 +1,14 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import {
   AI_LABEL,
   apiAs,
   AWAITING_TEXT,
   expectAccessible,
+  labelled,
+  labelledSlug,
   newSession,
   openNav,
+  paceLogin,
   REVIEWED_LABEL,
   scenarioTitle,
   seedRequest,
@@ -72,13 +75,14 @@ test.describe('1. Ordinary', () => {
       }
       throw new Error(`Could not reach ${locator} with Tab`)
     }
-    const title = `${WIFI_TITLE} ${uniqueTag()}`
+    const title = labelled(`${WIFI_TITLE} ${uniqueTag()}`)
 
     await page.goto('/login')
     await pressTabUntilFocused(page.getByLabel('Email', { exact: true }))
     await page.keyboard.type(USERS.riley)
     await page.keyboard.press('Tab')
     await page.keyboard.type(process.env.DEMO_PASSWORD)
+    await paceLogin()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('heading', { name: 'My requests' })).toBeVisible()
 
@@ -187,7 +191,7 @@ test.describe('2. Sensitive', () => {
 
 test.describe('3. Reject', () => {
   test('a rejected suggestion never reaches the requester', async ({ page, browser }) => {
-    const title = `Reject me: ${SENSITIVE_TEXT} ${uniqueTag()}`
+    const title = labelled(`Reject me: ${SENSITIVE_TEXT} ${uniqueTag()}`)
     await signInAt(page, 'riley')
     await submitNewRequest(page, title, `${SENSITIVE_TEXT}. Please help.`)
     await expect(page.getByText(AWAITING_TEXT)).toBeVisible()
@@ -224,13 +228,13 @@ test.describe('3. Reject', () => {
 test.describe('4. Admin knowledge', () => {
   test('publishing and unpublishing controls what requesters can find', async ({ page, browser }) => {
     const term = `zq${uniqueTag()}`
-    const title = `Guide to ${term} docking stations`
+    const title = labelled(`Guide to ${term} docking stations`)
 
     await signInAt(page, 'jordan')
     await openNav(page, 'Knowledge admin')
     await page.getByRole('link', { name: 'New article' }).click()
     await page.getByLabel(/^Title/).fill(title)
-    await expect(page.getByLabel(/^Slug/)).toHaveValue(`guide-to-${term}-docking-stations`)
+    await expect(page.getByLabel(/^Slug/)).toHaveValue(labelledSlug(`guide-to-${term}-docking-stations`))
     await page.getByLabel(/^Category/).selectOption('HARDWARE')
     await page.getByLabel(/^Tags/).fill('docking, hardware')
     await page.getByLabel(/^Body/).fill(`## Docking\n\nReseat the ${term} cable.\n\n<script>window.__pwned = true</script>`)
@@ -298,7 +302,7 @@ test.describe('5. Authorization', () => {
 
   test('a requester gets 404 for another person\'s request @mobile @smoke', async ({ page }) => {
     const samsRequest = await seedRequest('sam', {
-      title: `Sam's private request ${uniqueTag()}`,
+      title: labelled(`Sam's private request ${uniqueTag()}`),
       description: 'A request only Sam and the support team may read.',
       analyze: false,
     })
@@ -342,7 +346,7 @@ test.describe('7. Staying current', () => {
     await signInAt(page, 'alex', '/support')
     await expect(page.getByRole('table')).toBeVisible()
 
-    const title = `Arrived after loading ${uniqueTag()}`
+    const title = labelled(`Arrived after loading ${uniqueTag()}`)
     await seedRequest('riley', {
       title,
       description: 'This request is created after the queue was loaded.',
@@ -381,7 +385,7 @@ test.describe('7. Staying current', () => {
 
 test.describe('7. Staying current, staff', () => {
   test('the staff page shows changes by others, and leaves typed text alone', async ({ browser }) => {
-    const title = `Refreshes itself ${uniqueTag()}`
+    const title = labelled(`Refreshes itself ${uniqueTag()}`)
     const id = await seedRequest('riley', {
       title,
       description: 'My monitor flickers on and off.',
@@ -405,7 +409,7 @@ test.describe('7. Staying current, staff', () => {
 
 test.describe('6. Stale update', () => {
   test('the second staff save shows the stale message, keeps the text, and works after reload', async ({ browser }) => {
-    const title = `Two people edit this ${uniqueTag()}`
+    const title = labelled(`Two people edit this ${uniqueTag()}`)
     const id = await seedRequest('sam', {
       title,
       description: 'The second floor printer needs attention soon.',

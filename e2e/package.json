@@ -8,6 +8,7 @@
     "e2e": "node run.mjs",
     "e2e:prod": "node run-prod.mjs",
     "e2e:smoke": "node run-prod.mjs --project=desktop --grep @smoke",
+    "e2e:live": "node run-live.mjs",
     "screenshots": "node run-prod.mjs --project=screenshots && node optimize-screenshots.mjs",
     "demo:record": "node record-demo.mjs"
   },

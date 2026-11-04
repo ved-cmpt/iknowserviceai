@@ -11,8 +11,9 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   retries: 0,
-  timeout: 60_000,
-  expect: { timeout: 15_000 },
+  // A live run waits between sign-ins, and may meet a cold start (e2e/run-live.mjs).
+  timeout: Number(process.env.E2E_TEST_TIMEOUT_MS ?? 60_000),
+  expect: { timeout: Number(process.env.E2E_EXPECT_TIMEOUT_MS ?? 15_000) },
   forbidOnly: true,
   reporter: [['list'], ['html', { open: 'never', outputFolder: './playwright-report' }]],
   outputDir: './test-results',
@@ -20,7 +21,7 @@ export default defineConfig({
     baseURL,
     // Motion off, so contrast is never measured halfway through a transition.
     contextOptions: { reducedMotion: 'reduce' },
-    launchOptions: { args: [`--host-resolver-rules=${hostRules}`] },
+    launchOptions: { args: hostRules ? [`--host-resolver-rules=${hostRules}`] : [] },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

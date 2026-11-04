@@ -1,8 +1,9 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import {
   AI_LABEL,
   AWAITING_TEXT,
   expectAccessible,
+  labelled,
   openNav,
   seedRequest,
   SENSITIVE_TEXT,
@@ -46,13 +47,13 @@ test.describe('Accessibility and mobile layout @mobile', () => {
   test('request detail in each AI state', async ({ page }) => {
     const tag = uniqueTag()
     const noAnalysis = await seedRequest('riley', {
-      title: `No analysis yet ${tag}`,
+      title: labelled(`No analysis yet ${tag}`),
       description: WIFI_BODY,
       analyze: false,
     })
-    const suggestion = await seedRequest('riley', { title: `${WIFI_TITLE} ${tag}`, description: WIFI_BODY })
+    const suggestion = await seedRequest('riley', { title: labelled(`${WIFI_TITLE} ${tag}`), description: WIFI_BODY })
     const awaiting = await seedRequest('riley', {
-      title: `Sensitive ${tag}`,
+      title: labelled(`Sensitive ${tag}`),
       description: SENSITIVE_TEXT,
     })
 
@@ -95,12 +96,12 @@ test.describe('Accessibility and mobile layout @mobile', () => {
     await expectAccessible(page, 'request: analysis failed')
     await page.unroute('**/api/v1/requests/*/analyze')
 
-    await openFromDashboard(`${WIFI_TITLE} ${tag}`)
+    await openFromDashboard(labelled(`${WIFI_TITLE} ${tag}`))
     await expect(page.getByText(AI_LABEL)).toBeVisible()
     await expect(page).toHaveURL(new RegExp(suggestion))
     await expectAccessible(page, 'request: suggestion available')
 
-    await openFromDashboard(`Sensitive ${tag}`)
+    await openFromDashboard(labelled(`Sensitive ${tag}`))
     await expect(page.getByText(AWAITING_TEXT)).toBeVisible()
     await expect(page).toHaveURL(new RegExp(awaiting))
     await expectAccessible(page, 'request: awaiting staff review')
@@ -108,7 +109,7 @@ test.describe('Accessibility and mobile layout @mobile', () => {
 
   test('staff pages', async ({ page }) => {
     const tag = uniqueTag()
-    const id = await seedRequest('riley', { title: `Review page ${tag}`, description: SENSITIVE_TEXT })
+    const id = await seedRequest('riley', { title: labelled(`Review page ${tag}`), description: SENSITIVE_TEXT })
 
     await signInAt(page, 'alex', '/support')
     await expect(page.getByRole('heading', { name: 'Support queue' })).toBeVisible()

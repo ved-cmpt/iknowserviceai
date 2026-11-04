@@ -1,8 +1,40 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import AxeBuilder from '@axe-core/playwright'
-import { expect, request as playwrightRequest, test } from '@playwright/test'
+import { expect, request as playwrightRequest } from '@playwright/test'
+import { countRequest, prepareContext, test } from './fixtures'
 
 export const PASSWORD = process.env.DEMO_PASSWORD
 const API_URL = process.env.API_URL
+// Only set by a live run (run-live.mjs).
+const TITLE_LABEL = process.env.E2E_TITLE_LABEL ?? ''
+const LOGIN_GAP_MS = Number(process.env.E2E_LOGIN_GAP_MS ?? 0)
+const LOGIN_CLOCK = join(tmpdir(), 'iks-e2e-last-login')
+
+// Marks a created title as test data on a live run. Elsewhere it returns the title unchanged.
+export function labelled(title) {
+  return TITLE_LABEL ? `${TITLE_LABEL} ${title}` : title
+}
+
+// The slug the form derives from a labelled title, whose brackets are dropped.
+export function labelledSlug(slug) {
+  return TITLE_LABEL ? `${TITLE_LABEL.replace(/[^a-z0-9]+/gi, '').toLowerCase()}-${slug}` : slug
+}
+
+// Keeps a live run under the sign-in limit. A file, because a failed test restarts the worker.
+export async function paceLogin() {
+  if (!LOGIN_GAP_MS) return
+  let last = 0
+  try {
+    last = Number(readFileSync(LOGIN_CLOCK, 'utf8'))
+  } catch {
+    // The first sign-in of this run.
+  }
+  const wait = last + LOGIN_GAP_MS - Date.now()
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+  writeFileSync(LOGIN_CLOCK, String(Date.now()))
+}
 
 export const USERS = {
   riley: 'riley.morgan@demo.iknowservice.test',
@@ -25,6 +57,7 @@ export const SENSITIVE_TEXT = 'I think someone accessed my account and I need ad
 export async function fillSignIn(page, who) {
   await page.getByLabel('Email', { exact: true }).fill(USERS[who])
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
+  await paceLogin()
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 }
@@ -49,6 +82,7 @@ export async function openNav(page, name) {
 export async function newSession(browser, who, path) {
   const { baseURL, viewport, isMobile, hasTouch } = test.info().project.use
   const context = await browser.newContext({ baseURL, viewport, isMobile, hasTouch })
+  await prepareContext(context)
   const page = await context.newPage()
   await signInAt(page, who, path)
   return { context, page }
@@ -57,6 +91,8 @@ export async function newSession(browser, who, path) {
 // Direct API access for test setup, and to read what staff can see for comparison.
 export async function apiAs(who) {
   const context = await playwrightRequest.newContext()
+  await paceLogin()
+  countRequest('POST', `${API_URL}/auth/login`)
   const login = await context.post(`${API_URL}/auth/login`, {
     data: { email: USERS[who], password: PASSWORD },
   })
@@ -65,6 +101,7 @@ export async function apiAs(who) {
   const headers = { Authorization: `Bearer ${token}` }
 
   async function call(method, path, data) {
+    countRequest(method, `${API_URL}${path}`)
     const response = await context.fetch(`${API_URL}${path}`, { method, headers, data })
     expect(response.ok(), `${method} ${path} returned ${response.status()}`).toBeTruthy()
     return response.json()
@@ -93,6 +130,8 @@ export function uniqueTag() {
 // Scenario titles use the brief's exact wording on desktop. The mobile rerun adds a marker, so
 // the queue has one link with that name.
 export function scenarioTitle(base, testInfo) {
+  // A live database keeps earlier runs, so a title must be unique there too.
+  if (TITLE_LABEL) return labelled(`${base} ${uniqueTag()}`)
   return testInfo.project.name === 'desktop' ? base : `${base} [${testInfo.project.name}]`
 }
 
