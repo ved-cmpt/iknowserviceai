@@ -44,7 +44,7 @@ Current blockers: none.
 
 ## Test results
 
-**GitHub CI, run 41928487186, on `699204a`, from a clean checkout: success.** This is the commit with the proxy fix and the live test tooling. Later commits change docs only.
+**GitHub CI, run 41933225104, on `86e2390`, tagged `v1.0.0`, from a clean checkout: success.** Later commits change docs only.
 
 | Check | Result |
 |---|---|
