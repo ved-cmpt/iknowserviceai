@@ -35,6 +35,5 @@ test-results/
 # Editors / OS
 .idea/
 .vscode/
-.cursor/
 Thumbs.db
 .DS_Store

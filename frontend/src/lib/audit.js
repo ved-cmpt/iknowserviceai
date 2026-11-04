@@ -91,12 +91,17 @@ function keyLabel(key) {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
+// The database does not keep key order, so a change must be put back to read "From", then "To".
+const KEY_ORDER = { from: 0, to: 1 }
+
 function safeEntries(metadata) {
-  return Object.entries(metadata ?? {}).filter(([key, value]) => {
-    if (UNSAFE_KEY.test(key)) return false
-    if (Array.isArray(value)) return value.every((item) => typeof item === 'string')
-    return ['string', 'number', 'boolean'].includes(typeof value)
-  })
+  return Object.entries(metadata ?? {})
+    .filter(([key, value]) => {
+      if (UNSAFE_KEY.test(key)) return false
+      if (Array.isArray(value)) return value.every((item) => typeof item === 'string')
+      return ['string', 'number', 'boolean'].includes(typeof value)
+    })
+    .sort(([a], [b]) => (KEY_ORDER[a] ?? 2) - (KEY_ORDER[b] ?? 2))
 }
 
 // Readable details. Record IDs are left to metadataIds, as secondary text.

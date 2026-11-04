@@ -353,6 +353,14 @@ test.describe('7. Staying current', () => {
     await expect(page.getByRole('link', { name: title })).toBeVisible()
   })
 
+  test('a wide screen shows the links, with no menu button', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'This is about the wide layout.')
+    await signInAt(page, 'riley')
+    await expect(page.getByRole('heading', { name: 'My requests' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Menu' })).toBeHidden()
+    await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Knowledge' })).toBeVisible()
+  })
+
   test('the narrow-screen menu opens, navigates and closes @mobile', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'The menu button only shows on narrow screens.')
     await signInAt(page, 'riley')

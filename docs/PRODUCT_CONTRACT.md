@@ -85,7 +85,7 @@ All are fictional and use `@demo.iknowservice.test` addresses with one intention
 
 1. **Sign in.** As any demo user, I sign in with email and password so I can reach my workspace.
    - Wrong password, unknown email and inactive account all show the same message.
-   - The token lives in memory only, so reloading requires signing in again.
+   - Reloading keeps me signed in for up to 8 hours, and **Sign out** ends the session (ADR-045).
 2. **Submit a request.** As a requester, I describe an issue so support can act on it.
    - Title is 3 to 120 characters and description is 10 to 4000 after trimming; otherwise 422.
    - The response is 201 with status `NEW`, category `OTHER` and priority `MEDIUM`.

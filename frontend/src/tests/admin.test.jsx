@@ -495,6 +495,12 @@ describe('metadataSummary', () => {
     )
   })
 
+  it('reads from, then to, whatever order the database returns', () => {
+    expect(metadataSummary({ to: 'HIGH', from: 'LOW' }, { action: 'request.priority_changed' })).toBe(
+      'From: Low · To: High',
+    )
+  })
+
   it('shows an assignee by name, falling back to the ID', () => {
     const metadata = { to: 'u9' }
     expect(metadataSummary(metadata, { action: 'request.assigned', names: { u9: 'Alex Chen' } })).toBe('To: Alex Chen')

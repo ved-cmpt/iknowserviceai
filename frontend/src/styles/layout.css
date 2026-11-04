@@ -68,12 +68,13 @@
   text-underline-offset: 3px;
 }
 
-.nav-toggle {
+/* Two classes, so this outranks .btn, which sets its own display and loads later. */
+.topbar .nav-toggle {
   display: none;
 }
 
 @media (max-width: 720px) {
-  .nav-toggle {
+  .topbar .nav-toggle {
     display: inline-flex;
     margin-left: auto;
   }
