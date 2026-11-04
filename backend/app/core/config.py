@@ -11,7 +11,8 @@ MIN_JWT_SECRET_LENGTH = 32
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore", frozen=True)
+    # hide_input_in_errors keeps secrets out of startup failure messages.
+    model_config = SettingsConfigDict(extra="ignore", frozen=True, hide_input_in_errors=True)
 
     app_env: Literal["development", "test", "production"] = "development"
     database_url: str

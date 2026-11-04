@@ -44,12 +44,54 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Decision:** Dockerfiles target development: dev dependencies installed, `uvicorn --reload`, the Vite dev server, source bind mounts and polling. Both containers run as non-root users and contain no secrets. Production images come with Phase 10.
 - **Trade-offs:** The images are larger than production images and must not be deployed as they are.
 
+## ADR-006: VARCHAR with CHECK constraints instead of native PostgreSQL enums
+
+- **Context:** Roles, categories, priorities and statuses need database enforcement and will evolve.
+- **Alternatives:** Native PostgreSQL enums.
+- **Decision:** `VARCHAR` columns with `CHECK` constraints. Python `StrEnum`s in `app/db/models/enums.py` are the single source of truth.
+- **Trade-offs:** Changing a value is an ordinary constraint swap instead of an awkward `ALTER TYPE`. The enum type does not show up in database tooling.
+
+## ADR-007: Foreign key deletion policy
+
+- **Context:** The blueprint asks for intentional delete behavior.
+- **Alternatives:** Cascade everywhere, or restrict everywhere.
+- **Decision:** References to `users` use `RESTRICT`, so history cannot lose its author; deactivate users with `active=false`. Records meaningless without their parent use `CASCADE`: a request's comments, events, AI runs, suggestions and feedback. `audit_logs.entity_id` has no foreign key, because audit history must outlive its entity.
+- **Trade-offs:** Users cannot be hard-deleted once they have history, which suits an auditable system.
+
+## ADR-008: Test isolation through rolled-back transactions
+
+- **Context:** Tests need real PostgreSQL behavior and speed, while service code commits.
+- **Alternatives:** Truncate between tests, or recreate the database per test.
+- **Decision:** Migrate once per session, then run each test in an outer transaction that always rolls back, with `join_transaction_mode="create_savepoint"`. `conftest.py` refuses a test database whose name lacks `test`.
+- **Trade-offs:** Fast and isolated, but real multi-connection races cannot be simulated this way. Tests that need them must open their own connections and clean up after themselves.
+
+## ADR-009: Access token held in memory only
+
+- **Context:** The blueprint forbids tokens in browser storage for v1.
+- **Alternatives:** `localStorage`, or refresh tokens in `HttpOnly` cookies.
+- **Decision:** The access token lives in a JavaScript module variable. Reloading requires signing in again.
+- **Trade-offs:** Reduced XSS token theft exposure and no refresh machinery, at the cost of an intentional demo-grade inconvenience.
+
+## ADR-010: `clock_timestamp()` for timestamp defaults
+
+- **Context:** `now()` returns the transaction start time, so several events written in one transaction would tie, and rows in a rolled-back test transaction would never differ.
+- **Alternatives:** `now()` with a sequence column for ordering.
+- **Decision:** Timestamp defaults and `updated_at` use `clock_timestamp()`.
+- **Trade-offs:** Timestamps within one transaction differ slightly, which is accurate.
+
 ## ADR-011: Pure ASGI middleware and dual health paths
 
 - **Context:** Every response needs `X-Request-ID`, including 500s and CORS preflights. Starlette's `Exception` handler runs outside user middleware, so its responses lose CORS headers.
 - **Alternatives:** `BaseHTTPMiddleware` with an `Exception` handler.
 - **Decision:** The order is request context (outermost), CORS, unhandled-error catcher (innermost). Health endpoints are served at `/healthz` and `/readyz` for infrastructure, and under `/api/v1` for the frontend, because `VITE_API_BASE_URL` includes the prefix.
 - **Trade-offs:** Slightly more middleware code, and two paths for each health endpoint.
+
+## ADR-014: Requester-visible timeline uses an allowlist
+
+- **Context:** Requesters see their timeline, but events can hold staff identifiers, reasons and internal-comment references.
+- **Alternatives:** Strip known sensitive keys, or hide the timeline.
+- **Decision:** `REQUESTER_EVENT_DETAILS` in `services/requests.py` lists the event types and detail keys requesters may see. Unknown types are hidden, internal-comment events are dropped and actors are omitted. Requester schemas are separate classes, not subsets of staff schemas.
+- **Trade-offs:** Every new event type must be added deliberately before requesters can see it.
 
 ## ADR-020: Project-local tool caches
 

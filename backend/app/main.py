@@ -9,7 +9,7 @@ from app.core.middleware import (
     RequestContextMiddleware,
     UnhandledErrorMiddleware,
 )
-from app.routers import health
+from app.routers import admin, auth, health, requests
 
 API_PREFIX = "/api/v1"
 
@@ -43,6 +43,9 @@ def create_app() -> FastAPI:
     # Health lives at the root for infrastructure and under the API prefix for the frontend.
     app.include_router(health.router)
     app.include_router(health.router, prefix=API_PREFIX)
+    app.include_router(auth.router, prefix=API_PREFIX)
+    app.include_router(requests.router, prefix=API_PREFIX)
+    app.include_router(admin.router, prefix=API_PREFIX)
     return app
 
 

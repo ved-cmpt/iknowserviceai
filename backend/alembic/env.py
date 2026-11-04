@@ -4,19 +4,14 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from app.core.config import get_settings
+from app.db.models import Base
 
 config = context.config
+target_metadata = Base.metadata
 
 # The test suite runs migrations in-process and keeps its own logging configuration.
 if config.config_file_name and config.attributes.get("configure_logging", True):
     fileConfig(config.config_file_name, disable_existing_loggers=False)
-
-try:
-    from app.db.models import Base
-
-    target_metadata = Base.metadata
-except ImportError:  # Models arrive with Phase 2.
-    target_metadata = None
 
 
 def run_migrations_offline() -> None:

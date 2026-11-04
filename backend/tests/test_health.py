@@ -100,6 +100,13 @@ def test_config_rejects_short_jwt_secret() -> None:
         _settings(jwt_secret="short")
 
 
+def test_config_errors_do_not_echo_settings() -> None:
+    with pytest.raises(ValueError) as caught:
+        _settings(jwt_secret="short", database_url="postgresql+psycopg://u:db-password@h/d")
+    assert "db-password" not in str(caught.value)
+    assert "short" not in str(caught.value).replace("shorter", "")
+
+
 def test_config_rejects_placeholder_secret_in_production() -> None:
     with pytest.raises(ValueError, match="placeholder"):
         _settings(app_env="production", jwt_secret="<replace-with-a-long-random-string>")

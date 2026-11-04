@@ -12,16 +12,25 @@ os.environ["DATABASE_URL"] = _test_url
 os.environ["APP_ENV"] = "test"
 os.environ["AI_MODE"] = "mock"
 
-from collections.abc import Iterator  # noqa: E402
+from collections.abc import Callable, Iterator  # noqa: E402
+from itertools import count  # noqa: E402
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from app.core.security import create_access_token, hash_password  # noqa: E402
+from app.db.models import ServiceRequest, User  # noqa: E402
+from app.db.models.enums import Role  # noqa: E402
 from app.db.session import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.services.readiness import alembic_config  # noqa: E402
+
+TEST_PASSWORD = "correct-horse-battery-staple"
+# Hashing is deliberately slow, so the factories share one hash.
+_TEST_PASSWORD_HASH = hash_password(TEST_PASSWORD)
+_sequence = count(1)
 
 
 def migration_config():
@@ -65,3 +74,63 @@ def client(db: Session) -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def make_user(db: Session) -> Callable[..., User]:
+    def factory(role: Role = Role.USER, **overrides: object) -> User:
+        number = next(_sequence)
+        values = {
+            "email": f"user{number}@example.test",
+            "display_name": f"Test User {number}",
+            "password_hash": _TEST_PASSWORD_HASH,
+            "role": role.value,
+            **overrides,
+        }
+        user = User(**values)
+        db.add(user)
+        db.commit()
+        return user
+
+    return factory
+
+
+@pytest.fixture
+def requester(make_user: Callable[..., User]) -> User:
+    return make_user(Role.USER)
+
+
+@pytest.fixture
+def other_requester(make_user: Callable[..., User]) -> User:
+    return make_user(Role.USER)
+
+
+@pytest.fixture
+def agent(make_user: Callable[..., User]) -> User:
+    return make_user(Role.AGENT)
+
+
+@pytest.fixture
+def admin(make_user: Callable[..., User]) -> User:
+    return make_user(Role.ADMIN)
+
+
+@pytest.fixture
+def make_request(db: Session) -> Callable[..., ServiceRequest]:
+    def factory(requester: User, **overrides: object) -> ServiceRequest:
+        values = {
+            "requester_id": requester.id,
+            "title": "A test request",
+            "description": "A description long enough to be valid.",
+            **overrides,
+        }
+        request = ServiceRequest(**values)
+        db.add(request)
+        db.commit()
+        return request
+
+    return factory
+
+
+def auth(user: User) -> dict[str, str]:
+    return {"Authorization": f"Bearer {create_access_token(user.id)}"}
