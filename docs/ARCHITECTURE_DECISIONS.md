@@ -381,5 +381,6 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 
 - **Validation:** `actionlint` 1.7.12 passed locally, and the backend and frontend job commands were run from a clean export of `HEAD` in the same base images. **The workflow itself has not run on GitHub at the time of writing,** so hosted runners, caching and the service container are unverified until the owner checks the Actions tab.
 - **Dependabot** proposes updates weekly. `@playwright/test` and its image are excluded, because they must move together (ADR-037).
+- **Secret scan exceptions:** `.gitleaksignore` lists 4 exact occurrences of fake values in test files, each checked by hand, by fingerprint rather than by path, so a real key added to those files later still fails the scan.
 - **Trade-offs:** A pull request does not run E2E. Pinned SHAs need Dependabot to stay current.
 

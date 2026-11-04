@@ -1,60 +1,116 @@
 # Agent handoff
 
 Last updated: 2026-11-04
-Current phase and exact objective: Run 04 in progress. Checkpoints 14 to 17 are committed; next is the wrap-up.
-Repo branch and last verified commit: `main`; run `git log --oneline`. Phases 0 to 8 passed a clean-state verification in mock mode.
-Implemented and verified: see `docs/IMPLEMENTATION_STATUS.md` and `docs/RUN_REPORTS/RUN_03.md`.
-Environment/service state: compose stack running in mock mode with default limits, migrated at `0004`, freshly reset demo data.
-Known bugs / incomplete tests: no known bugs. Limitations are listed in the status doc. The whole app has not run in `AI_MODE=gemini`.
-Decisions and assumptions made: ADR-000 to ADR-037.
-What the next agent must read: `AGENTS.md`, the status doc, the ADR log (especially ADR-016, 027, 029, 030 and 037), `docs/API.md`, `docs/SECURITY.md`, and blueprint sections 10 (Phases 9 and 10), 11, 13 and 14.
-Next 3 concrete actions: write the 30-case fixture and mock regression test; run and document the evaluation; add the GitHub Actions workflow.
-Owner-only actions needed: running any live Gemini sample; creating the GitHub repository and remote.
+Current phase and exact objective: Chunk 6, Phase 10 deployment: put the production image and a managed PostgreSQL on a free or low-cost host.
+Repo branch and last verified commit: `main`, pushed to the private remote `origin`. Run `git log --oneline`. Phases 0 to 9 passed a clean-state verification.
+Implemented and verified: see `docs/IMPLEMENTATION_STATUS.md` and `docs/RUN_REPORTS/RUN_04.md`.
+Environment/service state: dev stack running in mock mode with default limits, migrated at `0006`, freshly reset demo data.
+Known bugs / incomplete tests: no known bugs. **The CI workflow had not run on GitHub when this was written.** Check the Actions tab first. The running app has not been used with `AI_MODE=gemini`.
+Decisions and assumptions made: ADR-000 to ADR-050.
+What the next agent must read: `AGENTS.md`, the status doc, ADR-030, 044 to 050, `docs/SECURITY.md`, `docs/EVALUATION.md`, `.env.prod.example`, `compose.prod.yaml`, and blueprint sections 10 (Phase 10), 12 and 14. Blueprint 12.2 proposes separate hosts, and ADR-044 supersedes that.
+Next 3 concrete actions: confirm CI is green; get the owner's decisions below; deploy in mock mode and run the smoke test.
+Owner-only actions needed: the decisions below, creating accounts, and entering secrets in the host's secret manager.
 
 ## Things that will catch you out
 
-- **E2E resets the demo data,** and restores default settings afterwards. Run it with `npm --prefix e2e run e2e`. The compose override is `compose.e2e.yaml`. The browser runs in a container, and Chromium maps `localhost:5173` and `localhost:8000` to the services (ADR-037). Upgrade the image tag and `@playwright/test` together.
-- **A reload keeps the session,** through the refresh cookie (ADR-045). Each Playwright context starts with no cookie, so it starts signed out. Rotation means a repeated token revokes the session, so never call refresh twice with one token.
-- **The app connects as `app_user`** (ADR-047). Migrations and `reset_demo` use `MIGRATION_DATABASE_URL`. New tables get ordinary access by default, so a new append-only table must revoke in its own migration. A dev volume from before revision `0006` needs `docker compose down -v` once.
-- **Production E2E:** `npm --prefix e2e run e2e:prod`, with its own project and throwaway secrets.
-- **Login limit.** 5 attempts per minute for one IP address and email, counting successes. Analyze is 10 per hour per user. Recreating the backend clears both. Tests in CI should use `compose.e2e.yaml`.
-- **Mock results are deterministic but hold many requests.** Any policy flag means review, including uncited replies. `MockAgent` cites the top article, plus a close second in the same category (ADR-032). Mock needs the seed: with no published articles, everything goes to review.
-- **`MockAgent` never fails.** E2E simulates a failed analysis with `page.route`. Backend failures are covered in `tests/test_analyze.py`.
-- **Evaluation in mock mode measures the policy and retrieval, not model quality.** Report them separately from any live sample. Do not present mock accuracy as AI accuracy.
-- **The relevance floor** (`KB_MIN_RANK=0.5`, ADR-016) was measured on 12 articles. Re-measure it against the fixture before changing it.
-- **Backend serializers are allowlists.** A new requester field must be added deliberately, and `FORBIDDEN_REQUESTER_KEYS` tests extended.
-- **Migrations.** Never edit `0001` to `0004`. `tests/test_migrations.py` fails if models and migrations differ.
-- **History is append-only in the database** (ADR-025).
-- **Log tests must use `caplog`.** The log handler holds the `sys.stdout` from import time, so `capsys` would pass without checking anything.
+- **`Secure` cookie.** In production the session cookie is `Secure`, so the site must be served over HTTPS, except on `localhost`. Without it, sign-in appears to work and a reload signs out.
+- **`TRUSTED_PROXY_HOPS` must match the host.** Most platforms have one proxy, so 1. Left at 0, every visitor shares the proxy's address, so they share login limits, and the refresh limit of 60 per minute becomes a limit for everyone. Too high and a client can forge its address. Check by watching which address the limiter sees. Confirm the host appends to `X-Forwarded-For`.
+- **`HSTS_ENABLED`.** Turn it on only after HTTPS is confirmed working. Browsers remember it for a year.
+- **One process only.** The rate limiter is in memory (ADR-030). Do not add workers or a second instance without moving it to a shared store.
+- **Create `app_user` before migrating.** Otherwise revision `0006` grants nothing, and the app fails with permission errors. `deploy/sql/grant_app_role.sql` repairs that. Passwords go inside URLs, so use letters and digits only.
+- **The running app must not get `MIGRATION_DATABASE_URL`.** It is for one-off commands only (ADR-047). `alembic upgrade head` and `reset_demo` need it. `seed_demo` runs with either role.
+- **Nothing migrates or seeds on start,** on purpose. `/readyz` returns 503 until migrations reach head, so use `/healthz` for liveness and `/readyz` for readiness, and migrate before expecting traffic.
+- **`seed_demo` and `reset_demo` refuse production** without `--allow-production`. `reset_demo` also needs `ALLOW_DEMO_RESET=true`, which the running app should not have.
+- **Build context is the repository root:** `docker build -f deploy/Dockerfile .`. The root `.dockerignore` is a strict allowlist.
+- **The filesystem is read-only in `compose.prod.yaml`.** A host might not offer that. The app does not need to write to disk.
+- **Free PostgreSQL may expire.** The blueprint notes this for one provider. Check current terms and record them. Do not rely on memory for prices or limits.
+- **Live mode on a public demo** spends the owner's free-tier quota, and free-tier content may be used to improve the provider's products. The rate limits apply per user, and demo accounts are shared. `AI_MODE=mock` is the kill switch.
+- **E2E:** `npm --prefix e2e run e2e` (dev, resets demo data) and `npm --prefix e2e run e2e:prod` (production image, its own stack and throwaway secrets). `BASE_URL`, `HOST_RULES` and `API_URL` point the suite elsewhere. Do not run the suite against a hosted site without care: it creates data, and its limits assume `compose.prod.e2e.yaml`.
+- **Rotation:** repeating a refresh token revokes that whole sign-in. Never call refresh twice with one token.
+- **Evaluation in mock mode measures the pipeline, not model quality.** The 100% hold rate is on a fixture used to tune the patterns (`docs/EVALUATION.md`).
+- **Migrations.** Never edit an applied revision. `tests/test_migrations.py` fails if models and migrations differ. New tables get ordinary `app_user` access by default, so a new append-only table must revoke in its own migration.
+- **Backend serializers are allowlists.** A new requester field must be added deliberately.
+- **Log tests must use `caplog`.** The handler holds the `sys.stdout` from import time.
+- **In Git Bash, `/tmp/...` arguments to `docker exec` get rewritten** into Windows paths. Set `MSYS_NO_PATHCONV=1`, or use PowerShell.
 - **Exit codes.** In PowerShell, read `$LASTEXITCODE` straight after a command, and write output to a file rather than judging by a filtered pipe.
 - **Non-interactive shells.** Use `docker compose exec -T`.
-- **Gemini.** No agent should call the live API without an explicit budget from the owner. Never print `GEMINI_API_KEY`. If you check it, print only `set` or `not set` and its length.
-- **Frontend text queries.** A message shown on screen and also sent to the live region appears twice in tests. Use one or the other: alerts and status banners announce themselves.
+- **Look at the screenshots.** In Run 04, a button wrongly visible on desktop passed every automated check, and was found only by eye.
+- **Gemini.** No agent may call the live API without an explicit budget from the owner. Never print `GEMINI_API_KEY`.
+
+## What the owner must decide
+
+| Decision | Options to research and compare | Notes |
+|---|---|---|
+| Hosting provider | Any host that runs a Docker image, with HTTPS and a health check | Compare current free tiers, sleep behavior and region. A sleeping instance also clears the rate limiter |
+| Region | Near the likely viewers, and in the same region as the database | |
+| Database provider | A non-expiring free tier, or a low-cost paid plan | Must allow creating a second role. Check connection limits, backups and pausing |
+| `DEMO_MODE` | `true` shows the accounts and public password on the sign-in page | Recommended for a public portfolio demo. Anyone can then sign in and change the shared data |
+| Live or mock AI | `mock` is free and deterministic. `gemini` spends quota and shows the real thing | Recommended: start with `mock`, then try `gemini` on a controlled basis once the app has run in that mode privately |
+| Demo reset | By hand, or a schedule the host offers | Shared accounts will collect clutter |
+| Public repository | When to change visibility | Owner only. Old commits may stay reachable by SHA until GitHub removes them (`docs/RUN_REPORTS/CLEANUP.md`) |
+
+## Environment variables
+
+**Running app:**
+
+| Variable | Value |
+|---|---|
+| `APP_ENV` | `production` (already set in the image) |
+| `DATABASE_URL` | `postgresql+psycopg://app_user:<password>@<host>:5432/<db>`, plus any SSL option the provider needs |
+| `JWT_SECRET` | At least 32 random characters. Generate it once, and keep it in the host's secret manager |
+| `PORT` | Set by most hosts. Defaults to 8000 |
+| `CORS_ALLOWED_ORIGINS` | Empty: the app is same-origin. **Set it explicitly,** because the built-in default is the local dev origin |
+| `AI_MODE` | `mock` to begin with |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Only for `gemini`. `gemini-3.5-flash-lite` was used for the evaluation |
+| `DEMO_MODE` | Owner's decision |
+| `DEMO_PASSWORD` | Shown on the page when `DEMO_MODE=true`. It must match what was seeded |
+| `TRUSTED_PROXY_HOPS` | Usually 1. Confirm per host |
+| `HSTS_ENABLED` | `true` once HTTPS is confirmed |
+| `LOG_LEVEL` | `INFO` |
+
+Optional, with safe defaults: `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_HOURS`, `RATE_LIMIT_LOGIN_PER_MINUTE`, `RATE_LIMIT_ANALYZE_PER_HOUR`, `RATE_LIMIT_REFRESH_PER_MINUTE`, `AI_REQUEST_TIMEOUT_SECONDS`, `AI_MAX_ANALYZE_ATTEMPTS`, `AI_STALE_RUN_SECONDS`, `KB_MIN_RANK`.
+
+**One-off commands only:** the above, plus `MIGRATION_DATABASE_URL` (owner role) and, for a reset, `ALLOW_DEMO_RESET=true`.
+
+## Migration and seed procedure
+
+1. As the owner role, run `deploy/sql/create_app_role.sql` with a generated password. Do not save the edited file. Confirm the role has no inherited rights.
+2. Run the image once with `MIGRATION_DATABASE_URL` set: `alembic upgrade head`.
+3. Confirm the limits, by connecting as `app_user`: `UPDATE audit_logs SET action = 'x'` and `CREATE TABLE t (id int)` must both be refused. See `tests/test_db_role.py`.
+4. Start the app without `MIGRATION_DATABASE_URL`. `/healthz` should be 200, and `/readyz` 200 `at_head`.
+5. For demo data, once only: `python -m app.scripts.seed_demo --allow-production`. It is safe to repeat, and leaves existing rows alone.
+6. On each later deploy that adds a migration, migrate first, and keep migrations backward compatible, because the old version keeps running until the new one is ready.
+
+## Smoke-test checklist
+
+Over HTTPS, on the hosted URL:
+
+- [ ] `/healthz` 200, `/readyz` 200, and `/docs` shows no API docs
+- [ ] Response headers: `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, and HSTS if enabled
+- [ ] The browser console shows no content security violations
+- [ ] The session cookie is `HttpOnly`, `Secure`, `SameSite=Strict`, on path `/api/v1/auth`
+- [ ] Sign in, reload and stay signed in. Sign out, reload and stay signed out
+- [ ] A direct visit to a deep link loads the app, and an unknown `/api/v1/...` path returns a JSON 404
+- [ ] Ordinary request: analysis, labeled suggestion, citation opens, feedback saved
+- [ ] Sensitive request: awaiting review, with no draft text in the page or responses
+- [ ] Staff: an unsafe reply is refused before the dialog. A safe reply is approved, and the requester's open page shows it, labeled as reviewed
+- [ ] Admin: publish and unpublish an article, and read the audit log
+- [ ] A requester gets 403 at `/support`, and 404 for another person's request
+- [ ] Wrong passwords reach 429. A second visitor from another network is not limited too, which proves `TRUSTED_PROXY_HOPS`
+- [ ] Logs hold no bodies, tokens or keys
+- [ ] Redeploy: data persists, and sessions still work
+- [ ] Record the URL, the commit and the date in the status doc
+
+## Rollback
+
+- **App:** redeploy the last good image or commit. Keep the previous image tag.
+- **Database:** take a backup before each migration where the plan allows. Prefer a new forward migration to `alembic downgrade`. Revision `0005`'s downgrade drops `refresh_tokens`, which only signs people out. Revision `0006`'s removes the role's access.
+- **Live AI problem or unexpected usage:** set `AI_MODE=mock` and restart.
+- **A leaked secret:** rotate it at once. Changing `JWT_SECRET` invalidates every access token. Refresh tokens are separate rows: to end all sessions, set `revoked_at` on them as the owner role.
+- **Bad demo data:** `reset_demo --yes --allow-production`, as a one-off, with `ALLOW_DEMO_RESET=true`.
 
 ## Prompt for the next chunk
 
 > You are the lead implementation engineer for IknowServiceAI. Read `AGENTS.md`, then every document it lists, then this handoff. Inspect the repository and `git log`, and treat code and tests as ground truth.
 >
-> Execute **Chunk 5: Blueprint Phase 9 plus CI**. Commit after each checkpoint passes its checks, and update `docs/IMPLEMENTATION_STATUS.md`, `docs/ARCHITECTURE_DECISIONS.md` and this file at each one. Keep `AI_MODE=mock` for all automated tests. Do not call the live Gemini API yourself. Do not push, create remotes or use external accounts.
->
-> **Checkpoint 14, evaluation.**
-> - A 30-case evaluation fixture in the backend tests, all synthetic: ordinary issues for each category, sensitive issues for each hard-review flag, prompt-injection attempts, requests with no relevant knowledge, and harmless text likely to cause false positives. Each case states the expected category, whether review is required, and the expected cited article where there is one.
-> - A mock regression test that fails if results change, and a report command that prints category accuracy, review precision and recall, and citation correctness.
-> - `docs/EVALUATION.md`: the method, the results, what they do and do not show, and the measured false-positive and false-negative rates for the policy gate. Re-measure the relevance floor (ADR-016) and record it, changing the value only with evidence and an ADR.
-> - An optional, small live sample that only the owner runs: opt-in by environment variable, with a hard cap on cases and calls, documented with its free-tier and synthetic-data caveats. Build it and test it offline. Do not run it.
->
-> **Checkpoint 15, performance, timeouts and logs.** Measure the main endpoints and page loads under mock mode, and record the numbers. Check every client and server timeout against the 2-attempt, 45-second provider budget. Review the logs for one full journey, for missing correlation IDs and for anything sensitive, and fix what you find.
->
-> **Checkpoint 16, hardening carried over.**
-> - Pin base image versions (`postgres`, `python`, `node`).
-> - Add a non-superuser database role for the app, keeping migrations, `reset_demo` and the append-only triggers working (ADR-025). Update `docs/SECURITY.md`.
-> - Hide the demo password hint outside demo mode: today `import.meta.env.DEV` always shows it.
->
-> **Checkpoint 17, GitHub Actions.** One workflow, validated locally as far as possible, with:
-> - Backend: ruff, format check, `alembic check` and pytest, with a Postgres service.
-> - Frontend: lint, test and build.
-> - E2E in mock mode, if feasible on hosted runners. Otherwise document why, and what would make it so.
-> - A secret scan, and a Docker build of each image.
-> - State clearly in the status doc that the workflow has **not** run on GitHub until the owner adds the remote. Never mark it passing without a run.
->
-> **Finish:** from a clean state run `docker compose down -v`, `docker compose up --build -d --wait`, migrate, seed, `pytest -q`, `ruff check .`, `ruff format --check .`, `alembic check`, `npm run lint`, `npm test -- --run`, `npm run build` and `npm --prefix e2e run e2e`, capturing every exit code. Never mark anything done without running the check that proves it. Write a run report to `docs/RUN_REPORTS/RUN_04.md`, and leave the next-chunk prompt here, for Phase 10.
+> Execute **Chunk 6: Blueprint Phase 10 deployment**. First, confirm the owner has made the decisions listed above, and that the latest CI run on `main` is green. If CI failed, fix that first. Deploy the production image with a managed PostgreSQL in mock mode, following the migration and seed procedure. Run the whole smoke-test checklist, and record real results. Add any host-specific configuration as a small, documented file, and record the choice in an ADR with prices and limits checked on the day. Use only secrets the owner has placed in the host's secret manager, and never print them. Do not enable billing without the owner's explicit approval. Do not change repository visibility, or create tags or releases, unless the owner asks. Update `README.md`, `docs/IMPLEMENTATION_STATUS.md`, `docs/SECURITY.md` and this file, and write a run report. Never mark anything done without running the check that proves it.

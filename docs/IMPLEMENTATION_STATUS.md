@@ -1,28 +1,28 @@
 # Implementation status
 
 Updated: 2026-11-04
-Current phase: Run 04 in progress. Checkpoints 14 to 17 are committed; see `git log`.
+Current phase: 10 (deployment), not started. Phases 0 to 9 are complete, and CI and the production image are ready.
 Branch: main; see `git log --oneline` for the commit
-Deployment status: not deployed; local Docker only
+Deployment status: not deployed. The production image is tested locally. Private remote: `origin`
 
 | Phase | Status | Evidence | Remaining |
 |---|---|---|---|
-| 0 Repository and docs | DONE | `git log`; only `.env.example` tracked; no secret in history | GitHub remote (owner, later chunk) |
+| 0 Repository and docs | DONE | `git log`; only example env files tracked; gitleaks clean; key count 0 in tracked files and history | None |
 | 1 Scaffolding, Docker, health | DONE | `docker compose up --build -d --wait` from `down -v`; `/readyz` 503 before migrating, 200 after; frontend 200 | None |
 | 2 Schema, migrations, auth, seed | DONE | Alembic upgrade and `check`; seed twice gives 4 users, 13 articles, 9 requests | None |
 | 3 Request lifecycle | DONE | `tests/test_requests_lifecycle.py`, `tests/test_request_counts.py`, `tests/test_concurrency.py` | None |
 | 4 Knowledge base and retrieval | DONE | `tests/test_knowledge.py`, `tests/test_admin_filters.py`, `src/tests/knowledge.test.jsx` | None |
-| 5 AI orchestration | DONE. Live adapter DONE, owner-verified | `tests/test_analyze.py`, `tests/test_redaction.py`, `tests/test_gemini_agent.py`, `tests/test_mock_citations.py`; owner's smoke test below | Whole-app run in `AI_MODE=gemini` is UNVERIFIED |
+| 5 AI orchestration | DONE. Live path sampled | `tests/test_analyze.py`, `tests/test_redaction.py`, `tests/test_gemini_agent.py`, `tests/test_mock_citations.py`, `tests/test_mock_replies.py`; 10-case live sample through the orchestrator | The running app in `AI_MODE=gemini`, through HTTP, is UNVERIFIED |
 | 6 Review gates and hardening | DONE | `tests/test_policy.py`, `tests/test_review.py`, `tests/test_adversarial.py`, `tests/test_hardening.py`, `tests/test_append_only.py`; `docs/SECURITY.md` | None |
 | 7 Requester frontend | DONE | `src/tests/newRequest.test.jsx`, `requestDetail.test.jsx`, `dashboard.test.jsx`, `shell.test.jsx`; E2E scenarios 1, 2, 3, 5 at 1440 px; 1, 2, 5 at 375 px; keyboard-only test | None |
 | 8 Staff and admin frontend, E2E | DONE | `src/tests/support.test.jsx`, `admin.test.jsx`; `e2e/tests/`: 28 tests, 38 axe checks; screenshots in `assets/screenshots/` | None |
-| 9 Quality and evaluation | NOT_STARTED | | All |
-| 10 GitHub, CI, deployment | NOT_STARTED | | All |
+| 9 Quality and evaluation | DONE | `docs/EVALUATION.md`, `backend/eval/`, `tests/test_eval_regression.py`. Sensitive hold recall 100% on a tuned fixture; 0 invented citations kept | A held-out set, and scoring reply quality, are future work |
+| 10 GitHub, CI, deployment | PARTIAL | Remote pushed; `.github/workflows/ci.yml` passes `actionlint`, and its commands pass locally. Production image passes the full browser suite | **The workflow on GitHub is UNVERIFIED until the owner checks the Actions tab.** Hosted deployment, public release |
 | 11 Portfolio packaging | NOT_STARTED | | All |
 
-**Live Gemini: DONE, owner-verified after Run 02.** `model=gemini-3.5-flash-lite http_requests=1 latency_ms=14878 tokens={'input': 625, 'output': 216, 'thought': 0, 'total': 841} outcome=pass`, result `category=NETWORK priority=MEDIUM confidence=0.95 citations=1 risk_flags=[] review=False`. The owner ran this, and no agent observed it. It is the adapter's opt-in test, so the full `AI_MODE=gemini` path through the running app has not been exercised. No live call was made in Run 03.
+**Live Gemini:** the owner's adapter smoke test passed after Run 02. In Run 04, a 10-case sample ran through the real orchestrator, using 11 of the 12 allowed calls, with no failures. Results are in `docs/EVALUATION.md`. The full `AI_MODE=gemini` path through the running app's HTTP endpoints has not been exercised.
 
-Decisions changed since blueprint: ADR-000 (doc file mapping), ADR-015 (any-term search ordering), ADR-021 (schema refinements), ADR-024 (query-focused snippets), ADR-025 (append-only triggers narrow ADR-007), ADR-027 (uncited replies always need review), ADR-028 (generic failure code for requesters), ADR-029 (Gemini call shape), ADR-031 (escalation withholds a visible reply), ADR-032 (mock citations), ADR-033 (added API filters and counts), ADR-034 (frontend structure), ADR-035 (auto-analysis), ADR-036 (staff screen for every request), ADR-037 (Playwright in Docker). See [the ADR log](ARCHITECTURE_DECISIONS.md).
+Decisions changed since blueprint: ADR-000 (doc file mapping), ADR-015 (any-term search ordering), ADR-021 (schema refinements), ADR-024 (query-focused snippets), ADR-025 (append-only triggers narrow ADR-007), ADR-027 (uncited replies always need review), ADR-028 (generic failure code for requesters), ADR-029 (Gemini call shape), ADR-031 (escalation withholds a visible reply), ADR-032 (mock citations), ADR-033 (added API filters and counts), ADR-034 (frontend structure), ADR-035 (auto-analysis), ADR-036 (staff screen for every request), ADR-037 (Playwright in Docker), ADR-038 to ADR-043 (Run 04 behavior changes), ADR-044 (one production container, replacing the blueprint's separate hosts), ADR-045 (refresh cookie, replacing ADR-009's reload behavior), ADR-046 to ADR-050 (demo help, database role, headers, evaluation, CI). See [the ADR log](ARCHITECTURE_DECISIONS.md).
 
 Current blockers: none.
 
@@ -32,17 +32,26 @@ Exit codes were captured directly, with no pipe in between.
 
 | Check | Exit | Result |
 |---|---|---|
-| `pytest -q` | 0 | 694 passed, 1 skipped (the opt-in live test) |
+| `GET /readyz`, before migrating and after | | 503, then 200 |
+| `alembic upgrade head`, `alembic check` | 0, 0 | At `0006`, no new operations |
+| `seed_demo`, twice | 0, 0 | 4 users, 13 articles, 9 requests both times |
+| `pytest -q` | 0 | 837 passed, 1 skipped (the opt-in live test) |
 | `ruff check .` | 0 | Clean |
-| `ruff format --check .` | 0 | 86 files already formatted |
-| `alembic check` | 0 | No new upgrade operations detected |
+| `ruff format --check .` | 0 | 103 files already formatted |
+| `run_eval --mode mock` | 0 | See `docs/EVALUATION.md` |
 | `npm run lint` | 0 | Clean, container |
-| `npm test -- --run` | 0 | 194 passed, container. The clean-state run had 195, then one filler test was removed and this was re-run |
+| `npm test -- --run` | 0 | 231 passed, container |
 | `npm run build` | 0 | Succeeds, container |
-| `npm --prefix e2e run e2e` | 0 | 28 passed (17 at 1440 px, 11 at 375 px), plus 5 screenshot captures |
-| axe, tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` | | 38 checks across 19 screens and states: 0 serious or critical, 0 lesser findings |
+| `npm --prefix e2e run e2e` | 0 | 33 passed, 9 skipped by design, plus 5 screenshot captures |
+| `npm --prefix e2e run e2e:prod` | 0 | 41 passed, 1 skipped by design, against the production image |
+| axe, tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` | | 39 checks on dev and 45 on the production image: no findings of any severity |
+| `actionlint` 1.7.12 on `ci.yml` | 0 | Clean |
+| CI backend and frontend job commands, clean export, same base images | 0, 0 | 837 passed with 1 skipped; 231 passed; build succeeds |
+| `docker build -f deploy/Dockerfile .` | 0 | Builds. Non-root, no dev dependencies, no secrets in history |
+| Both E2E suites, from a fresh export with `.env` made from `.env.example` | 0, 0 | Passed |
+| gitleaks 8.30.1, full history | 0 | No leaks. 4 fake test values are ignored by exact fingerprint |
 
-The E2E safety checks were tested too. Making the backend show held and rejected text to requesters failed scenarios 2 and 3. Lowering muted-text contrast failed axe with `color-contrast (serious)`. Both changes were then reverted.
+Skips by design: production-only checks on the dev stack, and the layout tests on the viewport they do not apply to.
 
 ## Known bugs
 
@@ -64,4 +73,8 @@ None known.
 - `ai_runs.redacted_input` has no retention job. The demo reset is the only cleanup.
 - The relevance floor was measured again on the fixture, and no value separates noise from fair sources (`docs/EVALUATION.md`).
 - An access token stays valid for up to 30 minutes after sign-out (ADR-045).
-- `docs/ARCHITECTURE.md`, `docs/DEMO.md`, `docs/EVALUATION.md`, CI and `LICENSE` do not exist yet. Later phases add them.
+- `docs/ARCHITECTURE.md`, `docs/DEMO.md` and `LICENSE` do not exist yet. Phase 11 adds them.
+- Refresh token rows are only removed when that person signs in again after they expire. The demo reset also clears them.
+- Browsers without the Web Locks API can sign a person out if two tabs reload at the same moment (ADR-045).
+- The Content-Security-Policy blocks images hosted elsewhere in article markdown (ADR-048).
+- CI runs E2E on pushes to `main` only, not on pull requests (ADR-050).
