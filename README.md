@@ -2,7 +2,7 @@
 
 An AI-assisted IT service-request platform with knowledge-grounded suggestions and human review gates. This is a portfolio project that uses only synthetic data.
 
-**Status: in development, foundation phase.** Nothing is deployed, and the AI workflow does not exist yet. See [implementation status](docs/IMPLEMENTATION_STATUS.md) for verified progress.
+**Status: in development.** The foundation, request lifecycle API and knowledge base work locally. Nothing is deployed, the AI workflow does not exist yet, and most request actions have an API but no screen yet. See [implementation status](docs/IMPLEMENTATION_STATUS.md) for verified progress.
 
 ## Features
 
@@ -11,7 +11,7 @@ An AI-assisted IT service-request platform with knowledge-grounded suggestions a
 - [x] Full database schema, Alembic migrations, idempotent synthetic seed and guarded reset
 - [x] Login page and dashboard
 - [x] Request lifecycle API: filters, comments, state machine, optimistic concurrency, events and audit
-- [ ] Knowledge base and full-text retrieval
+- [x] Knowledge base: admin API, PostgreSQL full-text search, retriever for the AI workflow and read-only screens
 - [ ] AI triage (mock and Gemini), policy gate and staff review
 - [ ] Complete requester, staff and admin screens
 - [ ] CI and hosted demo

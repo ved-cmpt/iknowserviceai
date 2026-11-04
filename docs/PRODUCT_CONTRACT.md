@@ -64,7 +64,8 @@ Staff transitions through `PATCH /requests/{id}`:
 | `POST /requests/{id}/analyze` (planned) | 401 | own | all | all |
 | `POST /requests/{id}/review` (planned) | 401 | 403 | all | all |
 | `POST /requests/{id}/feedback` (planned) | 401 | own | 403 | 403 |
-| `GET /knowledge`, `GET /knowledge/{id}` | 401 | published | published | all statuses by ID; published in list |
+| `GET /knowledge` | 401 | published | published | published |
+| `GET /knowledge/{id}` | 401 | published, else 404 | published, else 404 | all statuses |
 | `GET /admin/knowledge` | 401 | 403 | 403 | yes |
 | `POST /admin/knowledge`, `PATCH /admin/knowledge/{id}` | 401 | 403 | 403 | yes |
 | `GET /admin/audit` | 401 | 403 | 403 | yes |

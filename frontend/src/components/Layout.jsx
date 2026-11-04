@@ -14,6 +14,7 @@ export default function Layout() {
           </Link>
           <nav aria-label="Main">
             <NavLink to="/dashboard">Dashboard</NavLink>
+            <NavLink to="/knowledge">Knowledge</NavLink>
           </nav>
           <div className="topbar-user">
             <span>

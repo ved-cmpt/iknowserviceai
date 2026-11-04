@@ -9,7 +9,7 @@ from app.core.middleware import (
     RequestContextMiddleware,
     UnhandledErrorMiddleware,
 )
-from app.routers import admin, auth, health, requests
+from app.routers import admin, auth, health, knowledge, requests
 
 API_PREFIX = "/api/v1"
 
@@ -46,6 +46,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix=API_PREFIX)
     app.include_router(requests.router, prefix=API_PREFIX)
     app.include_router(admin.router, prefix=API_PREFIX)
+    app.include_router(knowledge.router, prefix=API_PREFIX)
+    app.include_router(knowledge.admin_router, prefix=API_PREFIX)
     return app
 
 

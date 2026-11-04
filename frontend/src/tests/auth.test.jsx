@@ -123,6 +123,40 @@ describe('login', () => {
     expect(await screen.findByRole('heading', { name: /sign in/i })).toBeInTheDocument()
   })
 
+  it('returns to the requested page after signing in', async () => {
+    const page = { items: [], total: 0, limit: 20, offset: 0 }
+    mockFetch(signInRoutes({ 'GET /knowledge': () => jsonResponse(page) }))
+    renderApp('/knowledge?q=wifi')
+
+    await screen.findByRole('heading', { name: /sign in/i })
+    await userEvent.type(screen.getByLabelText('Email'), DEFAULT_USER.email)
+    await userEvent.type(screen.getByLabelText('Password'), 'demo-password')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    expect(await screen.findByRole('heading', { name: 'Knowledge base' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Search articles')).toHaveValue('wifi')
+  })
+
+  it('sends the next user to the dashboard after a deliberate sign-out', async () => {
+    const page = { items: [], total: 0, limit: 20, offset: 0 }
+    mockFetch(signInRoutes({ 'GET /knowledge': () => jsonResponse(page) }))
+    renderApp('/knowledge')
+
+    await screen.findByRole('heading', { name: /sign in/i })
+    await userEvent.type(screen.getByLabelText('Email'), DEFAULT_USER.email)
+    await userEvent.type(screen.getByLabelText('Password'), 'demo-password')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await screen.findByRole('heading', { name: 'Knowledge base' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    await screen.findByRole('heading', { name: /sign in/i })
+    await userEvent.type(screen.getByLabelText('Email'), DEFAULT_USER.email)
+    await userEvent.type(screen.getByLabelText('Password'), 'demo-password')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+  })
+
   it('clears the session when the API rejects the token', async () => {
     mockFetch(
       signInRoutes({

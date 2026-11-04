@@ -107,6 +107,41 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Decision:** `REQUESTER_EVENT_DETAILS` in `services/requests.py` lists the event types and detail keys requesters may see. Unknown types are hidden, internal-comment events are dropped and actors are omitted. Requester schemas are separate classes, not subsets of staff schemas.
 - **Trade-offs:** Every new event type must be added deliberately before requesters can see it.
 
+## ADR-015: Search ranks all-term matches first, then any-term matches
+
+- **Context:** `websearch_to_tsquery` joins terms with AND. A natural-language request such as "The campus Wi-Fi connects but I cannot open websites" matches nothing, which would make the retriever useless to the AI workflow.
+- **Alternatives:** AND only; OR only; embeddings (ruled out by ADR-002).
+- **Decision:** Build the query with `websearch_to_tsquery('english', q)`. Derive an any-term query by replacing its `&` operators with `|`. Match on any term, and order by: matches every term, `ts_rank_cd`, `updated_at` descending, `id`. The search and the retriever share this code. This is a deliberate extension of the run prompt's "query with `websearch_to_tsquery`".
+- **Trade-offs:** Results are broader, so the relevance floor (ADR-016) does the filtering for the AI path. Public search has no floor, so it can show weak matches below strong ones. `to_tsvector` does not split "wifi" and "Wi-Fi" into the same terms, so articles must use both spellings.
+
+## ADR-016: Relevance floor of 0.5
+
+- **Context:** The retriever needs a floor so that weak matches do not become AI context. The first estimate, 0.05, was tested against seeded articles and filtered nothing: with title weight 1.0 and body weight 0.4, the lowest possible match scored 0.40.
+- **Alternatives:** Normalized ranks, or a relative cut-off from the best result.
+- **Decision:** `KB_MIN_RANK=0.5`. Measured on the 12 seeded articles, a single passing body mention scores 0.40 and is excluded, for example "password" in the VPN guide, or "restart" in the Wi-Fi guide. A title match or two body mentions scores 0.8 or more and is kept. The floor applies to the retriever only.
+- **Trade-offs:** An article mentioning a one-word query only once is not retrieved, and the workflow escalates instead. That is the safer failure. The value depends on content and weights and should be re-measured in the Phase 9 evaluation. A broad word like "support" clears the floor for most articles, so the floor does not replace the policy gate.
+
+## ADR-017: Snippets are leading plain text
+
+- **Context:** Snippets go to the browser and to the AI prompt, so they must hold no markup.
+- **Alternatives:** `ts_headline`, which shows matching text but is harder to sanitize and costs more.
+- **Decision:** `services/text.py` removes script and style blocks, HTML tags and markdown syntax, then cuts the leading text at a word boundary: 300 characters for the API and 500 for the retriever. Seed articles start with a summary paragraph, and the demonstration label sits at the end so it does not fill snippets.
+- **Trade-offs:** Deterministic and simple, but a snippet may not contain the matched words. Instruction-like text stays in the snippet as plain text, so AI code must keep treating it as untrusted data.
+
+## ADR-018: Article rendering with react-markdown
+
+- **Context:** Articles are markdown and must render inert. The blueprint forbids unsafe HTML rendering.
+- **Alternatives:** Preformatted text, which is safest but reads poorly; a markdown-to-HTML library with a sanitizer and `dangerouslySetInnerHTML`.
+- **Decision:** `react-markdown` with default options. It builds React elements, does not render raw HTML and blocks unsafe link protocols such as `javascript:`. Component tests and a browser check confirm this.
+- **Trade-offs:** One new runtime dependency, and raw HTML in articles appears as text rather than formatting.
+
+## ADR-019: Browse versus blank search on `GET /knowledge`
+
+- **Context:** The run prompt says an empty query returns an empty list, while the blueprint and the UI need to list articles.
+- **Alternatives:** Treat blank as browse, or add a separate browse endpoint.
+- **Decision:** With `q` omitted, the endpoint browses published articles. With `q` present but blank, it returns an empty list. The UI omits `q` when the search box is empty.
+- **Trade-offs:** A small distinction for API clients to know, documented in `docs/API.md`.
+
 ## ADR-020: Project-local tool caches
 
 - **Context:** The autonomous run may only write inside the project folder.

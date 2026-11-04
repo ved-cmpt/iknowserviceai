@@ -52,7 +52,7 @@ ARTICLES = [
 
 ## When to contact support
 
-Contact support if the problem continues after these checks. Tell them your building, the time it started and whether other devices are affected. Never share your password.""",
+Contact support if the wifi problem continues after these checks. Tell them your building, the time it started and whether other devices are affected. Never share your password.""",
     },
     {
         "slug": "vpn-connectivity",

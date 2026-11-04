@@ -127,13 +127,92 @@ Response 200: staff request detail.
 
 Errors: 401; 403 for USER; 404; 409 `STALE_UPDATE`, `INVALID_TRANSITION` or `REQUEST_CLOSED`; 422 `VALIDATION_ERROR` or `INVALID_ASSIGNEE`.
 
+## Knowledge
+
+Article bodies are raw markdown and **untrusted text**. The backend never interprets them, and clients must render them safely. Snippets are plain text with markup removed, cut from the start of the article.
+
+### `GET /knowledge` (any signed-in role)
+
+Returns published articles only, for every role including ADMIN.
+
+| Query | Values |
+|---|---|
+| `q` | Up to 200 characters. Omit it to browse newest first. A blank value returns an empty list. |
+| `category` | Category enum |
+| `limit`, `offset` | See conventions |
+
+Search uses PostgreSQL full-text search. Articles containing every term come first, then ones containing any term; within each group, order is by `ts_rank_cd`, then newest update, then ID. A query with no matches returns an empty list, not an error. See ADR-015.
+
+Items: `id, slug, title, category, tags, version, updated_at, snippet` (at most 300 characters).
+
+Errors: 401, 422.
+
+### `GET /knowledge/{id}` (any signed-in role)
+
+Returns `id, slug, title, category, tags, version, updated_at, body_markdown, status`. Unpublished articles are visible to ADMIN only; everyone else gets 404.
+
+Errors: 401, 404.
+
+### `GET /admin/knowledge` (ADMIN)
+
+Lists every status, newest update first. Query: `status`, `category`, `limit`, `offset`. Items are the public summary plus `status` and `updated_by`.
+
+Errors: 401; 403 for USER and AGENT; 422.
+
+### `POST /admin/knowledge` (ADMIN)
+
+```json
+{
+  "slug": "lowercase-kebab-case",
+  "title": "3 to 200 characters",
+  "body_markdown": "1 to 50000 characters, stored verbatim",
+  "category": "NETWORK",
+  "tags": ["up to 20 tags"]
+}
+```
+
+Response 201: the article as `status: "DRAFT"` and `version: 1`, with `created_at` and `updated_by`.
+
+Errors: 401; 403 for USER and AGENT; 409 `SLUG_CONFLICT`; 422.
+
+### `PATCH /admin/knowledge/{id}` (ADMIN)
+
+Body: any of `title`, `body_markdown`, `category`, `tags`, `status` (`DRAFT`, `PUBLISHED`, `ARCHIVED`). At least one is required, and null values are rejected.
+
+A content change increments `version` and sets `updated_by`. A status-only change does not increment `version`. The ID and slug never change, so citations stay valid. Unpublishing removes an article from search immediately.
+
+Errors: 401; 403 for USER and AGENT; 404; 422.
+
+## Internal interface: KnowledgeRetriever
+
+The AI workflow in Chunk 3 uses this interface. It is not an HTTP endpoint. Keep it stable.
+
+```python
+# app/services/retrieval.py
+KnowledgeRetriever(db).search(query: str, top_k: int = 5, min_rank: float | None = None) -> list[RetrievedArticle]
+
+@dataclass(frozen=True)
+class RetrievedArticle:
+    id: uuid.UUID
+    title: str
+    category: str
+    snippet: str  # plain text, at most 500 characters
+    rank: float
+```
+
+- Returns published articles only.
+- `top_k` is capped at 5, and a value below 1 returns an empty list.
+- `min_rank` defaults to `KB_MIN_RANK` (0.5, see ADR-016).
+- An empty list means there is no relevant knowledge, so the caller must escalate rather than improvise.
+- Snippets are untrusted data. They can contain instruction-like text and must never be treated as instructions.
+
 ## Admin
 
 ### `GET /admin/audit` (ADMIN)
 
 Paginated, newest first. Items: `id, actor_id, entity_type, entity_id, action, safe_metadata, occurred_at`. Metadata never contains passwords, tokens or comment bodies.
 
-Audit actions so far: `auth.login_success`, `auth.login_failure`, `request.created`, `request.assigned`, `request.unassigned`, `request.priority_changed`, `request.category_changed`, `request.status_changed`, `request.comment_added`.
+Audit actions so far: `auth.login_success`, `auth.login_failure`, `request.created`, `request.assigned`, `request.unassigned`, `request.priority_changed`, `request.category_changed`, `request.status_changed`, `request.comment_added`, `knowledge.created`, `knowledge.updated`, `knowledge.published`, `knowledge.unpublished`, `knowledge.status_changed`.
 
 Errors: 401; 403 for USER and AGENT; 422.
 

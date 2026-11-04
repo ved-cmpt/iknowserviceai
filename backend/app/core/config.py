@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     ai_mode: Literal["mock", "gemini"] = "mock"
 
-    kb_min_rank: float = Field(default=0.05, ge=0)
+    kb_min_rank: float = Field(default=0.5, ge=0)  # See ADR-016 for the measurements.
 
     demo_password: str | None = None
     allow_demo_reset: bool = False
