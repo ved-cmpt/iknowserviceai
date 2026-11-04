@@ -175,7 +175,7 @@ npm --prefix e2e run e2e:smoke  # The pull request subset
 docker compose exec backend python -m app.scripts.run_eval --mode mock
 ```
 
-**Latest results:** 874 backend tests, 242 frontend tests and both browser suites pass, on 2026-11-04. [The status document](docs/IMPLEMENTATION_STATUS.md) has exact results.
+**Latest results:** in CI on 2026-11-04, from a clean checkout: 874 backend tests and 242 frontend tests passed, the browser suites passed 34 tests on the development stack and 46 on the production image, and 172 axe checks had no findings. [The status document](docs/IMPLEMENTATION_STATUS.md) has the details.
 
 To regenerate the pictures, run `npm --prefix e2e ci` once, then `npm --prefix e2e run screenshots` and `npm --prefix e2e run demo:record`.
 
