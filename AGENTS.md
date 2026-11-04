@@ -15,6 +15,7 @@ Rules for any coding agent working in this repository.
 - Never edit an applied Alembic migration. Schema changes get a new revision.
 - Do not swap the stack (React JavaScript, FastAPI, PostgreSQL, Docker, pytest) or remove review gates without an ADR.
 - Record each significant decision as an ADR in `docs/ARCHITECTURE_DECISIONS.md`.
+- Never add AI-tool attribution (Co-Authored-By, session links, generated-by footers) to commits, PRs or files, and never mention AI tool or vendor names in tracked files.
 
 ## At the end of each chunk
 
