@@ -1,72 +1,143 @@
+import { Link } from 'react-router-dom'
+import { requestCountsPath, requestsPath } from '../api/requests'
 import { useApiData } from '../api/useApiData'
-import { ErrorNotice, Loading } from '../components/DataState'
+import { PriorityBadge, StatusBadge } from '../components/Badge'
+import { ButtonLink } from '../components/Button'
+import Card from '../components/Card'
+import EmptyState from '../components/EmptyState'
+import ErrorState from '../components/ErrorState'
+import FormField from '../components/FormField'
+import LoadingState from '../components/LoadingState'
+import Pagination from '../components/Pagination'
+import Table from '../components/Table'
+import { CATEGORIES, categoryLabel } from '../knowledge/categories'
+import { formatDate } from '../lib/format'
+import { STATUS_OPTIONS } from '../lib/labels'
+import { DEFAULT_SORT, PAGE_SIZE, SORT_OPTIONS, sortParams } from '../requests/options'
+import StatusCounts from '../requests/StatusCounts'
+import { useListParams } from '../requests/useListParams'
 
-function formatStatus(status) {
-  const text = status.replaceAll('_', ' ').toLowerCase()
-  return text.charAt(0).toUpperCase() + text.slice(1)
-}
+const COLUMNS = [
+  {
+    key: 'title',
+    header: 'Title',
+    primary: true,
+    render: (request) => <Link to={`/requests/${request.id}`}>{request.title}</Link>,
+  },
+  { key: 'status', header: 'Status', render: (request) => <StatusBadge status={request.status} /> },
+  { key: 'category', header: 'Category', render: (request) => categoryLabel(request.category) },
+  {
+    key: 'priority',
+    header: 'Priority',
+    render: (request) => <PriorityBadge priority={request.priority} />,
+  },
+  { key: 'created', header: 'Created', render: (request) => formatDate(request.created_at) },
+  { key: 'updated', header: 'Updated', render: (request) => formatDate(request.updated_at) },
+]
 
-function formatDate(value) {
-  return new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' })
-}
+function RequestList({ params, filtered, onPage }) {
+  const { loading, data, error, retry } = useApiData(requestsPath(params))
 
-function Profile() {
-  const { loading, data, error, retry } = useApiData('/auth/me')
-  if (loading) return <Loading label="Loading your profile…" />
-  if (error) return <ErrorNotice error={error} onRetry={retry} />
+  if (error) return <ErrorState error={error} onRetry={retry} />
+  if (loading && !data) return <LoadingState label="Loading requests…" />
+  if (data.items.length === 0) {
+    return filtered ? (
+      <EmptyState title="No requests match these filters.">
+        Try a different status or category.
+      </EmptyState>
+    ) : (
+      <EmptyState
+        title="There are no requests yet."
+        action={<ButtonLink to="/requests/new">New request</ButtonLink>}
+      >
+        Describe an IT problem and we will suggest next steps.
+      </EmptyState>
+    )
+  }
+
   return (
-    <section className="card" aria-label="Your profile">
-      <h2 style={{ marginTop: 0 }}>{data.display_name}</h2>
-      <p style={{ margin: 0 }}>{data.email}</p>
-      <p style={{ margin: 0 }}>Role: {data.role}</p>
-    </section>
-  )
-}
-
-function RequestList() {
-  const { loading, data, error, retry } = useApiData('/requests?limit=20')
-  if (loading) return <Loading label="Loading requests…" />
-  if (error) return <ErrorNotice error={error} onRetry={retry} />
-  if (data.items.length === 0) return <p className="muted">There are no requests yet.</p>
-
-  return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">Title</th>
-            <th scope="col">Status</th>
-            <th scope="col">Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.items.map((request) => (
-            <tr key={request.id}>
-              <td>{request.title}</td>
-              <td className="status-text">{formatStatus(request.status)}</td>
-              <td>{formatDate(request.created_at)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="meta">
-        Showing {data.items.length} of {data.total}
-      </p>
-    </div>
+    <>
+      <Table caption="Your requests" columns={COLUMNS} rows={data.items} />
+      <Pagination total={data.total} limit={data.limit} offset={data.offset} onChange={onPage} />
+    </>
   )
 }
 
 export default function DashboardPage() {
+  const [filters, setFilters] = useListParams(['status', 'category', 'sort'], {
+    sort: DEFAULT_SORT,
+  })
+  const params = {
+    mine: 'true',
+    limit: PAGE_SIZE,
+    offset: filters.offset,
+    status: filters.status,
+    category: filters.category,
+    ...sortParams(filters.sort),
+  }
+
   return (
     <>
-      <h1>Dashboard</h1>
-      <Profile />
-      <section className="card" aria-labelledby="requests-heading">
-        <h2 id="requests-heading" style={{ marginTop: 0 }}>
-          Requests
-        </h2>
-        <RequestList />
-      </section>
+      <div className="page-header">
+        <h1>My requests</h1>
+        <ButtonLink to="/requests/new">New request</ButtonLink>
+      </div>
+      <StatusCounts path={requestCountsPath({ mine: 'true' })} />
+      <Card as="div">
+        <div className="filter-bar">
+          <FormField label="Status">
+            {(field) => (
+              <select
+                {...field}
+                value={filters.status}
+                onChange={(event) => setFilters({ status: event.target.value })}
+              >
+                <option value="">All statuses</option>
+                {STATUS_OPTIONS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FormField>
+          <FormField label="Category">
+            {(field) => (
+              <select
+                {...field}
+                value={filters.category}
+                onChange={(event) => setFilters({ category: event.target.value })}
+              >
+                {CATEGORIES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FormField>
+          <FormField label="Sort by">
+            {(field) => (
+              <select
+                {...field}
+                value={filters.sort}
+                onChange={(event) => setFilters({ sort: event.target.value })}
+              >
+                {SORT_OPTIONS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FormField>
+        </div>
+        <RequestList
+          params={params}
+          filtered={Boolean(filters.status || filters.category)}
+          onPage={(offset) => setFilters({ offset })}
+        />
+      </Card>
     </>
   )
 }

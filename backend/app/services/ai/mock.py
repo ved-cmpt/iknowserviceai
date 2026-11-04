@@ -24,7 +24,7 @@ _URGENT = re.compile(r"\b(outage|everyone|whole building|entire (?:floor|buildin
 _HIGH = re.compile(r"\b(urgent|deadline|exam|cannot work|hacked|compromised)\b")
 _LOW = re.compile(r"\b(question|how do i|when is|minor|whenever|not urgent)\b")
 
-MAX_CITATIONS = 3
+SECOND_CITATION_MIN_RANK_RATIO = 0.7
 NO_SOURCES_REPLY = (
     "We could not find a published article that matches this request. "
     "A member of the support team will review it."
@@ -51,14 +51,19 @@ def _priority(text: str) -> Priority:
 
 
 def _citations(articles: tuple[AgentArticle, ...], category: Category) -> list[AgentArticle]:
-    """Cite on-topic articles, or else the best-ranked one. Only IDs it received, in rank order."""
-    pattern = _CATEGORY_KEYWORDS.get(category)
-    on_topic = [
-        article
-        for article in articles
-        if pattern and pattern.search(f"{article.title} {article.snippet}".lower())
-    ]
-    return on_topic[:MAX_CITATIONS] or list(articles[:1])
+    """Cite the top-ranked article, plus the next one only if it is close and in the same category.
+
+    Articles arrive in rank order. Only IDs received here can be cited.
+    """
+    if not articles:
+        return []
+    top, *others = articles
+    for article in others[:1]:
+        if article.rank >= top.rank * SECOND_CITATION_MIN_RANK_RATIO and (
+            article.category == category.value
+        ):
+            return [top, article]
+    return [top]
 
 
 class MockAgent:

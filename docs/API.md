@@ -77,12 +77,21 @@ USER sees their own requests only. AGENT and ADMIN see all.
 | `limit`, `offset` | See conventions |
 | `status`, `category`, `priority` | Enum values |
 | `assigned_to` | `me`, `unassigned` or a user ID. Staff only; USER gets 403. |
+| `mine` | `true` limits the list to requests the signed-in user submitted. A USER only sees those anyway. |
 | `sort` | `created_at` (default), `updated_at`, `priority`. `priority` sorts by severity. |
 | `direction` | `desc` (default), `asc` |
 
 Items: `id, title, status, category, priority, created_at, updated_at`. Staff also get `requester_id, assigned_agent_id, version`.
 
 Errors: 401, 403, 422. List items never hold suggestion fields.
+
+### `GET /requests/counts` (any signed-in role)
+
+Counts the requests this user can see, by status. Every status is present, with an explicit zero. Query: `mine=true`, as above.
+
+Response 200: `{ "counts": { "NEW": 2, "ANALYZING": 0, "TRIAGED": 1, "NEEDS_HUMAN_REVIEW": 0, "IN_PROGRESS": 0, "RESOLVED": 0, "CLOSED": 0 }, "total": 3 }`.
+
+Errors: 401.
 
 ### `GET /requests/{id}` (owner or staff)
 
@@ -132,7 +141,7 @@ Errors: 401; 403 for USER; 404; 409 `STALE_UPDATE`, `INVALID_TRANSITION` or `REQ
 
 ### `POST /requests/{id}/analyze` (owner or staff)
 
-Runs one AI analysis. It has no request body, and can take up to about 45 seconds in live mode, so clients should show progress. The request must be `NEW`.
+Runs one AI analysis. It has no request body, and can take up to about 95 seconds in live mode (2 provider attempts at the 45-second timeout, plus backoff), so clients should show progress. The request must be `NEW`.
 
 Response 200: the same role-aware shape as `GET /requests/{id}`. The status becomes `TRIAGED`, or `NEEDS_HUMAN_REVIEW` if any policy flag applies.
 

@@ -39,6 +39,11 @@ class RequestCreated(ORMModel):
     created_at: datetime
 
 
+class RequestCounts(ORMModel):
+    counts: dict[RequestStatus, int]
+    total: int
+
+
 class CommentCreate(StrictInput):
     body: CommentBody
     is_internal: bool = False

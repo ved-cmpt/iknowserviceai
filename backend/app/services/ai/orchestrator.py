@@ -175,7 +175,9 @@ def _call_provider(
             description=claim.redacted_description,
             categories=tuple(Category),
             priorities=tuple(Priority),
-            articles=tuple(AgentArticle(a.id, a.title, a.snippet) for a in retrieved),
+            articles=tuple(
+                AgentArticle(a.id, a.title, a.snippet, a.category, a.rank) for a in retrieved
+            ),
             prompt_version=PROMPT_VERSION,
         )
         return provider.analyze(agent_input), retrieved

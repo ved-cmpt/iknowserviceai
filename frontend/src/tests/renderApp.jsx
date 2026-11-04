@@ -17,7 +17,7 @@ export function renderApp(route = '/') {
   )
 }
 
-// Full app with a fixed signed-in user.
+// Full app with a fixed signed-in user. `route` can be a path or { pathname, state }.
 export function renderSignedIn(route, user = DEFAULT_USER) {
   return render(
     <MemoryRouter initialEntries={[route]}>
@@ -33,4 +33,18 @@ export const DEFAULT_USER = {
   email: 'riley.morgan@demo.iknowservice.test',
   display_name: 'Riley Morgan',
   role: 'USER',
+}
+
+export const AGENT_USER = {
+  id: 'u3',
+  email: 'alex.chen@demo.iknowservice.test',
+  display_name: 'Alex Chen',
+  role: 'AGENT',
+}
+
+export const ADMIN_USER = {
+  id: 'u4',
+  email: 'jordan.reyes@demo.iknowservice.test',
+  display_name: 'Jordan Reyes',
+  role: 'ADMIN',
 }

@@ -14,6 +14,7 @@ from app.schemas.common import Page
 from app.schemas.requests import (
     CommentCreate,
     PublicComment,
+    RequestCounts,
     RequestCreate,
     RequestCreated,
     RequesterRequestDetail,
@@ -49,6 +50,7 @@ def list_requests(
     category: Category | None = None,
     priority: Priority | None = None,
     assigned_to: str | None = None,
+    mine: bool = False,
     sort: request_service.SortField = "created_at",
     direction: request_service.SortDirection = "desc",
     user: User = Depends(get_current_user),
@@ -63,10 +65,22 @@ def list_requests(
         category=category,
         priority=priority,
         assigned_to=assigned_to,
+        mine=mine,
         sort=sort,
         direction=direction,
     )
     return Page(items=items, total=total, limit=limit, offset=offset)
+
+
+# Declared before "/{request_id}", which would otherwise try to read "counts" as an ID.
+@router.get("/counts")
+def request_counts(
+    mine: bool = False,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RequestCounts:
+    counts = request_service.count_by_status(db, user, mine=mine)
+    return RequestCounts(counts=counts, total=sum(counts.values()))
 
 
 @router.get("/{request_id}")

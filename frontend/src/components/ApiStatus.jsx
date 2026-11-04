@@ -21,8 +21,8 @@ export default function ApiStatus() {
   }, [])
 
   return (
-    <p className={`api-status api-status-${state}`} role="status">
+    <span className={`api-status api-status-${state}`} role="status">
       {LABELS[state]}
-    </p>
+    </span>
   )
 }

@@ -1,0 +1,63 @@
+/* Design tokens. Every color pair used for text meets WCAG AA on its intended background. */
+:root {
+  color-scheme: light;
+
+  /* Neutral palette */
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef0f3;
+  --color-border: #d4d8df;
+  --color-border-strong: #7b8494;
+  --color-text: #1b2230;
+  --color-text-muted: #515b6b;
+
+  /* One restrained accent */
+  --color-accent: #1d5bb5;
+  --color-accent-strong: #174a94;
+  --color-accent-soft: #e7eefa;
+  --color-on-accent: #ffffff;
+
+  /* Semantic tones. Always paired with text, never the only signal. */
+  --color-info-bg: #e9f0fb;
+  --color-info-text: #174a94;
+  --color-info-border: #a9c3ec;
+  --color-success-bg: #e8f4ec;
+  --color-success-text: #1a5e36;
+  --color-success-border: #a4d2b5;
+  --color-warning-bg: #fdf3dc;
+  --color-warning-text: #6f4a00;
+  --color-warning-border: #e3c678;
+  --color-danger-bg: #fbeced;
+  --color-danger-text: #96202a;
+  --color-danger-border: #e6a9ae;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Type scale */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --shadow-card: 0 1px 2px rgb(27 34 48 / 6%);
+  --shadow-dialog: 0 12px 40px rgb(27 34 48 / 28%);
+
+  --focus-ring: 3px solid var(--color-accent);
+  --focus-offset: 2px;
+
+  --content-width: 1120px;
+}

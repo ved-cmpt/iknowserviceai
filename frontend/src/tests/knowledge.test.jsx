@@ -36,7 +36,7 @@ describe('knowledge search', () => {
     const link = await screen.findByRole('link', { name: ARTICLE.title })
     expect(link).toHaveAttribute('href', '/knowledge/a1')
     expect(screen.getByText(ARTICLE.snippet)).toBeInTheDocument()
-    const result = screen.getByRole('listitem')
+    const result = link.closest('li')
     expect(within(result).getByText('Network')).toBeInTheDocument()
     expect(screen.getByText('1 article')).toBeInTheDocument()
   })
@@ -83,7 +83,7 @@ describe('knowledge search', () => {
     })
     renderSignedIn('/knowledge')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('An unexpected error occurred')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong on our side')
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByRole('link', { name: ARTICLE.title })).toBeInTheDocument()
   })
@@ -103,7 +103,7 @@ describe('knowledge search', () => {
   it('is reachable from the navigation', async () => {
     mockFetch({
       ...HEALTH,
-      'GET /auth/me': () => jsonResponse({}),
+      'GET /requests/counts': () => jsonResponse({ counts: {}, total: 0 }),
       'GET /requests': () => page([]),
       'GET /knowledge': () => page([ARTICLE]),
     })
@@ -123,8 +123,10 @@ describe('knowledge article', () => {
     })
     renderSignedIn('/knowledge/a1')
 
-    expect(await screen.findByRole('heading', { name: 'Checks', level: 2 })).toBeInTheDocument()
-    expect(screen.getByRole('listitem')).toHaveTextContent('Restart the device')
+    const heading = await screen.findByRole('heading', { name: 'Checks', level: 2 })
+    expect(within(heading.parentElement).getByRole('listitem')).toHaveTextContent(
+      'Restart the device',
+    )
     expect(screen.getByText(/Version 2/)).toBeInTheDocument()
   })
 
@@ -183,6 +185,7 @@ describe('knowledge article', () => {
     renderSignedIn('/knowledge/a1')
     await screen.findByRole('alert')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Something broke')
   })
 
   it('labels unpublished articles for admins', async () => {
@@ -191,6 +194,6 @@ describe('knowledge article', () => {
       'GET /knowledge/a1': () => detail('Body', { status: 'DRAFT' }),
     })
     renderSignedIn('/knowledge/a1')
-    expect(await screen.findByText(/· DRAFT/)).toBeInTheDocument()
+    expect(await screen.findByText('DRAFT')).toBeInTheDocument()
   })
 })

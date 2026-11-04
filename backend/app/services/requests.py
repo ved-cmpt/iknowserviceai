@@ -88,10 +88,13 @@ def list_requests(
     category: Category | None = None,
     priority: Priority | None = None,
     assigned_to: str | None = None,
+    mine: bool = False,
     sort: SortField = "created_at",
     direction: SortDirection = "desc",
 ) -> tuple[list[RequestListItem], int]:
     query = _visible_requests(user)
+    if mine:
+        query = query.where(ServiceRequest.requester_id == user.id)
     if status:
         query = query.where(ServiceRequest.status == status.value)
     if category:
@@ -109,6 +112,16 @@ def list_requests(
     rows = db.scalars(query.order_by(ordering, ServiceRequest.id).limit(limit).offset(offset)).all()
     schema = StaffRequestListItem if is_staff(user) else RequestListItem
     return [schema.model_validate(row) for row in rows], total
+
+
+def count_by_status(db: Session, user: User, *, mine: bool = False) -> dict[str, int]:
+    """Count the requests this user may see, with an explicit zero for every status."""
+    visible = _visible_requests(user)
+    if mine:
+        visible = visible.where(ServiceRequest.requester_id == user.id)
+    rows = visible.subquery()
+    found = db.execute(select(rows.c.status, func.count()).group_by(rows.c.status)).all()
+    return {status.value: 0 for status in RequestStatus} | {row[0]: row[1] for row in found}
 
 
 def get_visible_request(

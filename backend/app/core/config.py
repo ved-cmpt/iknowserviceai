@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     # SecretStr keeps the key out of reprs and logs. Read it only where the SDK client is built.
     gemini_api_key: SecretStr | None = None
     gemini_model: str | None = None
-    ai_request_timeout_seconds: float = Field(default=20, gt=0, le=120)
+    # The owner's one passing live call took about 15 seconds (ADR-029), so 20 left little margin.
+    ai_request_timeout_seconds: float = Field(default=45, gt=0, le=120)
     ai_max_output_tokens: int = Field(default=2048, ge=128, le=8192)
     # "low" is the one low setting that every current Flash model accepts (ADR-029).
     ai_thinking_level: Literal["minimal", "low", "medium", "high"] = "low"

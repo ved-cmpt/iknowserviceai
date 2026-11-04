@@ -1,11 +1,14 @@
-import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/authContext'
+import { homeFor, homeLabel } from '../auth/roles'
+import { ButtonLink } from '../components/Button'
 
-export default function NotFoundPage() {
+export default function NotFoundPage({ message = 'This page does not exist, or you do not have access to it.' }) {
+  const { user } = useAuth()
   return (
-    <main className="page narrow">
+    <>
       <h1>Page not found</h1>
-      <p>This page does not exist.</p>
-      <Link to="/dashboard">Go to the dashboard</Link>
-    </main>
+      <p>{message}</p>
+      <ButtonLink to={homeFor(user)}>{homeLabel(user)}</ButtonLink>
+    </>
   )
 }

@@ -19,12 +19,15 @@ export function setUnauthorizedHandler(handler) {
 }
 
 export class ApiError extends Error {
-  constructor({ status, code, message, requestId }) {
+  constructor({ status, code, message, requestId, retryAfter, retryable, attemptsRemaining }) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.requestId = requestId
+    this.retryAfter = retryAfter ?? null // Seconds, from the Retry-After header.
+    this.retryable = retryable ?? null // Analyze failures only.
+    this.attemptsRemaining = attemptsRemaining ?? null // Analyze failures only.
   }
 }
 
@@ -34,6 +37,11 @@ async function parseBody(response) {
   } catch {
     return null
   }
+}
+
+function parseRetryAfter(response) {
+  const seconds = Number(response.headers.get('Retry-After'))
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null
 }
 
 export async function apiFetch(path, { method = 'GET', body, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
@@ -76,5 +84,18 @@ export async function apiFetch(path, { method = 'GET', body, timeoutMs = DEFAULT
     code: data?.error?.code ?? 'UNKNOWN_ERROR',
     message: data?.error?.message ?? 'Something went wrong.',
     requestId: data?.error?.request_id ?? response.headers.get('X-Request-ID'),
+    retryAfter: parseRetryAfter(response),
+    retryable: data?.retryable,
+    attemptsRemaining: data?.attempts_remaining,
   })
+}
+
+// Builds a query string, leaving out empty filter values.
+export function withQuery(path, params = {}) {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') query.set(key, String(value))
+  }
+  const text = query.toString()
+  return text ? `${path}?${text}` : path
 }

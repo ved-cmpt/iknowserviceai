@@ -7,6 +7,7 @@ export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   // After a deliberate sign-out, the next person should not land on the previous user's page.
   const [signedOut, setSignedOut] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   const clearSession = useCallback(() => {
     setAccessToken(null)
@@ -15,6 +16,7 @@ export default function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     clearSession()
+    setSessionExpired(false)
     setSignedOut(true)
   }, [clearSession])
 
@@ -26,17 +28,21 @@ export default function AuthProvider({ children }) {
     setAccessToken(result.access_token)
     setUser(result.user)
     setSignedOut(false)
+    setSessionExpired(false)
     return result.user
   }, [])
 
   useEffect(() => {
-    setUnauthorizedHandler(clearSession)
+    setUnauthorizedHandler(() => {
+      clearSession()
+      setSessionExpired(true)
+    })
     return () => setUnauthorizedHandler(null)
   }, [clearSession])
 
   const value = useMemo(
-    () => ({ user, signedOut, login, logout }),
-    [user, signedOut, login, logout],
+    () => ({ user, signedOut, sessionExpired, login, logout }),
+    [user, signedOut, sessionExpired, login, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

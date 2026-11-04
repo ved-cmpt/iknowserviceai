@@ -110,7 +110,7 @@ Limited responses are 429 with `Retry-After`. See ADR-030.
 - **The access token cannot be revoked** before it expires, although a deactivated user is refused immediately.
 - **Staff replies are only scanned for credential requests.** A reviewer can still publish poor advice. Their identity and reason are recorded.
 - **`redacted_input` is stored indefinitely.** There is no retention job. The demo reset is the only cleanup.
-- **The live Gemini path is unverified.** See `docs/IMPLEMENTATION_STATUS.md`.
+- **The live Gemini path has one passing call.** The owner's smoke test passed, but one synthetic request is not evidence about quality or latency in general. See ADR-029.
 
 ## Demo limitations
 

@@ -1,26 +1,33 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { knowledgePath } from '../api/knowledge'
 import { useApiData } from '../api/useApiData'
-import { ErrorNotice, Loading } from '../components/DataState'
+import Button from '../components/Button'
+import EmptyState from '../components/EmptyState'
+import ErrorState from '../components/ErrorState'
+import LoadingState from '../components/LoadingState'
+import Pagination from '../components/Pagination'
 import { CATEGORIES, categoryLabel } from '../knowledge/categories'
 
 const MAX_QUERY_LENGTH = 200
+const PAGE_SIZE = 20
 
-function Results({ query, category }) {
-  const params = new URLSearchParams({ limit: '20' })
-  if (query) params.set('q', query)
-  if (category) params.set('category', category)
-  const { loading, data, error, retry } = useApiData(`/knowledge?${params}`)
+function Results({ query, category, offset, onPage }) {
+  const { loading, data, error, retry } = useApiData(
+    knowledgePath({ limit: PAGE_SIZE, offset, q: query, category }),
+  )
 
-  if (loading) return <Loading label="Searching articles…" />
-  if (error) return <ErrorNotice error={error} onRetry={retry} />
+  if (error) return <ErrorState error={error} onRetry={retry} />
+  if (loading && !data) return <LoadingState label="Searching articles…" />
   if (data.items.length === 0) {
     return (
-      <p className="muted">
-        {query
-          ? 'No articles match your search. Try different words, or submit a request for support.'
-          : 'There are no published articles in this category.'}
-      </p>
+      <EmptyState
+        title={
+          query
+            ? 'No articles match your search. Try different words, or submit a request for support.'
+            : 'There are no published articles in this category.'
+        }
+      />
     )
   }
 
@@ -40,6 +47,9 @@ function Results({ query, category }) {
           </li>
         ))}
       </ul>
+      {data.total > data.limit && (
+        <Pagination total={data.total} limit={data.limit} offset={data.offset} onChange={onPage} />
+      )}
     </>
   )
 }
@@ -48,12 +58,14 @@ export default function KnowledgeListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get('q') ?? ''
   const category = searchParams.get('category') ?? ''
+  const offset = Number(searchParams.get('offset')) || 0
   const [draft, setDraft] = useState(query)
 
-  function apply(nextQuery, nextCategory) {
+  function apply(nextQuery, nextCategory, nextOffset = 0) {
     const next = {}
     if (nextQuery) next.q = nextQuery
     if (nextCategory) next.category = nextCategory
+    if (nextOffset) next.offset = nextOffset
     setSearchParams(next)
   }
 
@@ -78,10 +90,7 @@ export default function KnowledgeListPage() {
         </label>
         <label>
           <span className="visually-hidden">Category</span>
-          <select
-            value={category}
-            onChange={(event) => apply(query, event.target.value)}
-          >
+          <select value={category} onChange={(event) => apply(query, event.target.value)}>
             {CATEGORIES.map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -89,9 +98,14 @@ export default function KnowledgeListPage() {
             ))}
           </select>
         </label>
-        <button type="submit">Search</button>
+        <Button type="submit">Search</Button>
       </form>
-      <Results query={query} category={category} />
+      <Results
+        query={query}
+        category={category}
+        offset={offset}
+        onPage={(nextOffset) => apply(query, category, nextOffset)}
+      />
     </>
   )
 }

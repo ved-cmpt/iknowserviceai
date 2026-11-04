@@ -32,6 +32,9 @@ class AgentArticle:
     id: uuid.UUID
     title: str
     snippet: str
+    # Retrieval metadata for choosing citations. `build_prompt` does not send these to a provider.
+    category: str = ""
+    rank: float = 0.0
 
 
 @dataclass(frozen=True)

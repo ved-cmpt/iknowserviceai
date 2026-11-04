@@ -212,7 +212,7 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Decision:** Use `interactions.create` with `store=False`, `automatic_continuation=False`, temperature 0, capped output, `thinking_level` from `AI_THINKING_LEVEL` and a hand-written JSON schema. The model is `gemini-3.5-flash-lite`, set through `GEMINI_MODEL`. It appears in the account's model list and the pricing page lists it as free of charge. The default thinking level is `low`, because the docs list it for every current Flash model, while `minimal` is rejected by some of them.
 - **Why retries are configured oddly:** Measured with a fake HTTP transport, the SDK sends 2 requests on a 429 or 5xx even with `attempts=1`. Its default is 5. `HttpRetryOptions(attempts=1, http_status_codes=[599])` gives exactly one request per attempt, so `GeminiAgent` alone decides on the single retry. `tests/test_gemini_agent.py` runs the real SDK against a fake transport to pin this, so an SDK upgrade that changes it fails a test.
 - **Trade-offs:** The schema duplicates `TriageResult` by hand, but it avoids sending `$defs` and `additionalProperties`, whose support could not be tested within the live call budget. `TriageResult` still validates everything. The retry setting depends on SDK behavior rather than a documented "no retries" option.
-- **Status: not verified live.** The single live analysis failed with `AI_TIMEOUT` on both attempts at the 20-second timeout. See `docs/IMPLEMENTATION_STATUS.md`. The docs also state that free-tier content may be used to improve Google's products, even though `store=False` opts out of interaction storage, so only redacted text should ever be sent, and real personal data should not be used on this tier.
+- **Status: verified live by the owner after Run 02.** The agent's single attempt in Run 02 timed out at 20 seconds on both tries. The owner then re-ran the smoke test with a longer timeout, and it passed: `model=gemini-3.5-flash-lite http_requests=1 latency_ms=14878 tokens={'input': 625, 'output': 216, 'thought': 0, 'total': 841} outcome=pass`, with result `category=NETWORK priority=MEDIUM confidence=0.95 citations=1 risk_flags=[] review=False`. `AI_REQUEST_TIMEOUT_SECONDS` now defaults to 45, because one call at about 15 seconds left a 20-second limit little margin. This is one call, not a latency distribution. The docs also state that free-tier content may be used to improve Google's products, even though `store=False` opts out of interaction storage, so only redacted text should ever be sent, and real personal data should not be used on this tier.
 
 ## ADR-030: In-process sliding-window rate limiter
 
@@ -227,3 +227,38 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Alternatives:** Leave it visible until staff act; add a separate hide endpoint.
 - **Decision:** PATCH to `NEEDS_HUMAN_REVIEW` moves a `NOT_REQUIRED` suggestion to `PENDING_REVIEW`, so it is hidden and can go through the normal review. An `APPROVED` reply stays visible, because a person already approved it. This was not in the run prompt. It closes a gap in the same safety rule.
 - **Trade-offs:** A requester can see a reply disappear. Feedback they already gave stays recorded.
+
+## ADR-032: Mock agent citation rule
+
+- **Context:** The mock cited the VPN article for a Wi-Fi request, because its keyword match was broad. A demo that cites an unrelated source undermines the point of citations.
+- **Alternatives:** Keep keyword matching; tune the retriever's floor, which would change the live path as well.
+- **Decision:** `MockAgent` cites the top-ranked retrieved article, plus the next one only when its rank is at least 70% of the top rank and its category equals the predicted category. It cites at most two. `AgentArticle` gains `category` and `rank` for this, and `build_prompt` still sends only ID, title and excerpt, so the provider's input is unchanged. A test pins that.
+- **Trade-offs:** Mock replies cite fewer sources. A correct second source in a different category is left out. This changes mock behavior only.
+
+## ADR-033: Small API additions for the screens
+
+- **Context:** Blueprint section 8.1 and the run prompt need counts by status, and a "My requests" page. Staff can see every request, so the existing list could not show only their own. Fetching counts with one `limit=1` call per status would take 7 calls per page load.
+- **Alternatives:** Seven list calls; filtering on the client, which breaks pagination.
+- **Decision:** Add `GET /requests/counts` and a `mine=true` filter on `GET /requests`. Both start from the same visibility query as the list, so they cannot widen what a user may see.
+- **Trade-offs:** Two more API surfaces to keep tested and documented.
+
+## ADR-034: Frontend structure and design system
+
+- **Context:** The prompt keeps React, JavaScript and plain CSS, with no UI framework.
+- **Alternatives:** CSS modules, or a component library.
+- **Decision:** Design tokens are CSS custom properties in `src/styles/tokens.css`. Reusable components are in `src/components/`, API helpers per endpoint group in `src/api/`, and error text in one place, `src/api/errors.js`. List filters live in the URL. `useApiData` keeps the current data on screen during a reload of the same path, so forms stay mounted and typed text survives. Sorting is a select control, not clickable headers, because table headers are hidden in the stacked mobile layout. Stacked tables declare ARIA table roles explicitly, because CSS `display` changes can remove them.
+- **Trade-offs:** The transition table in `src/requests/transitions.js` duplicates the backend's. The server still decides, so a mismatch produces a 409 rather than a wrong change.
+
+## ADR-035: Auto-analysis is triggered from history state and cleared at once
+
+- **Context:** The new-request flow must analyze exactly once. Analysis spends provider quota, and React Strict Mode, the back button or a remount could all repeat an effect.
+- **Alternatives:** Analyze in the form before navigating, which would strand the person on the form for up to 90 seconds; a query parameter.
+- **Decision:** The form navigates with `state: { autoAnalyze: true }`. The detail page waits for its first load, then replaces the history entry without the flag and starts the analysis, guarded by a ref. Waiting for the first load stops a slow GET from overwriting the analysis result.
+- **Trade-offs:** If the person leaves before the page loads, no analysis starts, and the Analyze button is there when they return.
+
+## ADR-036: Staff see the staff screen for every request
+
+- **Context:** A requester and a staff member get different response shapes from `GET /requests/{id}` (ADR-028), and staff who submit a request still receive the staff shape.
+- **Alternatives:** Teach the requester page both shapes.
+- **Decision:** `/requests/:id` redirects staff to `/support/:id`, and keeps any auto-analysis flag. The review form is hidden on their own request, with an explanation, and the API returns 403 regardless.
+- **Trade-offs:** Staff cannot rate a suggestion on their own request from the UI, although the API allows it. The staff response has no `feedback_submitted` field to drive that form, and this is a demo edge case.
