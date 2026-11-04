@@ -183,3 +183,24 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Alternatives:** Revoke privileges from a separate role, which needs a second database role in every environment.
 - **Decision:** Revision `0003` adds `BEFORE UPDATE OR DELETE FOR EACH ROW` triggers that raise `restrict_violation`. Row triggers do not fire on `TRUNCATE`, so `reset_demo` still works. Tests that use real connections clean up with `TRUNCATE`.
 - **Trade-offs:** This narrows ADR-007: the `ON DELETE CASCADE` from `service_requests` to `request_events` now fails when events exist, so a request with history cannot be hard-deleted. No endpoint deletes requests. A database superuser can still drop the triggers, so this prevents accidents and application bugs rather than a hostile DBA.
+
+## ADR-026: Two-phase analysis and stale run recovery
+
+- **Context:** A provider call can take many seconds, a row lock must not be held that long, and a crash mid-analysis must not strand a request in `ANALYZING`.
+- **Alternatives:** Hold the lock during the call; use a background queue (ruled out by ADR-003).
+- **Decision:** Tx1 locks the row, sets `ANALYZING`, records a `STARTED` run and commits. Retrieval and the provider call run with no open transaction. Tx2 locks again and confirms the run is still active before writing anything, and a late result from a superseded run returns 409 `ANALYSIS_SUPERSEDED`. A later analyze call marks a run older than `AI_STALE_RUN_SECONDS` as `FAILED` with `STALE_RUN` and returns the request to `NEW`. A request in `ANALYZING` with no run, such as the seeded one, recovers at once. Every run counts against `AI_MAX_ANALYZE_ATTEMPTS`, including stale ones, because each may have spent provider quota. If staff change category or priority during a run, their value is kept.
+- **Trade-offs:** A crashed run blocks retries for up to `AI_STALE_RUN_SECONDS`, and it uses up one attempt even though the user did nothing wrong.
+
+## ADR-027: Any policy flag means review, and missing citations always count as procedural
+
+- **Context:** The prompt asks for review when there are "no valid citations for procedural advice". Reliably detecting procedural text is hard.
+- **Alternatives:** A heuristic that detects steps or imperatives.
+- **Decision:** A reply with no valid citations always needs review. Flags only accumulate, and any flag means `PENDING_REVIEW`. The model may add flags and can never remove them. Retrieved article text is scanned too: instruction-like content sets `KB_CONTENT_SUSPECT`. The provider is still called when retrieval finds nothing, because its classification helps staff, but its reply is replaced by a fixed non-procedural fallback.
+- **Trade-offs:** More requests reach staff, and a harmless uncited reply is withheld. That is the safer failure. Patterns are regular expressions, so they can miss rephrased or non-English attacks, which is why the output scan, citation check and review gate are separate layers.
+
+## ADR-028: Requesters get one generic analysis failure code
+
+- **Context:** The run prompt specifies a 503 body with `error.code` and also says a USER never sees raw error codes.
+- **Alternatives:** Return `AI_*` codes to everyone, or hide the code from everyone.
+- **Decision:** Staff receive the specific code (`AI_TIMEOUT`, `AI_RATE_LIMITED`, `AI_UNAVAILABLE`, `AI_INVALID_OUTPUT`, `AI_AUTH`). A USER receives `ANALYSIS_FAILED`. Both receive `retryable` and `attempts_remaining`. `retryable` is false when no attempts remain. The analyze response has the same shape as `GET /requests/{id}` for that role, so one serializer decides what each role sees. `redacted_input` is returned to nobody.
+- **Trade-offs:** A requester cannot tell a timeout from a key problem, and does not need to. The frontend must branch on status and `retryable`, not on the code.

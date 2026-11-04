@@ -15,11 +15,19 @@ STAFF_TRANSITIONS: dict[S, frozenset[S]] = {
     S.CLOSED: frozenset(),
 }
 
-# Transitions reserved for the AI service (Chunk 3). Not reachable from any endpoint yet.
+# Transitions reserved for the AI service.
 SYSTEM_TRANSITIONS: dict[S, frozenset[S]] = {
     S.NEW: frozenset({S.ANALYZING}),
     S.ANALYZING: frozenset({S.TRIAGED, S.NEEDS_HUMAN_REVIEW, S.NEW}),
 }
+
+
+def ensure_system_transition(current: S, target: S) -> None:
+    if target not in SYSTEM_TRANSITIONS.get(current, frozenset()):
+        raise conflict(
+            "INVALID_TRANSITION",
+            f"A request cannot move from {current.value} to {target.value}",
+        )
 
 
 def can_staff_transition(current: S, target: S) -> bool:

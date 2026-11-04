@@ -17,12 +17,14 @@ class AppError(Exception):
         code: str,
         message: str,
         headers: dict[str, str] | None = None,
+        extra: dict[str, object] | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
         self.headers = headers
+        self.extra = extra  # Added beside "error" in the body, for example `retryable`.
 
 
 def not_found(message: str = "Resource not found") -> AppError:
@@ -42,11 +44,18 @@ def unprocessable(code: str, message: str) -> AppError:
 
 
 def error_response(
-    status_code: int, code: str, message: str, headers: dict[str, str] | None = None
+    status_code: int,
+    code: str,
+    message: str,
+    headers: dict[str, str] | None = None,
+    extra: dict[str, object] | None = None,
 ) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
-        content={"error": {"code": code, "message": message, "request_id": request_id_var.get()}},
+        content={
+            "error": {"code": code, "message": message, "request_id": request_id_var.get()},
+            **(extra or {}),
+        },
         headers=headers,
     )
 
@@ -64,7 +73,7 @@ def _format_validation_error(exc: RequestValidationError) -> str:
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
-        return error_response(exc.status_code, exc.code, exc.message, exc.headers)
+        return error_response(exc.status_code, exc.code, exc.message, exc.headers, exc.extra)
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_exception(_: Request, exc: StarletteHTTPException) -> JSONResponse:

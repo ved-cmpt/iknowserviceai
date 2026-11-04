@@ -12,7 +12,7 @@ Deployment status: not deployed; local Docker only
 | 2 Schema, migrations, auth, seed | DONE | Alembic upgrade, repeat, `check` and down/up test; seed twice gives 4 users, 13 articles, 9 requests; four accounts via API and headless Edge; data survives `down` + `up` | None |
 | 3 Request lifecycle | DONE (API) | `tests/test_requests_lifecycle.py` 133 tests including all 49 status pairs; `tests/test_concurrency.py` real two-connection race; `docs/API.md` | Screens belong to Phases 7 and 8 |
 | 4 Knowledge base and retrieval | DONE | `tests/test_knowledge.py` 114 tests; frontend search and article tests; browser check of search, article and inert draft | Admin screens belong to Phase 8 |
-| 5 AI orchestration | NOT_STARTED | AI tables exist in the schema only | All |
+| 5 AI orchestration | IN_PROGRESS | `tests/test_analyze.py`, `tests/test_redaction.py`, analyze races in `tests/test_concurrency.py` | Gemini adapter and live smoke test |
 | 6 Review gates and hardening | NOT_STARTED | | All |
 | 7 Requester frontend | NOT_STARTED | Login, dashboard list and knowledge pages exist | New request form, request detail, analysis, feedback |
 | 8 Staff and admin frontend, E2E | NOT_STARTED | | All |
@@ -42,7 +42,6 @@ None known. See limitations below.
 
 - Requests can only be created, commented on or updated through the API (`/docs`). The screens come in Phases 7 and 8.
 - No rate limiting yet, including on login (Phase 6).
-- The seeded `ANALYZING` request cannot leave that state until Chunk 3 builds the AI service.
 - The relevance floor is measured on 12 articles and should be re-measured in Phase 9.
 - Base images use floating tags (`postgres:17`, `python:3.12-slim`, `node:24-slim`).
 - Mobile layout and keyboard use have not been checked in a browser (Phase 7).

@@ -22,6 +22,9 @@ from app.schemas.requests import (
     StaffRequestListItem,
 )
 from app.services import requests as request_service
+from app.services.ai import orchestrator
+from app.services.ai.base import AgentProvider
+from app.services.ai.factory import get_agent_provider
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -70,6 +73,18 @@ def get_request(
     db: Session = Depends(get_db),
 ) -> StaffRequestDetail | RequesterRequestDetail:
     request = request_service.get_visible_request(db, user, request_id)
+    return request_service.build_detail(db, user, request)
+
+
+@router.post("/{request_id}/analyze")
+def analyze_request(
+    request_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    provider: AgentProvider = Depends(get_agent_provider),
+    db: Session = Depends(get_db),
+) -> StaffRequestDetail | RequesterRequestDetail:
+    """Run one AI analysis. A plain `def`, so the provider call runs in a worker thread."""
+    request = orchestrator.analyze_request(db, user, request_id, provider)
     return request_service.build_detail(db, user, request)
 
 

@@ -1,4 +1,4 @@
-"""AI tables. The schema ships in the initial migration. The workflow arrives in Chunk 3."""
+"""AI tables: one run per analysis attempt, and at most one suggestion per run."""
 
 import uuid
 from datetime import datetime
@@ -86,6 +86,8 @@ class AiSuggestion(Base):
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     published_reply: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rationale_short: Mapped[str | None] = mapped_column(Text, nullable=True)
+    review_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class RequestFeedback(Base):

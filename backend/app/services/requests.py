@@ -28,6 +28,7 @@ from app.schemas.requests import (
     StaffRequestDetail,
     StaffRequestListItem,
 )
+from app.services import suggestions
 from app.services.audit import record_audit
 from app.services.state_machine import ensure_staff_transition
 
@@ -123,7 +124,7 @@ def get_visible_request(
     return request
 
 
-def _record_change(
+def record_change(
     db: Session,
     request: ServiceRequest,
     actor: User,
@@ -161,7 +162,7 @@ def create_request(db: Session, user: User, payload: RequestCreate) -> ServiceRe
     )
     db.add(request)
     db.flush()
-    _record_change(
+    record_change(
         db,
         request,
         user,
@@ -194,7 +195,7 @@ def add_comment(
     db.flush()
     request.version += 1  # A comment is a change staff should see before acting (ADR-013).
     # The audit and event rows hold the ID and visibility only, never the body.
-    _record_change(
+    record_change(
         db,
         request,
         user,
@@ -238,7 +239,7 @@ def update_request(
     if assign and request.assigned_agent_id != payload.assigned_agent_id:
         previous = request.assigned_agent_id
         request.assigned_agent_id = assignee.id if assignee else None
-        _record_change(
+        record_change(
             db,
             request,
             actor,
@@ -259,7 +260,7 @@ def update_request(
         if value is not None and getattr(request, field) != value.value:
             previous = getattr(request, field)
             setattr(request, field, value.value)
-            _record_change(
+            record_change(
                 db,
                 request,
                 actor,
@@ -279,7 +280,7 @@ def update_request(
         details = {"from": previous, "to": target_status.value}
         if payload.reason:
             details["reason"] = payload.reason
-        _record_change(
+        record_change(
             db,
             request,
             actor,
@@ -346,8 +347,11 @@ def build_detail(
     }
 
     if not is_staff(user):
+        suggestion_state, suggestion = suggestions.requester_view(db, request)
         return RequesterRequestDetail(
             **fields,
+            suggestion_state=suggestion_state,
+            suggestion=suggestion,
             comments=[
                 PublicComment(
                     id=comment.id,
@@ -363,6 +367,9 @@ def build_detail(
     return StaffRequestDetail(
         **fields,
         version=request.version,
+        suggestion=suggestions.staff_suggestion(db, request),
+        ai_runs=suggestions.staff_runs(db, request.id),
+        attempts_remaining=suggestions.attempts_remaining(db, request.id),
         requester=PersonSummary.model_validate(request.requester),
         assigned_agent=(
             PersonSummary.model_validate(request.assigned_agent) if request.assigned_agent else None

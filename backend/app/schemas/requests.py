@@ -10,6 +10,7 @@ from typing import Annotated, Any
 from pydantic import Field, StringConstraints, model_validator
 
 from app.db.models.enums import Category, Priority, RequestStatus, Role
+from app.schemas.ai import RequesterSuggestion, StaffAiRun, StaffSuggestion, SuggestionState
 from app.schemas.common import NoNul, ORMModel, StrictInput
 
 Title = Annotated[
@@ -123,6 +124,8 @@ class RequesterRequestDetail(ORMModel):
     resolved_at: datetime | None
     comments: list[PublicComment]
     events: list[RequesterEvent]
+    suggestion_state: SuggestionState | None
+    suggestion: RequesterSuggestion | None
 
 
 class StaffRequestDetail(ORMModel):
@@ -140,3 +143,6 @@ class StaffRequestDetail(ORMModel):
     assigned_agent: PersonSummary | None
     comments: list[StaffComment]
     events: list[StaffEvent]
+    suggestion: StaffSuggestion | None
+    ai_runs: list[StaffAiRun]
+    attempts_remaining: int
