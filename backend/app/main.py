@@ -12,7 +12,7 @@ from app.core.middleware import (
     UnhandledErrorMiddleware,
 )
 from app.core.spa import register_spa
-from app.routers import admin, auth, config, health, knowledge, requests
+from app.routers import admin, auth, config, health, knowledge, proxy_diagnostic, requests
 
 API_PREFIX = "/api/v1"
 
@@ -54,6 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(config.router, prefix=API_PREFIX)
     app.include_router(requests.router, prefix=API_PREFIX)
     app.include_router(admin.router, prefix=API_PREFIX)
+    app.include_router(proxy_diagnostic.router, prefix=API_PREFIX)
     app.include_router(knowledge.router, prefix=API_PREFIX)
     app.include_router(knowledge.admin_router, prefix=API_PREFIX)
     if settings.static_dir:
