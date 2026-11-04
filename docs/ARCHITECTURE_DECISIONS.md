@@ -213,3 +213,17 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Why retries are configured oddly:** Measured with a fake HTTP transport, the SDK sends 2 requests on a 429 or 5xx even with `attempts=1`. Its default is 5. `HttpRetryOptions(attempts=1, http_status_codes=[599])` gives exactly one request per attempt, so `GeminiAgent` alone decides on the single retry. `tests/test_gemini_agent.py` runs the real SDK against a fake transport to pin this, so an SDK upgrade that changes it fails a test.
 - **Trade-offs:** The schema duplicates `TriageResult` by hand, but it avoids sending `$defs` and `additionalProperties`, whose support could not be tested within the live call budget. `TriageResult` still validates everything. The retry setting depends on SDK behavior rather than a documented "no retries" option.
 - **Status: not verified live.** The single live analysis failed with `AI_TIMEOUT` on both attempts at the 20-second timeout. See `docs/IMPLEMENTATION_STATUS.md`. The docs also state that free-tier content may be used to improve Google's products, even though `store=False` opts out of interaction storage, so only redacted text should ever be sent, and real personal data should not be used on this tier.
+
+## ADR-030: In-process sliding-window rate limiter
+
+- **Context:** Login and analyze need rate limits, and the run prompt rules out new infrastructure.
+- **Alternatives:** Redis, which is the natural choice later; fixed windows, which allow bursts at window edges.
+- **Decision:** `core/rate_limit.py` keeps a deque of timestamps per key under a lock. Login is keyed on client IP and lowercased email, and every attempt counts, which also bounds Argon2 work. Analyze is keyed on user. Refused attempts are not recorded, so waiting always ends. Limits are configurable, and tests reset them between cases.
+- **Trade-offs:** Works for a single instance only: state is lost on restart and is not shared. `request.client.host` is used and `X-Forwarded-For` is deliberately not trusted, so a hosted deployment must configure proxy headers or every user shares one address. **Move to Redis before running more than one instance.** E2E suites that sign in often need `RATE_LIMIT_LOGIN_PER_MINUTE` raised.
+
+## ADR-031: Escalating a request withholds its visible AI reply
+
+- **Context:** A request can be `TRIAGED` with a reply the requester can read. If staff escalate it because that reply looks wrong, the visibility rule, which depends only on `review_state`, would keep showing it.
+- **Alternatives:** Leave it visible until staff act; add a separate hide endpoint.
+- **Decision:** PATCH to `NEEDS_HUMAN_REVIEW` moves a `NOT_REQUIRED` suggestion to `PENDING_REVIEW`, so it is hidden and can go through the normal review. An `APPROVED` reply stays visible, because a person already approved it. This was not in the run prompt. It closes a gap in the same safety rule.
+- **Trade-offs:** A requester can see a reply disappear. Feedback they already gave stays recorded.

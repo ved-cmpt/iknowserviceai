@@ -2,7 +2,7 @@
 
 An AI-assisted IT service-request platform with knowledge-grounded suggestions and human review gates. This is a portfolio project that uses only synthetic data.
 
-**Status: in development.** The foundation, request lifecycle API and knowledge base work locally. Nothing is deployed, the AI workflow does not exist yet, and most request actions have an API but no screen yet. See [implementation status](docs/IMPLEMENTATION_STATUS.md) for verified progress.
+**Status: in development.** The foundation, request lifecycle API, knowledge base and AI workflow work locally in mock mode. Nothing is deployed, the live Gemini path has not passed its smoke test, and most request actions have an API but no screen yet. See [implementation status](docs/IMPLEMENTATION_STATUS.md) for verified progress.
 
 ## Features
 
@@ -12,7 +12,9 @@ An AI-assisted IT service-request platform with knowledge-grounded suggestions a
 - [x] Login page and dashboard
 - [x] Request lifecycle API: filters, comments, state machine, optimistic concurrency, events and audit
 - [x] Knowledge base: admin API, PostgreSQL full-text search, retriever for the AI workflow and read-only screens
-- [ ] AI triage (mock and Gemini), policy gate and staff review
+- [x] AI triage with a deterministic mock agent, redaction, citation checks and retry limits
+- [x] Deterministic policy gate, staff review, feedback, rate limiting and adversarial tests
+- [ ] Live Gemini triage: the adapter is built and tested offline, but its one live test timed out
 - [ ] Complete requester, staff and admin screens
 - [ ] CI and hosted demo
 
@@ -87,7 +89,13 @@ docker compose exec frontend npm run build
 
 Frontend checks also work on the host with Node 24. Run `npm ci` once in `frontend/`, then use `npm --prefix frontend run lint`, `npm --prefix frontend test -- --run` and `npm --prefix frontend run build`.
 
-Backend tests use the separate `iknowserviceai_test` database and never touch demo data.
+Backend tests use the separate `iknowserviceai_test` database and never touch demo data. They use mock and fake providers and make no provider calls.
+
+The live Gemini smoke test is opt-in, and makes at most 2 API calls:
+
+```powershell
+docker compose exec -e RUN_LIVE_GEMINI_TESTS=1 backend pytest -q -s tests/live
+```
 
 ## Reset the demo data
 
@@ -98,6 +106,10 @@ docker compose exec backend python -m app.scripts.reset_demo --yes
 ```
 
 It refuses to run unless `ALLOW_DEMO_RESET=true`, and in `APP_ENV=production` it also requires `--allow-production`.
+
+## AI mode
+
+`AI_MODE=mock` is the default. It is deterministic and uses no network or key. To try Gemini, set `AI_MODE=gemini`, `GEMINI_API_KEY` and `GEMINI_MODEL` in `.env`, then run `docker compose up -d --force-recreate backend`. Live mode has not passed its smoke test yet (see [status](docs/IMPLEMENTATION_STATUS.md)). Do not enter real personal data: see [security](docs/SECURITY.md).
 
 ## Useful commands
 
@@ -114,6 +126,7 @@ docker compose down -v     # stop and delete the database volume
 - [Product contract](docs/PRODUCT_CONTRACT.md)
 - [API reference](docs/API.md)
 - [Architecture decisions](docs/ARCHITECTURE_DECISIONS.md)
+- [Security](docs/SECURITY.md)
 - [Implementation status](docs/IMPLEMENTATION_STATUS.md)
 - [Implementation blueprint](docs/IMPLEMENTATION_BLUEPRINT.md)
-- [Latest run report](docs/RUN_REPORTS/RUN_01.md)
+- [Latest run report](docs/RUN_REPORTS/RUN_02.md)

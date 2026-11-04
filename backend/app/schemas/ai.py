@@ -2,14 +2,53 @@
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+
+from pydantic import StrictBool, StringConstraints, model_validator
 
 from app.db.models.enums import AiMode, AiRunStatus, ArticleStatus, Category, Priority, ReviewState
-from app.schemas.common import ORMModel
+from app.schemas.common import NoNul, ORMModel, StrictInput
 
 AI_SUGGESTION_LABEL = "AI-generated suggestion; verify before acting"
 
 SuggestionState = Literal["AVAILABLE", "AWAITING_STAFF_REVIEW"]
+
+PublishedReply = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1200), NoNul
+]
+ReviewReason = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=3, max_length=300), NoNul
+]
+FeedbackComment = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500), NoNul]
+
+
+class ReviewCreate(StrictInput):
+    decision: Literal["APPROVED", "REJECTED"]
+    published_reply: PublishedReply | None = None
+    review_reason: ReviewReason
+    expected_suggestion_id: uuid.UUID
+    next_status: Literal["TRIAGED", "IN_PROGRESS"] = "TRIAGED"
+
+    @model_validator(mode="after")
+    def validate_reply(self) -> "ReviewCreate":
+        if self.decision == "APPROVED" and self.published_reply is None:
+            raise ValueError("published_reply is required to approve")
+        if self.decision == "REJECTED" and self.published_reply is not None:
+            raise ValueError("published_reply is only allowed when approving")
+        return self
+
+
+class FeedbackCreate(StrictInput):
+    helpful: StrictBool
+    comment: FeedbackComment | None = None
+
+
+class FeedbackCreated(ORMModel):
+    id: uuid.UUID
+    suggestion_id: uuid.UUID
+    helpful: bool
+    comment: str | None
+    created_at: datetime
 
 
 class CitationLink(ORMModel):

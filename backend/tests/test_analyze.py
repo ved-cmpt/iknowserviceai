@@ -320,7 +320,7 @@ def test_requester_never_sees_the_specific_failure_code(
 
 
 def test_unexpected_provider_exception_is_sanitized(
-    client: TestClient, db: Session, seeded, wifi_request, agent, capsys
+    client: TestClient, db: Session, seeded, wifi_request, agent, caplog
 ) -> None:
     secret_text = "provider body with secret-value-123"
     use_provider(FakeProvider(error=RuntimeError(secret_text)))
@@ -328,7 +328,7 @@ def test_unexpected_provider_exception_is_sanitized(
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "AI_UNAVAILABLE"
     assert secret_text not in response.text
-    assert secret_text not in capsys.readouterr().out
+    assert secret_text not in caplog.text
     db.refresh(wifi_request)
     assert wifi_request.status == RequestStatus.NEW
 
@@ -651,14 +651,14 @@ def test_provider_only_receives_redacted_text(
 
 
 def test_logs_hold_no_request_text(
-    client: TestClient, db: Session, seeded, make_request, requester, capsys
+    client: TestClient, db: Session, seeded, make_request, requester, caplog
 ) -> None:
     request = make_request(
         requester, title="Wi-Fi problem", description="Wi-Fi fails with marker-text-987."
     )
     use_provider(FakeProvider(error=ProviderTimeout()))
     _analyze(client, request, requester)
-    assert "marker-text-987" not in capsys.readouterr().out
+    assert "marker-text-987" not in caplog.text
 
 
 def test_retrieval_receives_at_most_five_bounded_articles(

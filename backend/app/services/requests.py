@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import STAFF_ROLES, is_staff
 from app.core.errors import conflict, forbidden, not_found, unprocessable
 from app.db.models import RequestComment, RequestEvent, ServiceRequest, User
-from app.db.models.enums import Category, EventType, Priority, RequestStatus
+from app.db.models.enums import Category, EventType, Priority, RequestStatus, ReviewState
 from app.schemas.requests import (
     CommentCreate,
     PersonSummary,
@@ -288,12 +288,30 @@ def update_request(
             action="request.status_changed",
             details=details,
         )
+        if target_status == RequestStatus.NEEDS_HUMAN_REVIEW:
+            _withhold_visible_suggestion(db, request, actor)
         changed = True
 
     if changed:
         request.version += 1
     db.commit()
     return request
+
+
+def _withhold_visible_suggestion(db: Session, request: ServiceRequest, actor: User) -> None:
+    """Staff escalating a request may distrust its AI reply, so hide it until it is reviewed."""
+    suggestion = suggestions.latest_suggestion(db, request.id)
+    if suggestion is None or suggestion.review_state != ReviewState.NOT_REQUIRED:
+        return
+    suggestion.review_state = ReviewState.PENDING_REVIEW.value
+    record_change(
+        db,
+        request,
+        actor,
+        event_type=EventType.SUGGESTION_WITHHELD,
+        action="request.suggestion_withheld",
+        details={"suggestion_id": str(suggestion.id)},
+    )
 
 
 def _requester_events(events: list[RequestEvent]) -> list[RequesterEvent]:

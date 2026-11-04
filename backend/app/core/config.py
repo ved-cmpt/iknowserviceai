@@ -35,6 +35,9 @@ class Settings(BaseSettings):
 
     kb_min_rank: float = Field(default=0.5, ge=0)  # See ADR-016 for the measurements.
 
+    rate_limit_login_per_minute: int = Field(default=5, ge=1)
+    rate_limit_analyze_per_hour: int = Field(default=10, ge=1)
+
     demo_password: str | None = None
     allow_demo_reset: bool = False
 

@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.deps import STAFF_ROLES, get_current_user, require_roles
+from app.core.rate_limit import analyze_limiter
 from app.db.models import User
 from app.db.models.enums import Category, Priority, RequestStatus
 from app.db.session import get_db
+from app.schemas.ai import FeedbackCreate, FeedbackCreated, ReviewCreate
 from app.schemas.common import Page
 from app.schemas.requests import (
     CommentCreate,
@@ -22,6 +24,7 @@ from app.schemas.requests import (
     StaffRequestListItem,
 )
 from app.services import requests as request_service
+from app.services import review as review_service
 from app.services.ai import orchestrator
 from app.services.ai.base import AgentProvider
 from app.services.ai.factory import get_agent_provider
@@ -84,8 +87,32 @@ def analyze_request(
     db: Session = Depends(get_db),
 ) -> StaffRequestDetail | RequesterRequestDetail:
     """Run one AI analysis. A plain `def`, so the provider call runs in a worker thread."""
+    analyze_limiter.check(str(user.id))
     request = orchestrator.analyze_request(db, user, request_id, provider)
     return request_service.build_detail(db, user, request)
+
+
+@router.post("/{request_id}/review")
+def review_request(
+    request_id: uuid.UUID,
+    payload: ReviewCreate,
+    user: User = Depends(require_roles(*STAFF_ROLES)),
+    db: Session = Depends(get_db),
+) -> StaffRequestDetail:
+    request = review_service.review_suggestion(db, user, request_id, payload)
+    return request_service.build_detail(db, user, request)
+
+
+@router.post("/{request_id}/feedback", status_code=201)
+def add_feedback(
+    request_id: uuid.UUID,
+    payload: FeedbackCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FeedbackCreated:
+    return FeedbackCreated.model_validate(
+        review_service.add_feedback(db, user, request_id, payload)
+    )
 
 
 @router.post("/{request_id}/comments", status_code=201)

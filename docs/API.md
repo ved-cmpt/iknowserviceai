@@ -18,10 +18,11 @@ This covers implemented endpoints only. The base path is `/api/v1`, except that 
 | 403 | Signed in without permission | `FORBIDDEN` |
 | 404 | Not found, or not visible to this user | `NOT_FOUND` |
 | 405 | Wrong method | `METHOD_NOT_ALLOWED` |
-| 409 | Conflict with current state | `INVALID_TRANSITION`, `STALE_UPDATE`, `REQUEST_CLOSED`, `SLUG_CONFLICT` |
-| 422 | Invalid input | `VALIDATION_ERROR`, `INVALID_ASSIGNEE` |
+| 409 | Conflict with current state | `INVALID_TRANSITION`, `STALE_UPDATE`, `REQUEST_CLOSED`, `SLUG_CONFLICT`, `INVALID_STATE`, `ANALYSIS_IN_PROGRESS`, `ANALYSIS_SUPERSEDED`, `NO_PENDING_SUGGESTION`, `STALE_REVIEW`, `ALREADY_REVIEWED`, `NO_VISIBLE_SUGGESTION`, `FEEDBACK_EXISTS` |
+| 422 | Invalid input | `VALIDATION_ERROR`, `INVALID_ASSIGNEE`, `UNSAFE_REPLY` |
+| 429 | Limit reached. `RATE_LIMITED` includes a `Retry-After` header | `RATE_LIMITED`, `ANALYZE_LIMIT_REACHED` |
 | 500 | Unexpected failure, with no internal detail | `INTERNAL_ERROR` |
-| 503 | Not ready | `NOT_READY` |
+| 503 | Not ready, or the AI provider failed | `NOT_READY`, `ANALYSIS_FAILED`, `AI_TIMEOUT`, `AI_RATE_LIMITED`, `AI_UNAVAILABLE`, `AI_INVALID_OUTPUT`, `AI_AUTH` |
 
 **Request bodies** reject unknown fields with 422.
 
@@ -51,7 +52,7 @@ Response 200:
 }
 ```
 
-Errors: 401 `INVALID_CREDENTIALS`, with one message for unknown email, wrong password and inactive account. Success and failure are both audited.
+Errors: 401 `INVALID_CREDENTIALS`, with one message for unknown email, wrong password and inactive account; 429 `RATE_LIMITED` after 5 attempts per minute for one IP address and email. Success and failure are both audited.
 
 ### `GET /auth/me` (signed in)
 
@@ -81,16 +82,17 @@ USER sees their own requests only. AGENT and ADMIN see all.
 
 Items: `id, title, status, category, priority, created_at, updated_at`. Staff also get `requester_id, assigned_agent_id, version`.
 
-Errors: 401, 403, 422.
+Errors: 401, 403, 422. List items never hold suggestion fields.
 
 ### `GET /requests/{id}` (owner or staff)
 
 USER response: `id, title, description, status, category, priority, created_at, updated_at, resolved_at`, plus:
 
 - `comments`: public only, each `id, author_name, body, created_at`.
-- `events`: `event_type, details, created_at`. Details are limited to `from` and `to` for status, priority and category changes. Internal-comment events, reasons and staff identifiers are removed.
+- `events`: `event_type, details, created_at`. Details are limited to `from` and `to` for status, priority and category changes. Internal-comment events, AI and review events, reasons and staff identifiers are removed.
+- `suggestion_state` and `suggestion`. See [AI fields](#ai-fields-in-get-requestsid).
 
-Staff response adds `version`, `requester`, `assigned_agent`, all comments with `author_id` and `is_internal`, and full events with `id`, `actor_id` and all details.
+Staff response adds `version`, `requester`, `assigned_agent`, all comments with `author_id` and `is_internal`, full events with `id`, `actor_id` and all details, and `suggestion`, `ai_runs` and `attempts_remaining`.
 
 Errors: 401; 404 for an unknown ID or another user's request.
 
@@ -121,11 +123,126 @@ Adding a comment increments the request `version` (ADR-013).
 - Omitting `assigned_agent_id` leaves it unchanged, and `null` unassigns.
 - `reason` (3 to 300 characters) is required when `priority` or `category` is sent. It is staff-only and is recorded in the event and audit log.
 - `status` follows the [state machine](PRODUCT_CONTRACT.md#state-machine). `ANALYZING` cannot be set or left here.
+- Moving to `NEEDS_HUMAN_REVIEW` withholds a visible AI reply until it is reviewed (ADR-031).
 - An update is all-or-nothing. If nothing actually changes, the response is 200 and `version` does not change.
 
 Response 200: staff request detail.
 
 Errors: 401; 403 for USER; 404; 409 `STALE_UPDATE`, `INVALID_TRANSITION` or `REQUEST_CLOSED`; 422 `VALIDATION_ERROR` or `INVALID_ASSIGNEE`.
+
+### `POST /requests/{id}/analyze` (owner or staff)
+
+Runs one AI analysis. It has no request body, and can take up to about 45 seconds in live mode, so clients should show progress. The request must be `NEW`.
+
+Response 200: the same role-aware shape as `GET /requests/{id}`. The status becomes `TRIAGED`, or `NEEDS_HUMAN_REVIEW` if any policy flag applies.
+
+| Status | Code | Meaning |
+|---|---|---|
+| 401, 404 | `UNAUTHORIZED`, `NOT_FOUND` | Not signed in, or not this user's request |
+| 409 | `INVALID_STATE` | The request is not `NEW` |
+| 409 | `ANALYSIS_IN_PROGRESS` | Another analysis of this request is running |
+| 409 | `ANALYSIS_SUPERSEDED` | This run took so long that a newer call replaced it |
+| 429 | `ANALYZE_LIMIT_REACHED` | The request used all `AI_MAX_ANALYZE_ATTEMPTS` (default 3). Staff can still triage it manually |
+| 429 | `RATE_LIMITED` | This user reached the hourly limit. See `Retry-After` |
+| 503 | See below | The provider failed |
+
+A 503 has this body. The request is back at `NEW`, the run is `FAILED` and no suggestion was saved.
+
+```json
+{
+  "error": { "code": "ANALYSIS_FAILED", "message": "...", "request_id": "..." },
+  "retryable": true,
+  "attempts_remaining": 2
+}
+```
+
+A USER always gets the code `ANALYSIS_FAILED`. Staff get `AI_TIMEOUT`, `AI_RATE_LIMITED`, `AI_UNAVAILABLE`, `AI_INVALID_OUTPUT` or `AI_AUTH` (ADR-028). `AI_AUTH` is never retryable, and `retryable` is false when no attempts remain.
+
+A request found in `ANALYZING` whose run is older than `AI_STALE_RUN_SECONDS` (default 120), or which has no run, is recovered automatically by the next call: the run becomes `FAILED` with `STALE_RUN`, and the analysis proceeds if attempts remain (ADR-026).
+
+### `POST /requests/{id}/review` (AGENT, ADMIN)
+
+Approve or reject the latest `PENDING_REVIEW` suggestion of a `NEEDS_HUMAN_REVIEW` request.
+
+```json
+{
+  "decision": "APPROVED",
+  "published_reply": "Required to approve, not allowed to reject. 1 to 1200 characters",
+  "review_reason": "3 to 300 characters",
+  "expected_suggestion_id": "<suggestion.id from the staff request detail>",
+  "next_status": "TRIAGED"
+}
+```
+
+`next_status` is `TRIAGED` (default) or `IN_PROGRESS`. `published_reply` is stored separately from `proposed_reply`. Events and audit hold the decision, reason and reviewer, never reply text.
+
+Response 200: staff request detail.
+
+Errors: 401; 403 for USER, or for staff reviewing a request they submitted; 404; 409 `NO_PENDING_SUGGESTION`, `STALE_REVIEW`, `ALREADY_REVIEWED` or `INVALID_STATE`; 422 `VALIDATION_ERROR`, or `UNSAFE_REPLY` if the reply asks for passwords, codes or tokens.
+
+### `POST /requests/{id}/feedback` (owner)
+
+Rate the suggestion the owner can currently see. Allowed once per suggestion.
+
+Request: `{ "helpful": true, "comment": "optional, up to 500 characters" }`. `helpful` must be a JSON boolean.
+
+Response 201: `{ "id", "suggestion_id", "helpful", "comment", "created_at" }`.
+
+Errors: 401; 403 for staff who do not own the request; 404; 409 `NO_VISIBLE_SUGGESTION` or `FEEDBACK_EXISTS`; 422.
+
+### AI fields in `GET /requests/{id}`
+
+USER:
+
+```json
+{
+  "suggestion_state": "AVAILABLE",
+  "suggestion": {
+    "id": "...",
+    "reply": "...",
+    "citations": [{ "id": "...", "title": "..." }],
+    "label": "AI-generated suggestion; verify before acting",
+    "feedback_submitted": false
+  }
+}
+```
+
+| `review_state` (staff-only) | `suggestion_state` | `suggestion.reply` |
+|---|---|---|
+| No suggestion | `null` | `suggestion` is `null` |
+| `NOT_REQUIRED` | `AVAILABLE` | The AI reply |
+| `PENDING_REVIEW` | `AWAITING_STAFF_REVIEW` | `suggestion` is `null` |
+| `APPROVED` | `AVAILABLE` | The staff-approved `published_reply` |
+| `REJECTED` | `null` | `suggestion` is `null` |
+
+Citations to articles that are no longer published are omitted for requesters.
+
+Staff get these fields instead:
+
+```json
+{
+  "attempts_remaining": 2,
+  "suggestion": {
+    "id": "...", "ai_run_id": "...", "summary": "...",
+    "proposed_category": "NETWORK", "proposed_priority": "MEDIUM",
+    "proposed_reply": "...", "published_reply": null,
+    "confidence": 0.85, "risk_flags": [], "rationale_short": "...",
+    "citations": [{ "id": "...", "title": "...", "status": "PUBLISHED" }],
+    "review_state": "NOT_REQUIRED",
+    "reviewed_by": null, "reviewed_at": null, "review_reason": null,
+    "feedback": [{ "id": "...", "user_id": "...", "helpful": true, "comment": null, "created_at": "..." }]
+  },
+  "ai_runs": [{
+    "id": "...", "mode": "MOCK", "model_id": null, "status": "SUCCEEDED",
+    "started_at": "...", "ended_at": "...", "duration_ms": 12,
+    "token_counts": null, "error_code": null, "prompt_version": "triage-v1"
+  }]
+}
+```
+
+`suggestion` is `null` before a successful analysis. `redacted_input` is not returned to anyone.
+
+Risk flags: `ACCOUNT_COMPROMISE`, `CREDENTIAL_REQUEST`, `PHISHING`, `PRIVACY_SENSITIVE`, `PAYMENT`, `PRIVILEGED_ACCESS`, `ACCOUNT_RECOVERY`, `DEVICE_WIPE`, `DESTRUCTIVE_ACTION`, `PROMPT_INJECTION`, `INVALID_CITATION`, `NO_CITATIONS`, `NO_RELEVANT_KNOWLEDGE`, `LOW_CONFIDENCE`, `MODEL_REQUESTED_REVIEW`, `OUTPUT_ASKS_CREDENTIALS`, `OUTPUT_CLAIMS_ACTION`, `OUTPUT_UNSUPPORTED_CONTACT`, `KB_CONTENT_SUSPECT`.
 
 ## Knowledge
 
@@ -185,7 +302,7 @@ Errors: 401; 403 for USER and AGENT; 404; 422.
 
 ## Internal interface: KnowledgeRetriever
 
-The AI workflow in Chunk 3 uses this interface. It is not an HTTP endpoint. Keep it stable.
+The AI workflow uses this interface. It is not an HTTP endpoint. Keep it stable.
 
 ```python
 # app/services/retrieval.py
@@ -212,7 +329,7 @@ class RetrievedArticle:
 
 Paginated, newest first. Items: `id, actor_id, entity_type, entity_id, action, safe_metadata, occurred_at`. Metadata never contains passwords, tokens or comment bodies.
 
-Audit actions so far: `auth.login_success`, `auth.login_failure`, `request.created`, `request.assigned`, `request.unassigned`, `request.priority_changed`, `request.category_changed`, `request.status_changed`, `request.comment_added`, `knowledge.created`, `knowledge.updated`, `knowledge.published`, `knowledge.unpublished`, `knowledge.status_changed`.
+Audit actions so far: `auth.login_success`, `auth.login_failure`, `request.created`, `request.assigned`, `request.unassigned`, `request.priority_changed`, `request.category_changed`, `request.status_changed`, `request.comment_added`, `request.ai_analysis_started`, `request.ai_analysis_succeeded`, `request.ai_analysis_failed`, `request.review_approved`, `request.review_rejected`, `request.suggestion_withheld`, `request.feedback_added`, `knowledge.created`, `knowledge.updated`, `knowledge.published`, `knowledge.unpublished`, `knowledge.status_changed`.
 
 Errors: 401; 403 for USER and AGENT; 422.
 
