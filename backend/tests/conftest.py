@@ -18,10 +18,11 @@ from itertools import count  # noqa: E402
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from app.core.security import create_access_token, hash_password  # noqa: E402
-from app.db.models import ServiceRequest, User  # noqa: E402
+from app.db.models import Base, ServiceRequest, User  # noqa: E402
 from app.db.models.enums import Role  # noqa: E402
 from app.db.session import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
@@ -44,6 +45,16 @@ def migrated_database() -> None:
     """Migrate once per session, from a clean schema."""
     command.downgrade(migration_config(), "base")
     command.upgrade(migration_config(), "head")
+
+
+def truncate_all_tables() -> None:
+    """Remove committed rows from the test database, for tests that use real connections.
+
+    TRUNCATE is the only way to clear append-only history, because row triggers refuse DELETE.
+    """
+    tables = ", ".join(f'"{table.name}"' for table in Base.metadata.sorted_tables)
+    with engine.begin() as connection:
+        connection.execute(text(f"TRUNCATE {tables} CASCADE"))
 
 
 @pytest.fixture

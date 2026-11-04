@@ -26,7 +26,7 @@ router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 admin_router = APIRouter(prefix="/admin/knowledge", tags=["admin"])
 
 
-def _summary(article: KnowledgeArticle) -> ArticleSummary:
+def _summary(article: KnowledgeArticle, snippet: str | None = None) -> ArticleSummary:
     return ArticleSummary(
         id=article.id,
         slug=article.slug,
@@ -35,7 +35,9 @@ def _summary(article: KnowledgeArticle) -> ArticleSummary:
         tags=article.tags,
         version=article.version,
         updated_at=article.updated_at,
-        snippet=make_snippet(article.body_markdown, SNIPPET_MAX_LENGTH),
+        snippet=make_snippet(article.body_markdown, SNIPPET_MAX_LENGTH)
+        if snippet is None
+        else snippet,
     )
 
 
@@ -59,17 +61,19 @@ def search_knowledge(
         articles, total = knowledge_service.list_published(
             db, category=category, limit=limit, offset=offset
         )
+        items = [_summary(article) for article in articles]
     else:
         results, total = knowledge_service.search_published(
             db, q, category=category, limit=limit, offset=offset
         )
         articles = [result.article for result in results]
-    return Page(
-        items=[_summary(article) for article in articles],
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
+        snippets = knowledge_service.query_snippets(
+            db, [article.body_markdown for article in articles], q, SNIPPET_MAX_LENGTH
+        )
+        items = [
+            _summary(article, snippet) for article, snippet in zip(articles, snippets, strict=True)
+        ]
+    return Page(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{article_id}")

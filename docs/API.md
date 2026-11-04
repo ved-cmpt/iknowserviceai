@@ -129,7 +129,7 @@ Errors: 401; 403 for USER; 404; 409 `STALE_UPDATE`, `INVALID_TRANSITION` or `REQ
 
 ## Knowledge
 
-Article bodies are raw markdown and **untrusted text**. The backend never interprets them, and clients must render them safely. Snippets are plain text with markup removed, cut from the start of the article.
+Article bodies are raw markdown and **untrusted text**. The backend never interprets them, and clients must render them safely. Snippets are plain text with markup removed. In a search they show the text around the matched terms, with fragments joined by ` … `. When browsing, or when only the title matched, they show the start of the article (ADR-024).
 
 ### `GET /knowledge` (any signed-in role)
 
@@ -196,7 +196,7 @@ class RetrievedArticle:
     id: uuid.UUID
     title: str
     category: str
-    snippet: str  # plain text, at most 500 characters
+    snippet: str  # plain text around the matched terms, at most 500 characters
     rank: float
 ```
 
@@ -216,4 +216,4 @@ Audit actions so far: `auth.login_success`, `auth.login_failure`, `request.creat
 
 Errors: 401; 403 for USER and AGENT; 422.
 
-Events and audit rows are append-only. No endpoint updates or deletes them.
+Events and audit rows are append-only. No endpoint updates or deletes them, and database triggers refuse `UPDATE` and `DELETE` (ADR-025).

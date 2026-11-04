@@ -3,7 +3,7 @@
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import ColumnElement, Select, Text, cast, func, literal_column, select
+from sqlalchemy import ColumnElement, Select, Text, cast, func, literal_column, select, text
 from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ from app.db.models import KnowledgeArticle, User
 from app.db.models.enums import ArticleStatus, Category, Role
 from app.schemas.knowledge import ArticleCreate, ArticleUpdate
 from app.services.audit import record_audit
+from app.services.text import make_snippet, markdown_to_plain_text
 
 ENTITY_TYPE = "knowledge_article"
 CONTENT_FIELDS = ("title", "body_markdown", "category", "tags")
@@ -79,6 +80,34 @@ def search_published(
         .offset(offset)
     ).all()
     return [RankedArticle(article=row[0], rank=float(row[1])) for row in rows], total
+
+
+def query_snippets(db: Session, bodies: list[str], query: str, max_length: int) -> list[str]:
+    """Return one snippet per article body, showing the text around the matched terms (ADR-024).
+
+    Markup is removed before PostgreSQL sees the text, so a fragment can never start inside a tag
+    or a script block. A body with no matching term falls back to its leading text.
+    """
+    if not bodies:
+        return []
+    plain_bodies = [markdown_to_plain_text(body) for body in bodies]
+    # Roughly 16 characters per word across two fragments keeps most results under the cap.
+    max_words = max(20, max_length // 16)
+    options = (
+        f'StartSel="", StopSel="", MaxWords={max_words}, MinWords={max_words // 2}, '
+        'MaxFragments=2, FragmentDelimiter=" … "'
+    )
+    rows = db.execute(
+        text(
+            "SELECT ts_headline('english'::regconfig, body, "
+            "replace(websearch_to_tsquery('english'::regconfig, :query)::text, ' & ', ' | ')"
+            "::tsquery, :options) "
+            "FROM unnest(CAST(:bodies AS text[])) WITH ORDINALITY AS item(body, position) "
+            "ORDER BY position"
+        ),
+        {"query": query, "options": options, "bodies": plain_bodies},
+    ).scalars()
+    return [make_snippet(headline, max_length) for headline in rows]
 
 
 def _paged(db: Session, query: Select, limit: int, offset: int) -> tuple[list, int]:

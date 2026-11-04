@@ -656,3 +656,67 @@ def test_snippet_handles_one_long_word() -> None:
 
 def test_short_snippet_is_unchanged() -> None:
     assert make_snippet("short text", 300) == "short text"
+
+
+# Query-focused snippets (ADR-024)
+
+LONG_BODY = (
+    "Opening paragraph about nothing in particular. " * 30
+    + "The zebrafoo appliance needs a restart when its light blinks. "
+    + "Closing paragraph about something else entirely. " * 30
+)
+
+
+def test_public_snippet_shows_text_around_the_match(
+    client: TestClient, requester, make_article
+) -> None:
+    make_article(slug="long", title="Device notes", body_markdown=LONG_BODY)
+    item = client.get(KNOWLEDGE, params={"q": "zebrafoo"}, headers=auth(requester)).json()["items"]
+    assert "zebrafoo appliance" in item[0]["snippet"]
+    assert len(item[0]["snippet"]) <= 300
+
+
+def test_retriever_snippet_shows_text_around_the_match(db: Session, make_article) -> None:
+    make_article(slug="long", title="Device notes", body_markdown=LONG_BODY)
+    result = KnowledgeRetriever(db).search("zebrafoo", min_rank=0)[0]
+    assert "zebrafoo appliance" in result.snippet
+    assert len(result.snippet) <= 500
+
+
+def test_snippet_for_a_title_only_match_falls_back_to_leading_text(
+    client: TestClient, requester, make_article
+) -> None:
+    make_article(
+        slug="long", title="Zebrafoo notes", body_markdown="Opening paragraph about nothing. " * 40
+    )
+    item = client.get(KNOWLEDGE, params={"q": "zebrafoo"}, headers=auth(requester)).json()["items"]
+    assert item[0]["snippet"].startswith("Opening paragraph")
+
+
+def test_browse_snippet_stays_leading_text(client: TestClient, requester, make_article) -> None:
+    make_article(slug="long", title="Device notes", body_markdown=LONG_BODY)
+    item = client.get(KNOWLEDGE, headers=auth(requester)).json()["items"]
+    assert item[0]["snippet"].startswith("Opening paragraph")
+
+
+def test_query_snippet_holds_no_markup_near_the_match(db: Session, make_article) -> None:
+    body = (
+        "Padding sentence here. " * 40
+        + "**Restart** the <b>zebrafoo</b> <script>alert(1)</script> [now](javascript:alert(2)) "
+        + "Padding sentence here. " * 40
+    )
+    make_article(slug="hostile-long", title="Device notes", body_markdown=body)
+    snippet = KnowledgeRetriever(db).search("zebrafoo", min_rank=0)[0].snippet
+    assert "zebrafoo" in snippet
+    for fragment in ("<", ">", "**", "alert(1)", "javascript:"):
+        assert fragment not in snippet
+
+
+def test_query_snippets_tolerate_search_syntax(client: TestClient, requester, make_article) -> None:
+    make_article(slug="syntax", title="Device notes", body_markdown=LONG_BODY)
+    response = client.get(
+        KNOWLEDGE,
+        params={"q": '"zebrafoo appliance" OR -missing \'; DROP'},
+        headers=auth(requester),
+    )
+    assert response.status_code == 200

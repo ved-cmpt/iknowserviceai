@@ -169,3 +169,17 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Alternatives:** Add Playwright to the project now, which would also download browsers.
 - **Decision:** Run a throwaway `playwright-core` script against the Microsoft Edge already installed with Windows, from a git-ignored folder that was deleted afterwards.
 - **Trade-offs:** No browsers downloaded and no new project dependency, but the check cannot be rerun until Phase 8 adds a proper suite. Results are recorded in `docs/RUN_REPORTS/RUN_01.md`.
+
+## ADR-024: Query-focused snippets with `ts_headline` (supersedes ADR-017 for searches)
+
+- **Context:** Leading-text snippets (ADR-017) may not contain the matched words, which weakens the AI's context and the search results.
+- **Alternatives:** Run `ts_headline` on raw markdown and strip markup afterwards; find matches in Python.
+- **Decision:** `knowledge.query_snippets` converts the body to plain text first, then runs `ts_headline` with empty delimiters and up to two fragments, then caps the result at a word boundary: 300 characters for the API and 500 for the retriever. Browsing without `q` keeps leading text, and a title-only match falls back to it.
+- **Trade-offs:** Removing markup before PostgreSQL sees the text means a fragment cannot begin inside a tag or a script block, at the cost of sending the bodies back to the database for one extra query per search. Instruction-like text can still appear, so snippets remain untrusted data.
+
+## ADR-025: Database-enforced append-only history
+
+- **Context:** `audit_logs` and `request_events` were append-only at the API level only.
+- **Alternatives:** Revoke privileges from a separate role, which needs a second database role in every environment.
+- **Decision:** Revision `0003` adds `BEFORE UPDATE OR DELETE FOR EACH ROW` triggers that raise `restrict_violation`. Row triggers do not fire on `TRUNCATE`, so `reset_demo` still works. Tests that use real connections clean up with `TRUNCATE`.
+- **Trade-offs:** This narrows ADR-007: the `ON DELETE CASCADE` from `service_requests` to `request_events` now fails when events exist, so a request with history cannot be hard-deleted. No endpoint deletes requests. A database superuser can still drop the triggers, so this prevents accidents and application bugs rather than a hostile DBA.

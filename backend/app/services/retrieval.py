@@ -10,8 +10,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.services.knowledge import search_published
-from app.services.text import make_snippet
+from app.services.knowledge import query_snippets, search_published
 
 MAX_TOP_K = 5
 SNIPPET_MAX_LENGTH = 500
@@ -42,13 +41,19 @@ class KnowledgeRetriever:
             return []
         floor = get_settings().kb_min_rank if min_rank is None else min_rank
         results, _ = search_published(self._db, query, limit=min(top_k, MAX_TOP_K), min_rank=floor)
+        snippets = query_snippets(
+            self._db,
+            [result.article.body_markdown for result in results],
+            query,
+            SNIPPET_MAX_LENGTH,
+        )
         return [
             RetrievedArticle(
                 id=result.article.id,
                 title=result.article.title,
                 category=result.article.category,
-                snippet=make_snippet(result.article.body_markdown, SNIPPET_MAX_LENGTH),
+                snippet=snippet,
                 rank=result.rank,
             )
-            for result in results
+            for result, snippet in zip(results, snippets, strict=True)
         ]

@@ -7,13 +7,13 @@ from threading import Barrier
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 
-from app.db.models import AuditLog, RequestEvent, ServiceRequest, User
+from app.db.models import RequestEvent, ServiceRequest, User
 from app.db.models.enums import EventType, Role
 from app.db.session import SessionLocal
 from app.main import app
-from tests.conftest import auth
+from tests.conftest import auth, truncate_all_tables
 
 ATTEMPTS = 5
 
@@ -40,11 +40,7 @@ def committed_rows() -> Iterator[tuple]:
 
     yield ids, agent_headers
 
-    with SessionLocal() as session:
-        session.execute(delete(AuditLog).where(AuditLog.actor_id.in_(ids)))
-        session.execute(delete(ServiceRequest).where(ServiceRequest.requester_id == ids[0]))
-        session.execute(delete(User).where(User.id.in_(ids)))
-        session.commit()
+    truncate_all_tables()
 
 
 def _race(request_id: uuid.UUID, headers: dict[str, str]) -> list[int]:

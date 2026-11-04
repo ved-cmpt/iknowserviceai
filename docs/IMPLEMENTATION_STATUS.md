@@ -43,9 +43,7 @@ None known. See limitations below.
 - Requests can only be created, commented on or updated through the API (`/docs`). The screens come in Phases 7 and 8.
 - No rate limiting yet, including on login (Phase 6).
 - The seeded `ANALYZING` request cannot leave that state until Chunk 3 builds the AI service.
-- Events and audit logs are append-only at the API level. There is no database trigger preventing direct SQL changes.
 - The relevance floor is measured on 12 articles and should be re-measured in Phase 9.
-- `starlette.testclient` prints a deprecation warning about `httpx` and `httpx2`. It has no effect on results.
 - Base images use floating tags (`postgres:17`, `python:3.12-slim`, `node:24-slim`).
 - Mobile layout and keyboard use have not been checked in a browser (Phase 7).
 - `docs/SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/DEMO.md`, `docs/EVALUATION.md`, CI and `LICENSE` do not exist yet. Later phases add them.
