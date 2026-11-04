@@ -34,7 +34,7 @@ You need Docker Desktop running. Commands are for PowerShell, from the project r
    In bash:
 
    ```bash
-   sed "s|<replace-with-a-long-random-string>|$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')|" .env.example > .env
+   sed "s|<replace-with-a-long-random-string>|$(openssl rand -hex 32)|" .env.example > .env
    ```
 
 2. Start the stack, apply migrations and load the demo data:
@@ -116,3 +116,4 @@ docker compose down -v     # stop and delete the database volume
 - [Architecture decisions](docs/ARCHITECTURE_DECISIONS.md)
 - [Implementation status](docs/IMPLEMENTATION_STATUS.md)
 - [Implementation blueprint](docs/IMPLEMENTATION_BLUEPRINT.md)
+- [Latest run report](docs/RUN_REPORTS/RUN_01.md)
