@@ -1,5 +1,5 @@
-# Development image. Production images come with the deployment phase (ADR-005).
-FROM python:3.12-slim
+# Development image. The production image is deploy/Dockerfile (ADR-044).
+FROM python:3.12.16-slim@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
     UV_LINK_MODE=copy \
     PATH="/opt/venv/bin:$PATH"
 
-RUN pip install --no-cache-dir "uv==0.13.*"
+RUN pip install --no-cache-dir "uv==0.13.7"
 
 WORKDIR /app
 

@@ -3,11 +3,12 @@ name: iknowserviceai
 
 services:
   db:
-    image: postgres:17
+    image: postgres:17.11@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?set in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
       POSTGRES_DB: ${POSTGRES_DB:?set in .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set in .env}
     ports:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
@@ -43,10 +44,10 @@ services:
   frontend:
     build: ./frontend
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+      # The browser stays on one origin, and Vite passes API calls to the backend (ADR-044).
+      VITE_API_BASE_URL: /api/v1
+      VITE_PROXY_TARGET: http://backend:8000
       VITE_USE_POLLING: ${VITE_USE_POLLING:-true}
-      VITE_SHOW_DEMO_HINT: ${VITE_SHOW_DEMO_HINT:-true}
-      VITE_DEMO_PASSWORD_HINT: ${DEMO_PASSWORD:-}
     depends_on:
       backend:
         condition: service_healthy

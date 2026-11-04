@@ -21,6 +21,16 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
+def owner_session() -> Session:
+    """A session as the owner role, for the rare script that needs more than the app role has."""
+    settings = get_settings()
+    url = settings.migration_database_url or settings.database_url
+    return Session(
+        create_engine(url, hide_parameters=True, connect_args={"connect_timeout": 5}),
+        expire_on_commit=False,
+    )
+
+
 def get_db() -> Iterator[Session]:
     with SessionLocal() as session:
         yield session

@@ -1,9 +1,11 @@
 """Idempotent demo seed: python -m app.scripts.seed_demo
 
 Rows are keyed by email, slug or a stable UUID. Existing rows are left alone, so running the seed
-twice changes nothing and any edits made through the app survive.
+twice changes nothing and any edits made through the app survive. Nothing runs this automatically,
+and with APP_ENV=production it also needs --allow-production.
 """
 
+import argparse
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -11,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.security import hash_password
 from app.db.models import KnowledgeArticle, RequestComment, RequestEvent, ServiceRequest, User
 from app.db.models.enums import ArticleStatus, EventType, RequestStatus
@@ -189,8 +191,24 @@ def seed_demo(db: Session, password: str) -> None:
     db.commit()
 
 
-def main() -> int:
-    password = get_settings().demo_password
+def seed_refusal(settings: Settings, *, allow_production: bool) -> str | None:
+    """Return why the seed must not run, or None if it may."""
+    if settings.is_production and not allow_production:
+        return "Refusing to seed in production without --allow-production."
+    return None
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Insert any missing demo rows.")
+    parser.add_argument("--allow-production", action="store_true", help="permit APP_ENV=production")
+    args = parser.parse_args(argv)
+
+    settings = get_settings()
+    refusal = seed_refusal(settings, allow_production=args.allow_production)
+    if refusal:
+        print(refusal, file=sys.stderr)
+        return 1
+    password = settings.demo_password
     if not password:
         print("DEMO_PASSWORD is not set.", file=sys.stderr)
         return 1

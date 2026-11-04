@@ -108,7 +108,10 @@ def test_reset_restores_seed_state(db: Session) -> None:
 
 
 def _settings(**overrides: object) -> Settings:
-    values = {"database_url": "postgresql+psycopg://x@y/z", "jwt_secret": "x" * 32}
+    values = {
+        "database_url": "postgresql+psycopg://x@y/z",
+        "jwt_secret": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    }
     return Settings(**{**values, **overrides})
 
 

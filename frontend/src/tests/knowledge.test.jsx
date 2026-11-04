@@ -1,10 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { errorResponse, jsonResponse, mockFetch } from './helpers'
+import { errorResponse, HEALTH, jsonResponse, mockFetch } from './helpers'
 import { renderSignedIn } from './renderApp'
 
-const HEALTH = { 'GET /healthz': () => jsonResponse({ status: 'ok' }) }
 const ARTICLE = {
   id: 'a1',
   slug: 'wifi',

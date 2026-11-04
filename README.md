@@ -65,7 +65,7 @@ You need Docker Desktop running. Commands are for PowerShell, from the project r
 
    | What | URL |
    |---|---|
-   | App | http://localhost:5173 |
+   | App | http://localhost:5173 (Vite passes `/api` to the backend, so the browser stays on one origin) |
    | API docs (development only) | http://localhost:8000/docs |
    | Liveness | http://localhost:8000/healthz |
    | Readiness | http://localhost:8000/readyz |
@@ -73,6 +73,8 @@ You need Docker Desktop running. Commands are for PowerShell, from the project r
    The health endpoints are also served at `/api/v1/healthz` and `/api/v1/readyz`.
 
 If another PostgreSQL already uses port 5432, set `POSTGRES_HOST_PORT` in `.env` to a free port.
+
+**Upgrading an older checkout:** the app now connects as a least-privilege database role, created only when the database volume is first initialized. Add the new variables from `.env.example` to `.env`, then run `docker compose down -v` once. That deletes the local demo data, which the commands above recreate.
 
 ## Demo accounts
 
@@ -85,7 +87,7 @@ These are fictional accounts on the reserved `.test` domain. They share one **in
 | `alex.chen@demo.iknowservice.test` | AGENT | Alex Chen | Support queue |
 | `jordan.reyes@demo.iknowservice.test` | ADMIN | Jordan Reyes | Support queue |
 
-Reloading the page signs you out, because the token is held in memory only (ADR-009).
+Reloading the page keeps you signed in, for up to 8 hours per sign-in. **Sign out** ends the session.
 
 ## Tests and checks
 
@@ -125,6 +127,28 @@ This is opt-in, and makes at most 2 API calls:
 
 ```powershell
 docker compose exec -e RUN_LIVE_GEMINI_TESTS=1 backend pytest -q -s tests/live
+```
+
+## Production container
+
+One image serves the built frontend and the API from the same origin (ADR-044). To try it locally, on port 8080, with its own database:
+
+```powershell
+Copy-Item .env.prod.example .env.prod   # Then replace every placeholder.
+docker compose -f compose.prod.yaml --env-file .env.prod up --build -d --wait db app
+docker compose -f compose.prod.yaml --env-file .env.prod run --rm tools alembic upgrade head
+```
+
+Nothing migrates or seeds by itself. To load demo data, set `DEMO_PASSWORD` in `.env.prod`, then run this. It refuses without the flag:
+
+```powershell
+docker compose -f compose.prod.yaml --env-file .env.prod run --rm tools python -m app.scripts.seed_demo --allow-production
+```
+
+Open http://localhost:8080. The demo accounts and password show only with `DEMO_MODE=true`. To run the whole browser suite against this image, with its own throwaway stack:
+
+```powershell
+npm --prefix e2e run e2e:prod
 ```
 
 ## Reset the demo data

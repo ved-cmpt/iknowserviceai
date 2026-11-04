@@ -4,6 +4,8 @@ import { priorityLabel, reviewStateLabel, riskFlagLabel, statusLabel } from './l
 export const AUDIT_ACTIONS = [
   ['auth.login_success', 'Sign-in succeeded'],
   ['auth.login_failure', 'Sign-in failed'],
+  ['auth.logout', 'Signed out'],
+  ['auth.refresh_reuse_detected', 'Session token reused, session ended'],
   ['request.created', 'Request created'],
   ['request.assigned', 'Request assigned'],
   ['request.unassigned', 'Request unassigned'],

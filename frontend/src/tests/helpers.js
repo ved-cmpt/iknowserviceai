@@ -14,8 +14,9 @@ export function errorResponse(status, code, message, { extra = {}, headers = {} 
 // Routes fetch calls by "METHOD /path" prefix. Each handler returns a fresh Response.
 export function mockFetch(routes) {
   const mock = vi.fn(async (url, options = {}) => {
-    const path = new URL(url).pathname.replace(/^\/api\/v1/, '')
-    const search = new URL(url).search
+    const parsed = new URL(url, 'http://localhost')
+    const path = parsed.pathname.replace(/^\/api\/v1/, '')
+    const search = parsed.search
     const key = `${options.method ?? 'GET'} ${path}`
     const handler = routes[key]
     if (!handler) throw new Error(`Unexpected fetch: ${key}${search}`)
@@ -28,7 +29,7 @@ export function mockFetch(routes) {
 // Calls made to one route, as parsed JSON bodies or query strings.
 export function callsTo(fetchMock, method, path) {
   return fetchMock.mock.calls.filter(([url, options = {}]) => {
-    const parsed = new URL(url)
+    const parsed = new URL(url, 'http://localhost')
     return (
       (options.method ?? 'GET') === method && parsed.pathname.replace(/^\/api\/v1/, '') === path
     )
@@ -57,4 +58,7 @@ export function countsResponse(counts = {}) {
   return jsonResponse({ counts: all, total: Object.values(all).reduce((a, b) => a + b, 0) })
 }
 
-export const HEALTH = { 'GET /healthz': () => jsonResponse({ status: 'ok' }) }
+export const HEALTH = {
+  'GET /healthz': () => jsonResponse({ status: 'ok' }),
+  'GET /config': () => jsonResponse({ demo_mode: true, demo_password_hint: 'public-demo-hint' }),
+}

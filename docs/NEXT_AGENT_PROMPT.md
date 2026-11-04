@@ -1,7 +1,7 @@
 # Agent handoff
 
 Last updated: 2026-11-04
-Current phase and exact objective: Run 04 in progress. Checkpoint 14 is committed; next are deploy-readiness, evaluation and CI.
+Current phase and exact objective: Run 04 in progress. Checkpoints 14 and 15 are committed; next are evaluation and CI.
 Repo branch and last verified commit: `main`; run `git log --oneline`. Phases 0 to 8 passed a clean-state verification in mock mode.
 Implemented and verified: see `docs/IMPLEMENTATION_STATUS.md` and `docs/RUN_REPORTS/RUN_03.md`.
 Environment/service state: compose stack running in mock mode with default limits, migrated at `0004`, freshly reset demo data.
@@ -14,7 +14,9 @@ Owner-only actions needed: running any live Gemini sample; creating the GitHub r
 ## Things that will catch you out
 
 - **E2E resets the demo data,** and restores default settings afterwards. Run it with `npm --prefix e2e run e2e`. The compose override is `compose.e2e.yaml`. The browser runs in a container, and Chromium maps `localhost:5173` and `localhost:8000` to the services (ADR-037). Upgrade the image tag and `@playwright/test` together.
-- **The token is memory-only** (ADR-009), so `page.goto` and `page.reload` sign out. E2E helpers sign in once, then use in-app links.
+- **A reload keeps the session,** through the refresh cookie (ADR-045). Each Playwright context starts with no cookie, so it starts signed out. Rotation means a repeated token revokes the session, so never call refresh twice with one token.
+- **The app connects as `app_user`** (ADR-047). Migrations and `reset_demo` use `MIGRATION_DATABASE_URL`. New tables get ordinary access by default, so a new append-only table must revoke in its own migration. A dev volume from before revision `0006` needs `docker compose down -v` once.
+- **Production E2E:** `npm --prefix e2e run e2e:prod`, with its own project and throwaway secrets.
 - **Login limit.** 5 attempts per minute for one IP address and email, counting successes. Analyze is 10 per hour per user. Recreating the backend clears both. Tests in CI should use `compose.e2e.yaml`.
 - **Mock results are deterministic but hold many requests.** Any policy flag means review, including uncited replies. `MockAgent` cites the top article, plus a close second in the same category (ADR-032). Mock needs the seed: with no published articles, everything goes to review.
 - **`MockAgent` never fails.** E2E simulates a failed analysis with `page.route`. Backend failures are covered in `tests/test_analyze.py`.
@@ -22,7 +24,7 @@ Owner-only actions needed: running any live Gemini sample; creating the GitHub r
 - **The relevance floor** (`KB_MIN_RANK=0.5`, ADR-016) was measured on 12 articles. Re-measure it against the fixture before changing it.
 - **Backend serializers are allowlists.** A new requester field must be added deliberately, and `FORBIDDEN_REQUESTER_KEYS` tests extended.
 - **Migrations.** Never edit `0001` to `0004`. `tests/test_migrations.py` fails if models and migrations differ.
-- **History is append-only in the database** (ADR-025). A non-superuser role must still be able to `TRUNCATE` for `reset_demo`, or the reset needs another route. Check this when adding the role.
+- **History is append-only in the database** (ADR-025).
 - **Log tests must use `caplog`.** The log handler holds the `sys.stdout` from import time, so `capsys` would pass without checking anything.
 - **Exit codes.** In PowerShell, read `$LASTEXITCODE` straight after a command, and write output to a file rather than judging by a filtered pipe.
 - **Non-interactive shells.** Use `docker compose exec -T`.

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { apiFetch, setAccessToken, setUnauthorizedHandler } from '../api/client'
+import { apiFetch, endSession, refreshSession, setAccessToken, setUnauthorizedHandler } from '../api/client'
 import { AuthContext } from './authContext'
 
-// Auth state is memory-only by design: reloading the page requires signing in again (ADR-009).
+// The access token stays in memory. A reload restores the session through the refresh cookie, which
+// JavaScript cannot read (ADR-045).
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [restoring, setRestoring] = useState(true)
   // After a deliberate sign-out, the next person should not land on the previous user's page.
   const [signedOut, setSignedOut] = useState(false)
   const [sessionExpired, setSessionExpired] = useState(false)
@@ -18,6 +20,7 @@ export default function AuthProvider({ children }) {
     clearSession()
     setSessionExpired(false)
     setSignedOut(true)
+    endSession()
   }, [clearSession])
 
   const login = useCallback(async (email, password) => {
@@ -40,9 +43,22 @@ export default function AuthProvider({ children }) {
     return () => setUnauthorizedHandler(null)
   }, [clearSession])
 
+  useEffect(() => {
+    let active = true
+    refreshSession().then((session) => {
+      if (!active) return
+      // Someone who signed in while this ran keeps that session.
+      if (session) setUser((current) => current ?? session.user)
+      setRestoring(false)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
   const value = useMemo(
-    () => ({ user, signedOut, sessionExpired, login, logout }),
-    [user, signedOut, sessionExpired, login, logout],
+    () => ({ user, restoring, signedOut, sessionExpired, login, logout }),
+    [user, restoring, signedOut, sessionExpired, login, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

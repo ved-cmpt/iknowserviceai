@@ -4,7 +4,6 @@ import {
   apiAs,
   AWAITING_TEXT,
   expectAccessible,
-  fillSignIn,
   newSession,
   openNav,
   REVIEWED_LABEL,
@@ -211,7 +210,6 @@ test.describe('3. Reject', () => {
       }
     })
     await page.reload()
-    await fillSignIn(page, 'riley')
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
     await expect(page.locator('body')).not.toContainText(heldReply)
     await expect(page.getByText(AI_LABEL)).toHaveCount(0)
@@ -261,7 +259,6 @@ test.describe('4. Admin knowledge', () => {
       await riley.getByRole('button', { name: 'Search' }).click()
     }
     await riley.reload()
-    await fillSignIn(riley, 'riley')
     await search()
     await expect(riley.getByRole('link', { name: title })).toBeVisible()
 
@@ -275,7 +272,6 @@ test.describe('4. Admin knowledge', () => {
     await expect(page.getByRole('button', { name: `Publish: ${title}` })).toBeVisible()
 
     await riley.reload()
-    await fillSignIn(riley, 'riley')
     await search()
     await expect(riley.getByText(/No articles match your search/)).toBeVisible()
     await expect(riley.getByRole('link', { name: title })).toHaveCount(0)
@@ -300,7 +296,7 @@ test.describe('5. Authorization', () => {
     await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Support queue' })).toHaveCount(0)
   })
 
-  test('a requester gets 404 for another person\'s request, and reloading signs out @mobile', async ({ page }) => {
+  test('a requester gets 404 for another person\'s request @mobile', async ({ page }) => {
     const samsRequest = await seedRequest('sam', {
       title: `Sam's private request ${uniqueTag()}`,
       description: 'A request only Sam and the support team may read.',
@@ -310,12 +306,29 @@ test.describe('5. Authorization', () => {
     await signInAt(page, 'riley', `/requests/${samsRequest}`)
     await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
     await expect(page.locator('body')).not.toContainText("Sam's private request")
+  })
 
+  test('a reload keeps you signed in, and Sign out ends the session for good @mobile', async ({ page }) => {
+    await signInAt(page, 'riley')
+    await expect(page.getByRole('heading', { name: 'My requests' })).toBeVisible()
+
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'My requests' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    const stored = await page.evaluate(() => [localStorage.length, sessionStorage.length])
+    expect(stored).toEqual([0, 0])
+
+    // A direct visit to a deep link works too.
+    await page.goto('/knowledge')
+    await expect(page.getByRole('heading', { name: 'Knowledge base' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Sign out' }).click()
+    await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0)
-    const stored = await page.evaluate(() => [localStorage.length, sessionStorage.length])
-    expect(stored).toEqual([0, 0])
+    await page.goto('/dashboard')
+    await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
   })
 
   test('an agent cannot open the admin pages', async ({ page }) => {

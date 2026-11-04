@@ -9,6 +9,8 @@ _test_url = os.environ.get("TEST_DATABASE_URL", "")
 if "test" not in _test_url.rsplit("/", 1)[-1]:
     raise RuntimeError("TEST_DATABASE_URL must be set and name a database containing 'test'")
 os.environ["DATABASE_URL"] = _test_url
+# Without this, the test migrations would run against the database in the developer's settings.
+os.environ["MIGRATION_DATABASE_URL"] = _test_url
 os.environ["APP_ENV"] = "test"
 os.environ["AI_MODE"] = "mock"
 
@@ -21,7 +23,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
-from app.core.rate_limit import analyze_limiter, login_limiter  # noqa: E402
+from app.core.rate_limit import analyze_limiter, login_limiter, refresh_limiter  # noqa: E402
 from app.core.security import create_access_token, hash_password  # noqa: E402
 from app.db.models import Base, ServiceRequest, User  # noqa: E402
 from app.db.models.enums import Role  # noqa: E402
@@ -51,11 +53,11 @@ def migrated_database() -> None:
 @pytest.fixture(autouse=True)
 def reset_rate_limits() -> Iterator[None]:
     """Limiter state is per process, so it must not carry over from one test to the next."""
-    login_limiter.reset()
-    analyze_limiter.reset()
+    for limiter in (login_limiter, analyze_limiter, refresh_limiter):
+        limiter.reset()
     yield
-    login_limiter.reset()
-    analyze_limiter.reset()
+    for limiter in (login_limiter, analyze_limiter, refresh_limiter):
+        limiter.reset()
 
 
 def truncate_all_tables() -> None:

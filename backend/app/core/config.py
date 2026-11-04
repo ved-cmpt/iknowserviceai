@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 PLACEHOLDER_MARKERS = ("replace-with", "changeme", "change-me")
 MIN_JWT_SECRET_LENGTH = 32
+MIN_JWT_SECRET_DISTINCT_CHARACTERS = 12
 
 
 class Settings(BaseSettings):
@@ -16,10 +17,23 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "test", "production"] = "development"
     database_url: str
+    # The owner role, used only by migrations and the demo reset. The running app has no need for
+    # it and should not be given it (ADR-047).
+    migration_database_url: str | None = None
     jwt_secret: str
     access_token_minutes: int = Field(default=30, ge=1, le=1440)
+    refresh_token_hours: int = Field(default=8, ge=1, le=720)
     cors_allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+
+    # The built frontend, served from the same origin as the API (ADR-044). Unset in development.
+    static_dir: str | None = None
+    # How many trusted proxies sit in front of the app. 0 ignores X-Forwarded-For entirely.
+    trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
+    # Send Strict-Transport-Security. Turn on only when the site is served over HTTPS.
+    hsts_enabled: bool = False
+    # Shows the sign-in help on a public demo. Development always shows it.
+    demo_mode: bool = False
 
     ai_mode: Literal["mock", "gemini"] = "mock"
     # SecretStr keeps the key out of reprs and logs. Read it only where the SDK client is built.
@@ -38,6 +52,7 @@ class Settings(BaseSettings):
 
     rate_limit_login_per_minute: int = Field(default=5, ge=1)
     rate_limit_analyze_per_hour: int = Field(default=10, ge=1)
+    rate_limit_refresh_per_minute: int = Field(default=60, ge=1)
 
     demo_password: str | None = None
     allow_demo_reset: bool = False
@@ -61,8 +76,11 @@ class Settings(BaseSettings):
         if len(self.jwt_secret) < MIN_JWT_SECRET_LENGTH:
             raise ValueError(f"JWT_SECRET must be at least {MIN_JWT_SECRET_LENGTH} characters")
         lowered = self.jwt_secret.lower()
-        if self.is_production and any(marker in lowered for marker in PLACEHOLDER_MARKERS):
-            raise ValueError("JWT_SECRET still holds a placeholder value")
+        if self.is_production:
+            if any(marker in lowered for marker in PLACEHOLDER_MARKERS):
+                raise ValueError("JWT_SECRET still holds a placeholder value")
+            if len(set(self.jwt_secret)) < MIN_JWT_SECRET_DISTINCT_CHARACTERS:
+                raise ValueError("JWT_SECRET is too repetitive. Generate a random value")
         return self
 
     @model_validator(mode="after")
@@ -78,6 +96,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def show_demo_help(self) -> bool:
+        return self.demo_mode or not self.is_production
 
 
 @lru_cache

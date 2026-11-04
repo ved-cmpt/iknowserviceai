@@ -1,5 +1,5 @@
-# Development image. Production hosting uses a static build (ADR-005).
-FROM node:24-slim
+# Development image. The production image is deploy/Dockerfile (ADR-044).
+FROM node:24.22.2-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
 
 WORKDIR /app
 RUN chown node:node /app

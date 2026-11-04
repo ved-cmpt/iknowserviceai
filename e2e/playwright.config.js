@@ -1,9 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// The app is built for http://localhost:5173 calling http://localhost:8000: that is its CORS
-// allowlist and its API base URL. Inside this container those services have other host names, so
-// the browser maps them. The page still sees the same origins a person's browser would (ADR-037).
-const hostRules = 'MAP localhost:5173 frontend:5173,MAP localhost:8000 backend:8000'
+// Inside this container the app has another host name, so the browser maps it. The page still sees
+// the same origin a person's browser would (ADR-037). The production run overrides both values.
+const baseURL = process.env.BASE_URL ?? 'http://localhost:5173'
+const hostRules = process.env.HOST_RULES ?? 'MAP localhost:5173 frontend:5173'
 
 export default defineConfig({
   testDir: './tests',
@@ -17,7 +17,7 @@ export default defineConfig({
   reporter: [['list']],
   outputDir: './test-results',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL,
     launchOptions: { args: [`--host-resolver-rules=${hostRules}`] },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

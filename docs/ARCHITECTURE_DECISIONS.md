@@ -67,6 +67,8 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 
 ## ADR-009: Access token held in memory only
 
+**Superseded in part by ADR-045.** The access token stays in memory, but a reload no longer signs a person out.
+
 - **Context:** The blueprint forbids tokens in browser storage for v1.
 - **Alternatives:** `localStorage`, or refresh tokens in `HttpOnly` cookies.
 - **Decision:** The access token lives in a JavaScript module variable. Reloading requires signing in again.
@@ -85,6 +87,7 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Alternatives:** `BaseHTTPMiddleware` with an `Exception` handler.
 - **Decision:** The order is request context (outermost), CORS, unhandled-error catcher (innermost). Health endpoints are served at `/healthz` and `/readyz` for infrastructure, and under `/api/v1` for the frontend, because `VITE_API_BASE_URL` includes the prefix.
 - **Trade-offs:** Slightly more middleware code, and two paths for each health endpoint.
+- **Update (ADR-044):** The frontend now calls the API on its own origin. The `/api/v1` health paths remain for that reason.
 
 ## ADR-012: Interpreting the state machine for manual staff actions
 
@@ -313,4 +316,42 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Alternatives:** Client lookups per row.
 - **Decision:** The audit endpoint adds `entity_name` and `names`, using one query per page for each. `lib/audit.js` turns values into labels by key and action, and shows record IDs as secondary text. The unsafe-key filter is unchanged. Titles appear only at read time and are never written to audit rows.
 - **Trade-offs:** The label tables duplicate some enum knowledge. Unknown values show as they are.
+
+## ADR-044: One production container, on one origin (supersedes the separate hosts in blueprint 12.2)
+
+- **Context:** The blueprint proposed a static site and a separate API host. That means cross-site cookies, CORS and two deployments.
+- **Alternatives:** Two services as proposed; a reverse proxy container in front of the API.
+- **Decision:** `deploy/Dockerfile` builds the React app and serves it from FastAPI: the API under `/api/v1`, hashed `/assets/*` with a one-year immutable cache, and `index.html` with `no-cache` for client routes. Unknown `/api/*` paths, missing assets and missing dotted files stay real 404s. It runs as a non-root user, has no dev dependencies or `uv`, and listens on `0.0.0.0:${PORT:-8000}`. Development keeps separate Vite and backend containers, with a Vite proxy for `/api`, so the browser is same-origin there too. `compose.prod.yaml` runs the image with PostgreSQL, read-only, with all capabilities dropped. Nothing migrates or seeds on start.
+- **Base images** are pinned to exact versions and digests, read from `docker pull` on 2026-11-04: `python:3.12.16-slim`, `node:24.22.2-slim`, `postgres:17.11`.
+- **Trade-offs:** Python serves static files, which is slower than a CDN but is fine for a demo. One process only, because the rate limiter lives in memory (ADR-030).
+
+## ADR-045: Rotating refresh token in an HttpOnly cookie (supersedes ADR-009's reload behavior)
+
+- **Context:** Reloading signed people out. That was an accepted demo trade-off, but polling and deep links make it feel broken, and the access token expired after 30 minutes with no way to renew it.
+- **Alternatives:** Storing tokens in browser storage, which any injected script could read; a long-lived access token, which cannot be revoked; server-side sessions, which would replace the bearer model.
+- **Decision:** The access token stays in memory. A random refresh token sits in an `HttpOnly`, `SameSite=Strict` cookie, `Secure` in production, scoped to `/api/v1/auth`. Only its SHA-256 hash is stored, in `refresh_tokens` (revision `0005`). `POST /auth/refresh` rotates it, and presenting a token that was already replaced revokes the whole family. `POST /auth/logout` revokes the family and clears the cookie. On load, the frontend calls refresh silently, and a 401 from any call gets one silent refresh and one retry.
+- **Session length:** Rotation keeps the original expiry, so one sign-in lasts at most `REFRESH_TOKEN_HOURS` (default 8), however active it is. This is simpler to reason about than a sliding window.
+- **CSRF:** `SameSite=Strict`, same origin, and a required `X-Requested-With: iknowserviceai` header, which another origin cannot send because CORS does not allow it. A missing header is 403 `CSRF_HEADER_REQUIRED`.
+- **Two tabs:** Rotation makes a repeated token look stolen, so two tabs reloading together could sign someone out. One promise covers a tab (and React Strict Mode's double effect), and the Web Locks API covers other tabs, which then send the newer cookie. Browsers without Web Locks can still hit this, and the result is only a sign-in prompt.
+- **Trade-offs:** A lost refresh response looks like reuse, so that person signs in again. That is the safe failure. An access token already issued stays valid until it expires, up to 30 minutes after sign-out. Sign-out while offline cannot clear the cookie.
+
+## ADR-046: The sign-in page's demo help comes from the server
+
+- **Context:** The password hint was controlled by a build-time variable, and `import.meta.env.DEV` always showed it. One image must serve both a public demo and anything else.
+- **Alternatives:** Build two images.
+- **Decision:** Public `GET /config` returns `demo_mode` and `demo_password_hint`. Production shows nothing unless `DEMO_MODE=true`. Development always shows it. If the call fails, the page shows no demo help. The demo-account selector follows the same setting.
+- **Trade-offs:** One more public endpoint, which returns only what the page is about to show anyway. The selector appears a moment after the form.
+
+## ADR-047: The app connects as a least-privilege role (amends ADR-025)
+
+- **Context:** The app connected as the database owner, a superuser in the local image, so the append-only triggers did not protect against a compromised app.
+- **Alternatives:** Row-level security, which is more than this needs.
+- **Decision:** The app connects as `app_user`: not a superuser, owns nothing, only `SELECT`, `INSERT`, `UPDATE` and `DELETE`, with no `UPDATE` or `DELETE` on `audit_logs` and `request_events`, and read-only on `alembic_version`. `MIGRATION_DATABASE_URL` holds the owner connection, used only by Alembic and `reset_demo`, because `TRUNCATE` is deliberately not granted. The production `app` service never receives it; a separate `tools` service does. The role is created outside migrations so its password stays out of the repository: `db/init/02-create-app-role.sh` locally, and `deploy/sql/create_app_role.sql` when hosted. Revision `0006` grants access if the role exists.
+- **Local upgrade:** Init scripts run only on a new volume, so an existing dev database needs `docker compose down -v` once. The `.env` needs the new variables in `.env.example`.
+- **Trade-offs:** Two connection strings. The role name is fixed. Default privileges give later tables ordinary access, so a new append-only table must revoke explicitly in its own migration. Tests run as the owner for speed, and `tests/test_db_role.py` connects as `app_user` to prove the limits.
+
+## ADR-048: Production settings and security headers
+
+- **Decision:** `APP_ENV=production` disables the API docs, sets secure cookies, refuses a placeholder, short or repetitive `JWT_SECRET`, and adds `Content-Security-Policy` (`default-src 'self'`, no inline script or style elements, `frame-ancestors 'none'`), `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and `Permissions-Policy` to every response, including errors. `Strict-Transport-Security` needs `HSTS_ENABLED=true`, because it must not be sent before HTTPS works. `TRUSTED_PROXY_HOPS` (default 0) tells the rate limiter how many proxies to trust in `X-Forwarded-For`. It counts from the right, so a client cannot forge the entry that is used, which settles the proxy problem in ADR-030.
+- **Trade-offs:** The policy blocks images hosted elsewhere in article markdown, because `img-src` is `'self' data:`. That is acceptable for a curated knowledge base. A wrong proxy count either makes everyone share one limit or trusts a forged address, so it must be set per host.
 

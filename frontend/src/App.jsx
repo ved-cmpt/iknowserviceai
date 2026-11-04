@@ -4,6 +4,7 @@ import ProtectedRoute from './auth/ProtectedRoute'
 import RoleRoute from './auth/RoleRoute'
 import { ADMIN_ROLES, homeFor, STAFF_ROLES } from './auth/roles'
 import Layout from './components/Layout'
+import LoadingState from './components/LoadingState'
 import AdminArticleEditorPage from './pages/AdminArticleEditorPage'
 import AdminAuditPage from './pages/AdminAuditPage'
 import AdminKnowledgePage from './pages/AdminKnowledgePage'
@@ -18,7 +19,14 @@ import SupportDetailPage from './pages/SupportDetailPage'
 import SupportQueuePage from './pages/SupportQueuePage'
 
 function Home() {
-  const { user } = useAuth()
+  const { user, restoring } = useAuth()
+  if (restoring) {
+    return (
+      <main className="page">
+        <LoadingState label="Loading…" />
+      </main>
+    )
+  }
   return <Navigate to={homeFor(user)} replace />
 }
 

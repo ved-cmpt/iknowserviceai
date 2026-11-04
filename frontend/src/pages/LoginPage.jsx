@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { friendlyMessage } from '../api/errors'
+import { useApiData } from '../api/useApiData'
 import { useAuth } from '../auth/authContext'
 import { homeFor } from '../auth/roles'
 import ApiStatus from '../components/ApiStatus'
@@ -16,12 +17,12 @@ const DEMO_ACCOUNTS = [
   { email: 'jordan.reyes@demo.iknowservice.test', label: 'Jordan Reyes (admin)' },
 ]
 
-const showDemoHint = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_HINT === 'true'
-const demoPassword = import.meta.env.VITE_DEMO_PASSWORD_HINT
-
 export default function LoginPage() {
   const { user, login, sessionExpired } = useAuth()
   const location = useLocation()
+  // The server decides this at run time, so one image can serve demo and non-demo sites (ADR-046).
+  const { data: config } = useApiData('/config')
+  const demoMode = config?.demo_mode === true
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -54,7 +55,6 @@ export default function LoginPage() {
           Your session ended. Sign in again to continue.
         </Banner>
       )}
-      <Banner tone="info">For security in this demo, reloading the page signs you out.</Banner>
       <Card as="div">
         <form onSubmit={handleSubmit} noValidate>
           {error && (
@@ -62,22 +62,24 @@ export default function LoginPage() {
               {error}
             </div>
           )}
-          <FormField label="Demo account">
-            {(field) => (
-              <select
-                {...field}
-                value={DEMO_ACCOUNTS.some((account) => account.email === email) ? email : ''}
-                onChange={(event) => setEmail(event.target.value)}
-              >
-                <option value="">Choose an account…</option>
-                {DEMO_ACCOUNTS.map((account) => (
-                  <option key={account.email} value={account.email}>
-                    {account.label}
-                  </option>
-                ))}
-              </select>
-            )}
-          </FormField>
+          {demoMode && (
+            <FormField label="Demo account">
+              {(field) => (
+                <select
+                  {...field}
+                  value={DEMO_ACCOUNTS.some((account) => account.email === email) ? email : ''}
+                  onChange={(event) => setEmail(event.target.value)}
+                >
+                  <option value="">Choose an account…</option>
+                  {DEMO_ACCOUNTS.map((account) => (
+                    <option key={account.email} value={account.email}>
+                      {account.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </FormField>
+          )}
           <FormField label="Email">
             {(field) => (
               <input
@@ -92,9 +94,9 @@ export default function LoginPage() {
           <FormField
             label="Password"
             hint={
-              showDemoHint
-                ? demoPassword
-                  ? `Public demo password: ${demoPassword}`
+              demoMode
+                ? config.demo_password_hint
+                  ? `Public demo password: ${config.demo_password_hint}`
                   : 'The public demo password is in the README.'
                 : undefined
             }

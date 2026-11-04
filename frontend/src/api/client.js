@@ -1,14 +1,16 @@
-// Central API client: base URL, bearer token, timeout and normalized errors.
+// Central API client: base URL, bearer token, session refresh, timeout and normalized errors.
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1').replace(
-  /\/$/,
-  '',
-)
+// The API shares the page's origin, in production and through the Vite proxy in development.
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '')
 const DEFAULT_TIMEOUT_MS = 10000
+const CSRF_HEADER = { 'X-Requested-With': 'iknowserviceai' }
+const REFRESH_LOCK = 'iknowserviceai-refresh'
 
-// The token lives in module memory only (ADR-009). It is never written to browser storage.
+// The access token lives in module memory only. The refresh token is in an HttpOnly cookie that
+// JavaScript cannot read (ADR-045). Neither is ever written to browser storage.
 let accessToken = null
 let onUnauthorized = null
+let refreshInFlight = null
 
 export function setAccessToken(token) {
   accessToken = token
@@ -44,7 +46,43 @@ function parseRetryAfter(response) {
   return Number.isFinite(seconds) && seconds > 0 ? seconds : null
 }
 
-export async function apiFetch(path, { method = 'GET', body, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+async function sendRefresh() {
+  try {
+    const response = await fetch(`${BASE_URL}/auth/refresh`, { method: 'POST', headers: CSRF_HEADER })
+    if (!response.ok) return null
+    const session = await response.json()
+    accessToken = session.access_token
+    return session
+  } catch {
+    return null
+  }
+}
+
+// Exchanges the cookie for a new access token, returning the session or null. Rotation makes a
+// repeated token look stolen, so only one refresh may run at a time: the shared promise covers this
+// tab, and the lock covers other tabs, which then send the newer cookie.
+export function refreshSession() {
+  if (!refreshInFlight) {
+    const locks = globalThis.navigator?.locks
+    const work = locks ? locks.request(REFRESH_LOCK, sendRefresh) : sendRefresh()
+    refreshInFlight = work.finally(() => {
+      refreshInFlight = null
+    })
+  }
+  return refreshInFlight
+}
+
+// Ends the session on the server and clears the cookie. Signing out locally still happens if this
+// fails, so the caller does not wait on the outcome.
+export async function endSession() {
+  try {
+    await fetch(`${BASE_URL}/auth/logout`, { method: 'POST', headers: CSRF_HEADER })
+  } catch {
+    // Offline: the cookie stays until it expires. There is nothing more to do from here.
+  }
+}
+
+async function send(path, { method, body, timeoutMs }) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -52,9 +90,8 @@ export async function apiFetch(path, { method = 'GET', body, timeoutMs = DEFAULT
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`
 
-  let response
   try {
-    response = await fetch(`${BASE_URL}${path}`, {
+    return await fetch(`${BASE_URL}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -72,11 +109,24 @@ export async function apiFetch(path, { method = 'GET', body, timeoutMs = DEFAULT
   } finally {
     clearTimeout(timer)
   }
+}
+
+export async function apiFetch(path, { method = 'GET', body, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+  const options = { method, body, timeoutMs }
+  let response = await send(path, options)
+
+  // An expired access token gets one silent refresh and one retry. A failed sign-in is also a 401,
+  // but there is no session to refresh in that case. A 401 means nothing ran, so a retry is safe.
+  if (response.status === 401 && accessToken) {
+    const session = await refreshSession()
+    if (session) {
+      response = await send(path, options)
+    }
+  }
 
   const data = await parseBody(response)
   if (response.ok) return data
 
-  // A failed sign-in is also a 401, but there is no session to clear in that case.
   if (response.status === 401 && accessToken && onUnauthorized) onUnauthorized()
 
   throw new ApiError({

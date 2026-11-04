@@ -15,7 +15,7 @@ This covers implemented endpoints only. The base path is `/api/v1`, except that 
 | Status | Meaning | Codes |
 |---|---|---|
 | 401 | Not signed in, or the token is invalid or expired | `UNAUTHORIZED`, `INVALID_CREDENTIALS` |
-| 403 | Signed in without permission | `FORBIDDEN` |
+| 403 | Signed in without permission, or a required header is missing | `FORBIDDEN`, `CSRF_HEADER_REQUIRED` |
 | 404 | Not found, or not visible to this user | `NOT_FOUND` |
 | 405 | Wrong method | `METHOD_NOT_ALLOWED` |
 | 409 | Conflict with current state | `INVALID_TRANSITION`, `STALE_UPDATE`, `REQUEST_CLOSED`, `SLUG_CONFLICT`, `INVALID_STATE`, `ANALYSIS_IN_PROGRESS`, `ANALYSIS_SUPERSEDED`, `NO_PENDING_SUGGESTION`, `STALE_REVIEW`, `ALREADY_REVIEWED`, `NO_VISIBLE_SUGGESTION`, `FEEDBACK_EXISTS` |
@@ -54,9 +54,29 @@ Response 200:
 
 Errors: 401 `INVALID_CREDENTIALS`, with one message for unknown email, wrong password and inactive account; 429 `RATE_LIMITED` after 5 attempts per minute for one IP address and email. Success and failure are both audited.
 
+A successful sign-in also sets the session cookie: `iks_refresh`, `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth`, and `Secure` in production. JavaScript cannot read it. See ADR-045.
+
+### `POST /auth/refresh` (cookie)
+
+Requires the header `X-Requested-With: iknowserviceai`. It has no body. It replaces the cookie's token and returns the same body as login, with a new access token. The session's expiry does not move: one sign-in lasts at most `REFRESH_TOKEN_HOURS` (default 8).
+
+Errors: 401 `UNAUTHORIZED` for a missing, unknown, expired or revoked token, or an inactive user, and the cookie is cleared; 403 `CSRF_HEADER_REQUIRED`; 429 `RATE_LIMITED` after 60 attempts per minute per IP address. **Presenting a token that was already replaced revokes every token from that sign-in.**
+
+### `POST /auth/logout` (cookie)
+
+Requires the same header. It revokes every token from this sign-in and clears the cookie. Returns 204, including when there is no cookie. An access token already issued stays valid until it expires.
+
+Errors: 403 `CSRF_HEADER_REQUIRED`.
+
 ### `GET /auth/me` (signed in)
 
 Returns the `user` object above. Errors: 401.
+
+## Config
+
+### `GET /config` (public)
+
+Returns what the sign-in page may show: `{ "demo_mode": true, "demo_password_hint": "..." }`. In production both are off unless `DEMO_MODE=true`.
 
 ## Requests
 
@@ -344,8 +364,8 @@ class RetrievedArticle:
 
 Paginated, newest first. Query: `action` and `entity_type` (exact matches, up to 100 characters), `limit`, `offset`. Items: `id, actor_id, actor_name, entity_type, entity_id, entity_name, names, action, safe_metadata, occurred_at`. `actor_name` is null when there is no actor, such as a failed sign-in for an unknown email. `entity_name` is the title of the request or article, when there is one. `names` maps user IDs in `safe_metadata`, such as an assignee, to display names. Metadata never contains passwords, tokens or comment bodies.
 
-Audit actions so far: `auth.login_success`, `auth.login_failure`, `request.created`, `request.assigned`, `request.unassigned`, `request.priority_changed`, `request.category_changed`, `request.status_changed`, `request.comment_added`, `request.ai_analysis_started`, `request.ai_analysis_succeeded`, `request.ai_analysis_failed`, `request.review_approved`, `request.review_rejected`, `request.suggestion_withheld`, `request.feedback_added`, `knowledge.created`, `knowledge.updated`, `knowledge.published`, `knowledge.unpublished`, `knowledge.status_changed`.
+Audit actions so far: `auth.login_success`, `auth.login_failure`, `auth.logout`, `auth.refresh_reuse_detected`, `request.created`, `request.assigned`, `request.unassigned`, `request.priority_changed`, `request.category_changed`, `request.status_changed`, `request.comment_added`, `request.ai_analysis_started`, `request.ai_analysis_succeeded`, `request.ai_analysis_failed`, `request.review_approved`, `request.review_rejected`, `request.suggestion_withheld`, `request.feedback_added`, `knowledge.created`, `knowledge.updated`, `knowledge.published`, `knowledge.unpublished`, `knowledge.status_changed`.
 
 Errors: 401; 403 for USER and AGENT; 422.
 
-Events and audit rows are append-only. No endpoint updates or deletes them, and database triggers refuse `UPDATE` and `DELETE` (ADR-025).
+Events and audit rows are append-only. No endpoint updates or deletes them, and database triggers refuse `UPDATE` and `DELETE` (ADR-025). The app's database role has no such privileges either (ADR-047).

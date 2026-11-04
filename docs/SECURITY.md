@@ -18,7 +18,10 @@ This is a portfolio demo with synthetic data. It has not had an independent secu
 | Sensitive values reach a provider | Text is redacted before retrieval, prompting or storage in `ai_runs` | `test_redaction.py`, `test_analyze.py` |
 | Secrets reach logs | Metadata-only logging, a masking filter, sanitized provider errors and `SecretStr` for the key | `test_hardening.py`, `test_gemini_agent.py` |
 | Password guessing or quota exhaustion | Sliding-window rate limits on login and analyze, plus a per-request analyze budget | `test_hardening.py`, `test_analyze.py` |
-| History is altered | Database triggers refuse `UPDATE` and `DELETE` on `audit_logs` and `request_events` | `test_append_only.py` |
+| History is altered | The app's database role has no `UPDATE` or `DELETE` on `audit_logs` and `request_events`, and triggers refuse them for everyone else | `test_db_role.py`, `test_append_only.py` |
+| A stolen refresh token is used | Rotation with reuse detection: a repeated token revokes that whole sign-in. Only a hash is stored | `test_sessions.py` |
+| Another site triggers a session call | `SameSite=Strict`, same origin, and a required custom header that CORS will not allow | `test_sessions.py` |
+| The app is compromised | It connects as a role that owns nothing, cannot run DDL and cannot truncate | `test_db_role.py` |
 | Script injection through articles | Bodies are stored verbatim and rendered inertly by `react-markdown`; snippets hold no markup | `test_knowledge.py`, `knowledge.test.jsx` |
 | A provider outage loses a request | Requests are saved before analysis, failures return them to `NEW`, and staff can triage manually | `test_analyze.py` |
 
@@ -26,7 +29,7 @@ This is a portfolio demo with synthetic data. It has not had an independent secu
 
 ```text
 Browser (untrusted)
-   |  HTTPS JSON, bearer token. Never sees the Gemini key.
+   |  HTTPS JSON, same origin, bearer token, HttpOnly refresh cookie. Never sees the Gemini key.
 FastAPI: authentication, roles, ownership, validation
    |
 Services: state machine, policy, review       <- All decisions are made here.
@@ -93,10 +96,21 @@ Limited responses are 429 with `Retry-After`. See ADR-030.
 
 ## Transport and browser
 
-- CORS is an explicit allowlist, and a wildcard fails at startup.
-- The access token is held in memory only, and the browser never calls Gemini (ADR-009).
-- API docs are disabled when `APP_ENV=production`.
-- Startup fails if `AI_MODE=gemini` lacks a key or model, or if `JWT_SECRET` is short.
+- The SPA and API share one origin (ADR-044). Credentials are never sent across origins. CORS is an explicit allowlist, empty in production, and a wildcard fails at startup.
+- The access token is held in memory only. The refresh token is in an `HttpOnly`, `SameSite=Strict` cookie, `Secure` in production, scoped to `/api/v1/auth` (ADR-045). JavaScript can read neither from storage, and the browser never calls Gemini.
+- With `APP_ENV=production`, API docs are disabled and every response has a strict `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and `Permissions-Policy`. `HSTS_ENABLED=true` adds `Strict-Transport-Security` once HTTPS works (ADR-048).
+- Startup fails if `AI_MODE=gemini` lacks a key or model, or if `JWT_SECRET` is short. In production it also fails on a placeholder or repetitive secret.
+
+## Database roles
+
+| Role | Used by | Can do |
+|---|---|---|
+| Owner | Migrations and `reset_demo` only, through `MIGRATION_DATABASE_URL` | Everything |
+| `app_user` | The running app, through `DATABASE_URL` | `SELECT`, `INSERT`, `UPDATE`, `DELETE`; only `SELECT` and `INSERT` on `audit_logs` and `request_events`; only `SELECT` on `alembic_version`. No `TRUNCATE`, no DDL, owns nothing |
+
+**Local:** `db/init/02-create-app-role.sh` creates `app_user` when the volume is first initialized, and revision `0006` grants its access.
+
+**Hosted:** as the owner, run `deploy/sql/create_app_role.sql` once with a generated password, then `alembic upgrade head`. If the role was created after migrating, run `deploy/sql/grant_app_role.sql`. Give the running app only `DATABASE_URL`, and keep `MIGRATION_DATABASE_URL` for one-off commands. Check the result with the queries in `tests/test_db_role.py`. A managed provider's default role may have extra rights, so confirm that the role you create does not inherit them.
 
 ## Known risks
 
@@ -104,10 +118,12 @@ Limited responses are 429 with `Retry-After`. See ADR-030.
 - **False positives are expected.** Ordinary requests that mention passwords or admin rights go to staff. This costs staff time, and has not been measured yet (Phase 9).
 - **An uncited reply is always held,** even when harmless (ADR-027).
 - **Model replies that pass every check are shown unreviewed,** labeled "AI-generated suggestion; verify before acting". They may still be wrong.
-- **Rate limits are per process.** They reset on restart and do not work across instances. Behind a proxy, the limiter sees the proxy's address unless that is configured, so all users would share one IP-and-email key space (ADR-030).
+- **Rate limits are per process.** They reset on restart and do not work across instances. Behind a proxy, `TRUSTED_PROXY_HOPS` must match the host, or all users share one address, or an address can be forged (ADR-048).
 - **Login limits can lock out a real user** for up to a minute if someone else tries that email from the same address.
-- **The triggers do not stop a database superuser** (ADR-025). The local stack's application role is a superuser, because the Postgres image creates it that way.
-- **The access token cannot be revoked** before it expires, although a deactivated user is refused immediately.
+- **The triggers and grants do not stop the owner role** (ADR-025, ADR-047). Whoever holds `MIGRATION_DATABASE_URL` can change history, so keep it away from the running app.
+- **The access token cannot be revoked** before it expires, up to 30 minutes after sign-out, although a deactivated user is refused immediately.
+- **Sign-out needs the server.** If the logout call fails, the cookie stays until it expires, and a reload signs back in.
+- **A script injected into the page could still use the session** while the page is open, although it could not read the refresh token. The Content-Security-Policy is the defense against that, in production only.
 - **Staff replies are only scanned for credential requests.** A reviewer can still publish poor advice. Their identity and reason are recorded.
 - **`redacted_input` is stored indefinitely.** There is no retention job. The demo reset is the only cleanup.
 - **The live Gemini path has one passing call.** The owner's smoke test passed, but one synthetic request is not evidence about quality or latency in general. See ADR-029.
@@ -115,6 +131,6 @@ Limited responses are 429 with `Retry-After`. See ADR-030.
 ## Demo limitations
 
 - All data is synthetic. **Do not enter real personal data, credentials or support cases.**
-- The shared demo password is intentionally public and shown on the login page while `VITE_SHOW_DEMO_HINT=true`.
+- The shared demo password is intentionally public. It is shown on the login page in development, and in production only with `DEMO_MODE=true`.
 - `store=False` is requested from Gemini, but Google's pricing page states that free-tier content may be used to improve its products. That is another reason to send only synthetic, redacted text.
-- The images are development-only (ADR-005). There is no TLS locally, and no deployment hardening yet.
+- There is no TLS locally. `compose.prod.yaml` over `http://localhost` works because browsers treat localhost as secure for cookies. On any other host, serve it over HTTPS, or the `Secure` cookie will not be kept.

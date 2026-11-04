@@ -20,8 +20,8 @@ export const WIFI_BODY = 'My laptop shows it is connected to Wi-Fi, but every we
 export const WIFI_ARTICLE = 'Wi-Fi connected but websites not loading'
 export const SENSITIVE_TEXT = 'I think someone accessed my account and I need admin credentials'
 
-// The token is memory-only, so page.goto signs the person out. Each test signs in once, then
-// moves around with in-app links. Tests that mean to reload say so.
+// A reload keeps the session, through the refresh cookie. Each test's browser context starts with
+// no cookie, so it starts signed out.
 export async function fillSignIn(page, who) {
   await page.getByLabel('Email', { exact: true }).fill(USERS[who])
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)

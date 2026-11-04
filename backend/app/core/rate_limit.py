@@ -9,6 +9,8 @@ import time
 from collections import deque
 from collections.abc import Callable
 
+from starlette.requests import Request
+
 from app.core.config import get_settings
 from app.core.errors import AppError
 
@@ -62,3 +64,23 @@ class SlidingWindowLimiter:
 
 login_limiter = SlidingWindowLimiter(get_settings().rate_limit_login_per_minute, 60)
 analyze_limiter = SlidingWindowLimiter(get_settings().rate_limit_analyze_per_hour, 3600)
+refresh_limiter = SlidingWindowLimiter(get_settings().rate_limit_refresh_per_minute, 60)
+
+
+def client_ip(request: Request) -> str:
+    """The address to rate limit on.
+
+    Behind trusted proxies, each one appends the address it saw to X-Forwarded-For, so the entry
+    that many places from the end is the first one a client cannot forge. Off by default, because
+    without a proxy the whole header is under the client's control.
+    """
+    hops = get_settings().trusted_proxy_hops
+    if hops > 0:
+        forwarded = [
+            part.strip()
+            for part in request.headers.get("x-forwarded-for", "").split(",")
+            if part.strip()
+        ]
+        if len(forwarded) >= hops:
+            return forwarded[-hops]
+    return request.client.host if request.client else "unknown"

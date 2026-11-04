@@ -1,0 +1,76 @@
+# The production image with PostgreSQL, for trying it locally. See README, "Production container".
+#   docker compose -f compose.prod.yaml --env-file .env.prod up --build -d --wait db app
+#   docker compose -f compose.prod.yaml --env-file .env.prod run --rm tools alembic upgrade head
+# Nothing seeds automatically. The seed and reset commands are explicit and guarded.
+name: iknowserviceai-prod
+
+x-app-image: &app-image
+  image: iknowserviceai:local
+  build:
+    context: .
+    dockerfile: deploy/Dockerfile
+
+x-settings: &settings
+  APP_ENV: production
+  DATABASE_URL: postgresql+psycopg://app_user:${APP_DB_PASSWORD:?set in .env.prod}@db:5432/${POSTGRES_DB:?set in .env.prod}
+  JWT_SECRET: ${JWT_SECRET:?set in .env.prod}
+  CORS_ALLOWED_ORIGINS: ""
+  AI_MODE: ${AI_MODE:-mock}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_MODEL: ${GEMINI_MODEL:-}
+  DEMO_MODE: ${DEMO_MODE:-false}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+  TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+  HSTS_ENABLED: ${HSTS_ENABLED:-false}
+  RATE_LIMIT_LOGIN_PER_MINUTE: ${RATE_LIMIT_LOGIN_PER_MINUTE:-5}
+  RATE_LIMIT_ANALYZE_PER_HOUR: ${RATE_LIMIT_ANALYZE_PER_HOUR:-10}
+  RATE_LIMIT_REFRESH_PER_MINUTE: ${RATE_LIMIT_REFRESH_PER_MINUTE:-60}
+
+services:
+  db:
+    image: postgres:17.11@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env.prod}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set in .env.prod}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init/02-create-app-role.sh:/docker-entrypoint-initdb.d/02-create-app-role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    <<: *app-image
+    environment:
+      <<: *settings
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_HOST_PORT:-8080}:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # One-off commands that need the owner role. The running app never receives this connection.
+  tools:
+    <<: *app-image
+    profiles: [tools]
+    environment:
+      <<: *settings
+      MIGRATION_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?set in .env.prod}:${POSTGRES_PASSWORD:?set in .env.prod}@db:5432/${POSTGRES_DB:?set in .env.prod}
+      ALLOW_DEMO_RESET: ${ALLOW_DEMO_RESET:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:

@@ -9,6 +9,8 @@ export default defineConfig({
     strictPort: true,
     // Windows bind mounts may not deliver file events into containers.
     watch: { usePolling: process.env.VITE_USE_POLLING === 'true' },
+    // Same origin in development too, as in production, so the refresh cookie behaves the same.
+    proxy: { '/api': process.env.VITE_PROXY_TARGET ?? 'http://localhost:8000' },
   },
   test: {
     environment: 'jsdom',

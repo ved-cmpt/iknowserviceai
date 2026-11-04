@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.db.models import Base
-from app.db.session import SessionLocal
+from app.db.session import owner_session
 from app.scripts.seed_demo import seed_demo
 
 
@@ -47,7 +47,8 @@ def main(argv: list[str] | None = None) -> int:
         print("DEMO_PASSWORD is not set.", file=sys.stderr)
         return 1
 
-    with SessionLocal() as db:
+    # TRUNCATE is deliberately not granted to the app role (ADR-047).
+    with owner_session() as db:
         reset_demo(db, settings.demo_password)
     print("Demo data reset complete.")
     return 0
