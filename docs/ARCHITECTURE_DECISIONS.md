@@ -463,3 +463,11 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Alternatives:** Changing the prompt, which could not be verified, because this run's live budget was spent. It remains worth trying in a later evaluation.
 - **Decision:** `_validated_output` replaces the ID of any retrieved article in the reply with its title, before policy checks and storage. It works for every provider, and needs no provider call to test.
 - **Trade-offs:** It covers only exact IDs of articles retrieved for this request. Any other odd wording in a reply is still shown.
+
+## ADR-061: Render's proxy chain is three hops, measured rather than assumed (replaces part of ADR-052)
+
+- **Context:** ADR-052 set `TRUSTED_PROXY_HOPS=1`, reasoned from one platform proxy, and left it to be verified. On the live site, the login limiter failed to fire: seven wrong passwords in a row on one invented email often all returned 401. Render also serves through Cloudflare, which the reasoning did not know.
+- **Evidence:** A temporary admin-only route returned the header's shape, as salted hashes and classifications, never addresses. Across 12 requests, `X-Forwarded-For` ended with the same public address, then a Cloudflare address that changed between requests, then a private address that also changed. Forged values always stayed to the left of the public address, which also equalled `CF-Connecting-IP`. So one hop read Render's internal proxy, which rotates and is shared by all visitors. The route was removed straight afterwards.
+- **Alternatives:** Reading `CF-Connecting-IP`, which is equally correct today, but needs new code and ties the app to one vendor's header. Counting from the left, which a client can forge.
+- **Decision:** `TRUSTED_PROXY_HOPS=3` in `render.yaml`. No code change. `node e2e/verify-live.mjs` checks the behavior on the live site.
+- **Trade-offs:** If Render or Cloudflare change the chain, the limiter silently degrades again, so rerun the script after any hosting change. With `FORWARDED_ALLOW_IPS=*`, uvicorn sets `request.client` to the leftmost entry, which a client can forge. Nothing relies on it behind this chain: the limiter only falls back to it when the header has fewer than 3 entries, and the access log is off.

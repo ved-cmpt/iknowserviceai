@@ -42,9 +42,10 @@ services:
         value: INFO
       - key: HSTS_ENABLED
         value: "true"
-      # One platform proxy. To be confirmed against the live site in Run 06.
+      # Measured on the live site: X-Forwarded-For ends with the client, Cloudflare's edge and
+      # Render's internal proxy, so the client is third from the end (ADR-061).
       - key: TRUSTED_PROXY_HOPS
-        value: "1"
+        value: "3"
       # Uvicorn may trust proxy headers from any peer here, because only the platform's proxy can
       # reach the service. The image's default is 127.0.0.1 (ADR-052).
       - key: FORWARDED_ALLOW_IPS

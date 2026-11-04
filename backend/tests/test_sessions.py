@@ -285,6 +285,9 @@ class _FakeRequest:
         (1, "6.6.6.6, 1.2.3.4", "1.2.3.4"),  # A forged left-hand entry has no effect.
         (2, "6.6.6.6, 1.2.3.4, 10.0.0.1", "1.2.3.4"),
         (2, "1.2.3.4", "10.0.0.9"),  # Fewer entries than proxies: trust nothing.
+        # The chain measured on Render: client, Cloudflare's edge, Render's proxy (ADR-061).
+        (3, "1.2.3.4, 104.16.0.1, 10.0.0.1", "1.2.3.4"),
+        (3, "6.6.6.6, 7.7.7.7, 1.2.3.4, 104.16.0.1, 10.0.0.1", "1.2.3.4"),
     ],
 )
 def test_client_ip_only_trusts_configured_proxies(
