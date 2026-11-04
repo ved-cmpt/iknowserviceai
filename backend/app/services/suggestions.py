@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.models import AiRun, AiSuggestion, KnowledgeArticle, RequestFeedback, ServiceRequest
-from app.db.models.enums import ArticleStatus, ReviewState
+from app.db.models.enums import AiRunStatus, ArticleStatus, ReviewState
 from app.schemas.ai import (
     AI_SUGGESTION_LABEL,
+    STAFF_REVIEWED_LABEL,
     CitationLink,
     RequesterSuggestion,
     StaffAiRun,
@@ -66,6 +67,7 @@ def requester_view(
             RequestFeedback.user_id == request.requester_id,
         )
     )
+    reviewed = suggestion.review_state == ReviewState.APPROVED
     return "AVAILABLE", RequesterSuggestion(
         id=suggestion.id,
         reply=visible_reply(suggestion),
@@ -75,7 +77,8 @@ def requester_view(
             for article in _citation_articles(db, suggestion)
             if article.status == ArticleStatus.PUBLISHED
         ],
-        label=AI_SUGGESTION_LABEL,
+        source="STAFF_REVIEWED" if reviewed else "AI",
+        label=STAFF_REVIEWED_LABEL if reviewed else AI_SUGGESTION_LABEL,
         feedback_submitted=feedback_id is not None,
     )
 
@@ -121,6 +124,17 @@ def count_attempts(db: Session, request_id: uuid.UUID) -> int:
 
 def attempts_remaining(db: Session, request_id: uuid.UUID) -> int:
     return max(0, get_settings().ai_max_analyze_attempts - count_attempts(db, request_id))
+
+
+def last_analysis_failed(db: Session, request_id: uuid.UUID) -> bool:
+    """Report whether the most recent run failed, so a reload can say so without another try."""
+    status = db.scalar(
+        select(AiRun.status)
+        .where(AiRun.request_id == request_id)
+        .order_by(AiRun.started_at.desc(), AiRun.id)
+        .limit(1)
+    )
+    return status == AiRunStatus.FAILED
 
 
 def staff_runs(db: Session, request_id: uuid.UUID) -> list[StaffAiRun]:

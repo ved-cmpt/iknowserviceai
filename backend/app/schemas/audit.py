@@ -11,6 +11,9 @@ class AuditEntry(ORMModel):
     actor_name: str | None = None
     entity_type: str
     entity_id: uuid.UUID | None
+    entity_name: str | None = None  # The request or article title, when it still exists.
+    # Display names for user IDs held in safe_metadata, such as an assignee.
+    names: dict[str, str] = {}
     action: str
     safe_metadata: dict[str, Any]
     occurred_at: datetime

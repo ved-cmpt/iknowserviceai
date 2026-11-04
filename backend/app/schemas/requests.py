@@ -84,6 +84,7 @@ class RequestListItem(ORMModel):
 class StaffRequestListItem(RequestListItem):
     requester_id: uuid.UUID
     assigned_agent_id: uuid.UUID | None
+    assigned_agent_name: str | None
     version: int
 
 
@@ -131,6 +132,9 @@ class RequesterRequestDetail(ORMModel):
     events: list[RequesterEvent]
     suggestion_state: SuggestionState | None
     suggestion: RequesterSuggestion | None
+    # The same facts a failed analyze response already gives the requester (ADR-028).
+    attempts_remaining: int
+    last_analysis_failed: bool
 
 
 class StaffRequestDetail(ORMModel):

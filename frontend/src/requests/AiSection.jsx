@@ -7,8 +7,9 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import FormField from '../components/FormField'
 import { Spinner } from '../components/LoadingState'
-import { AI_LABEL, aiSectionState, AWAITING_REVIEW_TEXT } from './aiState'
+import { aiSectionState, AWAITING_REVIEW_TEXT, suggestionLabel } from './aiState'
 import AnalysisFailedPanel from './AnalysisFailedPanel'
+import { MANUAL_TRIAGE } from './analysisFailure'
 import { FEEDBACK_COMMENT_MAX } from './limits'
 
 function Feedback({ requestId, alreadySubmitted }) {
@@ -82,7 +83,7 @@ function Feedback({ requestId, alreadySubmitted }) {
 function SuggestionCard({ requestId, suggestion }) {
   return (
     <Card title="Suggested next steps">
-      <span className="ai-label">{AI_LABEL}</span>
+      <span className="ai-label">{suggestionLabel(suggestion)}</span>
       {/* A plain text node with preserved line breaks. Model text is never treated as HTML. */}
       <div className="ai-reply preserve-lines" data-testid="suggestion-reply">
         {suggestion.reply}
@@ -100,6 +101,36 @@ function SuggestionCard({ requestId, suggestion }) {
         </>
       )}
       <Feedback requestId={requestId} alreadySubmitted={suggestion.feedback_submitted} />
+    </Card>
+  )
+}
+
+// A NEW request, possibly after failed attempts. The server says how many remain, so this also
+// reads correctly after a reload.
+function NotAnalyzed({ request, onAnalyze }) {
+  const attempts = request.attempts_remaining
+  if (attempts === 0) {
+    return (
+      <Card title="AI analysis">
+        <p>Your request is saved, but we could not analyze it. {MANUAL_TRIAGE}</p>
+      </Card>
+    )
+  }
+  if (request.last_analysis_failed) {
+    return (
+      <Card title="AI analysis">
+        <p>The last analysis did not finish. Your request is saved.</p>
+        <p>
+          {attempts} {attempts === 1 ? 'attempt' : 'attempts'} remaining.
+        </p>
+        <Button onClick={onAnalyze}>Try again</Button>
+      </Card>
+    )
+  }
+  return (
+    <Card title="AI analysis">
+      <p>This request has not been analyzed yet.</p>
+      <Button onClick={onAnalyze}>Analyze</Button>
     </Card>
   )
 }
@@ -150,12 +181,8 @@ export default function AiSection({ request, running, failure, onAnalyze, onChec
         </Card>
       )
     case 'none':
-      return (
-        <Card title="AI analysis">
-          <p>This request has not been analyzed yet.</p>
-          <Button onClick={onAnalyze}>Analyze</Button>
-        </Card>
-      )
+      return <NotAnalyzed request={request} onAnalyze={onAnalyze} />
+
     default:
       return null
   }

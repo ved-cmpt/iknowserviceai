@@ -13,14 +13,27 @@ import {
   AUDIT_ENTITIES,
   auditActionLabel,
   auditEntityLabel,
+  metadataIds,
   metadataSummary,
 } from '../lib/audit'
 import { formatDateTime } from '../lib/format'
 import { PAGE_SIZE } from '../requests/options'
 import { useListParams } from '../requests/useListParams'
 
+function DetailsCell({ row }) {
+  const summary = metadataSummary(row.safe_metadata, { action: row.action, names: row.names })
+  const ids = metadataIds(row.safe_metadata)
+  return (
+    <>
+      {summary || (ids ? null : 'None')}
+      {ids && <div className="meta">{ids}</div>}
+    </>
+  )
+}
+
 function EntityCell({ row }) {
-  const label = auditEntityLabel(row.entity_type)
+  const type = auditEntityLabel(row.entity_type)
+  const label = row.entity_name ? `${type}: ${row.entity_name}` : type
   if (row.entity_id && row.entity_type === 'service_request') {
     return <Link to={`/support/${row.entity_id}`}>{label}</Link>
   }
@@ -35,7 +48,7 @@ const COLUMNS = [
   { key: 'actor', header: 'Actor', render: (row) => row.actor_name ?? 'System or unknown' },
   { key: 'action', header: 'Action', render: (row) => auditActionLabel(row.action) },
   { key: 'entity', header: 'Entity', render: (row) => <EntityCell row={row} /> },
-  { key: 'details', header: 'Details', render: (row) => metadataSummary(row.safe_metadata) || 'None' },
+  { key: 'details', header: 'Details', render: (row) => <DetailsCell row={row} /> },
 ]
 
 function AuditTable({ params, filtered, onPage }) {

@@ -192,3 +192,46 @@ describe('ConfirmDialog', () => {
     opener.remove()
   })
 })
+
+describe('narrow-screen menu', () => {
+  const ROUTES = {
+    ...HEALTH,
+    'GET /requests': () => page([]),
+    'GET /requests/counts': () => countsResponse(),
+    'GET /knowledge': () => page([]),
+  }
+
+  it('is a labelled button that toggles the main navigation', async () => {
+    mockFetch(ROUTES)
+    renderSignedIn('/dashboard')
+    const button = await screen.findByRole('button', { name: 'Menu' })
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).toHaveAttribute('aria-controls', nav.id)
+    expect(nav).not.toHaveClass('nav-open')
+
+    await userEvent.click(button)
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+    expect(nav).toHaveClass('nav-open')
+  })
+
+  it('closes on Escape, returning focus to the button', async () => {
+    mockFetch(ROUTES)
+    renderSignedIn('/dashboard')
+    const button = await screen.findByRole('button', { name: 'Menu' })
+    await userEvent.click(button)
+    screen.getByRole('link', { name: 'Knowledge' }).focus()
+    await userEvent.keyboard('{Escape}')
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).toHaveFocus()
+  })
+
+  it('closes after choosing a link', async () => {
+    mockFetch(ROUTES)
+    renderSignedIn('/dashboard')
+    const button = await screen.findByRole('button', { name: 'Menu' })
+    await userEvent.click(button)
+    await userEvent.click(screen.getByRole('link', { name: 'Knowledge' }))
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+  })
+})

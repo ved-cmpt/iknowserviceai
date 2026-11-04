@@ -9,7 +9,7 @@ from app.core.rate_limit import analyze_limiter
 from app.db.models import User
 from app.db.models.enums import Category, Priority, RequestStatus
 from app.db.session import get_db
-from app.schemas.ai import FeedbackCreate, FeedbackCreated, ReviewCreate
+from app.schemas.ai import FeedbackCreate, FeedbackCreated, ReviewCreate, ReviewValidated
 from app.schemas.common import Page
 from app.schemas.requests import (
     CommentCreate,
@@ -112,7 +112,10 @@ def review_request(
     payload: ReviewCreate,
     user: User = Depends(require_roles(*STAFF_ROLES)),
     db: Session = Depends(get_db),
-) -> StaffRequestDetail:
+) -> StaffRequestDetail | ReviewValidated:
+    if payload.dry_run:
+        review_service.validate_review(db, user, request_id, payload)
+        return ReviewValidated()
     request = review_service.review_suggestion(db, user, request_id, payload)
     return request_service.build_detail(db, user, request)
 

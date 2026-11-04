@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { metadataSummary } from '../lib/audit'
+import { metadataIds, metadataSummary } from '../lib/audit'
 import { parseTags, slugify, validateArticle } from '../knowledge/articleForm'
 import { bodiesSentTo, callsTo, errorResponse, HEALTH, jsonResponse, mockFetch, page } from './helpers'
 import { ADMIN_USER, renderSignedIn } from './renderApp'
@@ -357,7 +357,28 @@ describe('audit log', () => {
     const row = actor.closest('tr')
     expect(within(row).getByText('Review approved')).toBeInTheDocument()
     expect(within(row).getByRole('link', { name: 'Request' })).toHaveAttribute('href', '/support/r1')
-    expect(within(row).getByText(/decision: APPROVED · reason: Safe wording · edited: true/)).toBeInTheDocument()
+    expect(within(row).getByText(/Decision: Approved · Reason: Safe wording · Edited: Yes/)).toBeInTheDocument()
+  })
+
+  it('names the entity and keeps record IDs as secondary text', async () => {
+    renderAudit({
+      'GET /admin/audit': () =>
+        page([
+          {
+            ...ROW,
+            action: 'request.assigned',
+            entity_name: 'Printer keeps jamming',
+            names: { u9: 'Alex Chen' },
+            safe_metadata: { to: 'u9', ai_run_id: 'run-1' },
+          },
+        ]),
+    })
+    expect(await screen.findByRole('link', { name: 'Request: Printer keeps jamming' })).toHaveAttribute(
+      'href',
+      '/support/r1',
+    )
+    expect(screen.getByText(/To: Alex Chen/)).toBeInTheDocument()
+    expect(screen.getByText('ai run id run-1')).toHaveClass('meta')
   })
 
   it('says when an event has no known actor', async () => {
@@ -442,7 +463,7 @@ describe('audit log', () => {
           },
         ]),
     })
-    await screen.findByText(/decision: APPROVED/)
+    await screen.findByText(/Decision: Approved/)
     for (const text of ['REPLY-BODY', 'DRAFT-BODY', 'COMMENT-BODY', 'SECRET-VALUE', 'TOKEN-VALUE', 'KEY-VALUE', 'INPUT-VALUE', 'NESTED-VALUE']) {
       expect(container).not.toHaveTextContent(text)
     }
@@ -452,8 +473,38 @@ describe('audit log', () => {
 describe('metadataSummary', () => {
   it('shortens long values and joins simple lists', () => {
     const summary = metadataSummary({ reason: 'x'.repeat(100), changed_fields: ['title', 'tags'] })
-    expect(summary).toContain(`reason: ${'x'.repeat(80)}…`)
-    expect(summary).toContain('changed fields: title, tags')
+    expect(summary).toContain(`Reason: ${'x'.repeat(80)}…`)
+    expect(summary).toContain('Changed fields: title, tags')
+  })
+
+  it('uses readable labels instead of raw values', () => {
+    expect(
+      metadataSummary(
+        { from: 'NEEDS_HUMAN_REVIEW', to: 'IN_PROGRESS', source: 'REVIEW' },
+        { action: 'request.status_changed' },
+      ),
+    ).toBe('From: Needs human review · To: In progress · Source: Staff review')
+    expect(metadataSummary({ review_state: 'PENDING_REVIEW', risk_flags: ['PHISHING'] })).toBe(
+      'Review state: Pending review · Risk flags: Possible phishing',
+    )
+    expect(metadataSummary({ from: 'LOW', to: 'HIGH' }, { action: 'request.priority_changed' })).toBe(
+      'From: Low · To: High',
+    )
+    expect(metadataSummary({ is_internal: true, helpful: false, edited: true })).toBe(
+      'Visibility: Internal · Rating: Not helpful · Edited: Yes',
+    )
+  })
+
+  it('shows an assignee by name, falling back to the ID', () => {
+    const metadata = { to: 'u9' }
+    expect(metadataSummary(metadata, { action: 'request.assigned', names: { u9: 'Alex Chen' } })).toBe('To: Alex Chen')
+    expect(metadataSummary(metadata, { action: 'request.assigned' })).toBe('To: u9')
+  })
+
+  it('moves record IDs to secondary text', () => {
+    const metadata = { ai_run_id: 'run-1', mode: 'MOCK' }
+    expect(metadataSummary(metadata)).toBe('Mode: Mock')
+    expect(metadataIds(metadata)).toBe('ai run id run-1')
   })
 
   it('handles empty metadata', () => {

@@ -270,3 +270,47 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Decision:** An `e2e` service under a compose profile in `compose.e2e.yaml`, using `mcr.microsoft.com/playwright:v1.64.1-noble`, with `@playwright/test` pinned to the same version. Chromium starts with `--host-resolver-rules=MAP localhost:5173 frontend:5173,MAP localhost:8000 backend:8000`, so the page has the real origins and goes through real CORS. `e2e/run.mjs` is the single command, `npm --prefix e2e run e2e`. It starts the stack with high limits and `AI_MODE=mock` with an empty key, resets the data, runs the suite, resets again for screenshots, and always restores the default settings and fresh data. The suite runs against the Vite dev server with one worker, because the tests share a database.
 - **Analysis states in E2E:** `MOCK_AI_FAILURE_MODE` was not built. The analyzing and failed states are produced with `page.route`, which holds or fulfills the analyze response in the browser. This tests the UI's handling of a 503, while the backend failure paths stay covered by `tests/test_analyze.py`. No server code gained a test-only switch.
 - **Trade-offs:** The image and npm version must be upgraded together. The mapping is Chromium-specific, so other browsers would need another approach. The suite does not test the production build, which does not exist until Phase 10.
+
+## ADR-038: The API says who stands behind a visible reply
+
+- **Context:** A requester saw a staff-approved reply labeled "AI-generated suggestion; verify before acting", which is wrong: a person chose that text.
+- **Alternatives:** Compare label strings in the client; expose `review_state`, which is staff-only.
+- **Decision:** `suggestion.source` is `AI` or `STAFF_REVIEWED`, and `label` follows it. The UI chooses its wording from `source`, and any unknown value keeps the AI label, so a mistake errs towards caution.
+- **Trade-offs:** A requester can now tell that a reply was reviewed. That is the point, and it reveals nothing about held or rejected text.
+
+## ADR-039: Review dry run on the same endpoint
+
+- **Context:** Staff confirmed a dialog and only then learned that the server refused the reply.
+- **Alternatives:** A separate validate endpoint; repeating the scan in the browser, which would drift from the server.
+- **Decision:** `dry_run: true` on `POST /requests/{id}/review`. A dry run and a real review share one function, `_checked_review`, so they cannot disagree. A dry run takes the row lock like a real review, then rolls back. The UI checks first, shows `UNSAFE_REPLY` on the field, and opens the dialog only on success. The real submit validates again.
+- **Trade-offs:** One extra request per decision. The response type of the endpoint is now a union. The Approve button stays enabled during the check, with `aria-busy`, because disabling it dropped keyboard focus and the dialog could not return focus to it.
+
+## ADR-040: Requesters see attempts remaining in the detail payload (amends ADR-028)
+
+- **Context:** After a failed analysis, a reload showed the plain Analyze button. The attempt count existed only in the 503 body.
+- **Alternatives:** Keep the count in browser state, which does not survive a reload.
+- **Decision:** `attempts_remaining` and `last_analysis_failed` are added to the requester detail. `attempts_remaining` was removed from the test's `FORBIDDEN_REQUESTER_KEYS`, on purpose: ADR-028 already gives a requester this number in the 503 body, so this reveals nothing new. Error codes stay staff-only.
+- **Trade-offs:** Two more allowlisted fields. One more query per detail read.
+
+## ADR-041: Polling, with a shared hook
+
+- **Context:** A requester waiting on review had to navigate away and back. Staff did not see new work.
+- **Alternatives:** Server-sent events or WebSockets, which add infrastructure and do not suit a single small instance.
+- **Decision:** `lib/usePolling.js`. The requester page polls every 5 seconds while `ANALYZING` or awaiting review, and stops when that ends, after 5 minutes (offering "Check for updates"), or while the tab is hidden. Returning to the tab checks once and starts a new window. The queue refreshes every 30 seconds, and has a Refresh button. Callers skip a tick while a request is in flight, so requests cannot stack up. A failed background refresh keeps the last good data on screen.
+- **Trade-offs:** Up to 5 seconds of delay, and some idle requests. The staff detail page is not polled, because a refresh could disturb a review in progress; the stale-update message still covers that case.
+
+## ADR-042: Mock replies come from article content (extends ADR-032)
+
+- **Context:** Mock replies only named the article, so the demo did not look like the real thing.
+- **Alternatives:** Canned text per category.
+- **Decision:** `MockAgent` writes an opening, the first three steps of the top cited article's ordered list, and a fixed escalation line. Sensitive requests get cautious wording with no steps. `RetrievedArticle` and `AgentArticle` gain `body_markdown`, which `build_prompt` does not send, and a test pins that. Replies now keep line breaks and step numbers, through `markdown_to_plain_lines`, which still removes all markup, for the live path as well.
+- **Related hardening:** `policy.decide` now also scans whole cited article bodies for instruction-like text, because the mock reads beyond the snippet and hostile text may sit outside it. Seeded articles all pass this scan, and a test pins that. The mock also drops any step that looks like an instruction or asks for a secret.
+- **Trade-offs:** The mock looks more capable than it is. Docs must keep saying that mock results measure the pipeline, not model quality.
+
+## ADR-043: Readable audit details, with names from the API
+
+- **Context:** The audit log showed raw enums and IDs.
+- **Alternatives:** Client lookups per row.
+- **Decision:** The audit endpoint adds `entity_name` and `names`, using one query per page for each. `lib/audit.js` turns values into labels by key and action, and shows record IDs as secondary text. The unsafe-key filter is unchanged. Titles appear only at read time and are never written to audit rows.
+- **Trade-offs:** The label tables duplicate some enum knowledge. Unknown values show as they are.
+

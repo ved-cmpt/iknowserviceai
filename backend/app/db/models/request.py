@@ -60,6 +60,10 @@ class ServiceRequest(Base):
     requester: Mapped[User] = relationship(foreign_keys=[requester_id])
     assigned_agent: Mapped[User | None] = relationship(foreign_keys=[assigned_agent_id])
 
+    @property
+    def assigned_agent_name(self) -> str | None:
+        return self.assigned_agent.display_name if self.assigned_agent else None
+
 
 class RequestComment(Base):
     __tablename__ = "request_comments"

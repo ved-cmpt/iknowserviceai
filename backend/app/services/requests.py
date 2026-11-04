@@ -8,7 +8,7 @@ import uuid
 from typing import Literal
 
 from sqlalchemy import case, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import STAFF_ROLES, is_staff
 from app.core.errors import conflict, forbidden, not_found, unprocessable
@@ -109,7 +109,12 @@ def list_requests(
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     column = _SORT_COLUMNS[sort]
     ordering = column.asc() if direction == "asc" else column.desc()
-    rows = db.scalars(query.order_by(ordering, ServiceRequest.id).limit(limit).offset(offset)).all()
+    rows = db.scalars(
+        query.options(joinedload(ServiceRequest.assigned_agent))
+        .order_by(ordering, ServiceRequest.id)
+        .limit(limit)
+        .offset(offset)
+    ).all()
     schema = StaffRequestListItem if is_staff(user) else RequestListItem
     return [schema.model_validate(row) for row in rows], total
 
@@ -383,6 +388,8 @@ def build_detail(
             **fields,
             suggestion_state=suggestion_state,
             suggestion=suggestion,
+            attempts_remaining=suggestions.attempts_remaining(db, request.id),
+            last_analysis_failed=suggestions.last_analysis_failed(db, request.id),
             comments=[
                 PublicComment(
                     id=comment.id,

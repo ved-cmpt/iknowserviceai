@@ -44,3 +44,8 @@ export function updateRequest(id, body) {
 export function reviewRequest(id, body) {
   return apiFetch(`${requestPath(id)}/review`, { method: 'POST', body })
 }
+
+// Runs the server's review checks without saving anything. The real review checks again.
+export function validateReview(id, body) {
+  return apiFetch(`${requestPath(id)}/review`, { method: 'POST', body: { ...body, dry_run: true } })
+}

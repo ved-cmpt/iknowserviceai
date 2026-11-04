@@ -12,6 +12,7 @@ from app.db.models import AiSuggestion, KnowledgeArticle, User
 from app.db.models.enums import ArticleStatus, RequestStatus, Role
 from app.scripts.seed_data import DRAFT_ARTICLE
 from app.scripts.seed_demo import seed_demo
+from app.services.ai.mock import ESCALATION_LINE
 from app.services.ai.prompts import build_prompt
 from tests.ai_fakes import FakeProvider, citing, triage_result, use_provider
 from tests.conftest import auth
@@ -133,7 +134,8 @@ def test_published_hostile_article_is_only_data_and_the_result_is_held(
     assert body["suggestion"] is None
     staff = _staff_view(client, request, agent)
     assert "KB_CONTENT_SUSPECT" in staff["suggestion"]["risk_flags"]
-    reply = staff["suggestion"]["proposed_reply"]
+    # The fixed safety line says "Never share your password". Nothing else may mention one.
+    reply = staff["suggestion"]["proposed_reply"].replace(ESCALATION_LINE, "")
     assert "reveal" not in reply.lower()
     assert "password" not in reply.lower()
 

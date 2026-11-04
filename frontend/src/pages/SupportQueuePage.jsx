@@ -18,11 +18,13 @@ import Table from '../components/Table'
 import { CATEGORIES, categoryLabel } from '../knowledge/categories'
 import { formatDate } from '../lib/format'
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../lib/labels'
+import { usePolling } from '../lib/usePolling'
 import { DEFAULT_SORT, PAGE_SIZE, SORT_OPTIONS, sortParams } from '../requests/options'
 import StatusCounts from '../requests/StatusCounts'
 import { useListParams } from '../requests/useListParams'
 
 const REVIEW_STATUS = 'NEEDS_HUMAN_REVIEW'
+const AUTO_REFRESH_MS = 30000
 
 function FilterSelect({ label, value, options, onChange, allLabel }) {
   return (
@@ -43,13 +45,14 @@ function FilterSelect({ label, value, options, onChange, allLabel }) {
 
 function assigneeText(request, user) {
   if (!request.assigned_agent_id) return 'Unassigned'
-  return request.assigned_agent_id === user.id ? 'You' : 'Another team member'
+  if (request.assigned_agent_id === user.id) return 'You'
+  return request.assigned_agent_name ?? 'Another team member'
 }
 
-function Queue({ params, filtered, onPage }) {
+function Queue({ list, filtered, onPage }) {
   const { user } = useAuth()
   const announce = useAnnounce()
-  const { loading, data, error, retry, reload } = useApiData(requestsPath(params))
+  const { loading, data, error, retry, reload } = list
   const [assigning, setAssigning] = useState(null)
   const [assignError, setAssignError] = useState(null)
 
@@ -70,7 +73,8 @@ function Queue({ params, filtered, onPage }) {
     }
   }
 
-  if (error) return <ErrorState error={error} onRetry={retry} />
+  // A failed background refresh keeps the last good list on screen, with the error above it.
+  if (error && !data) return <ErrorState error={error} onRetry={retry} />
   if (loading && !data) return <LoadingState label="Loading the queue…" />
 
   const columns = [
@@ -111,6 +115,7 @@ function Queue({ params, filtered, onPage }) {
 
   return (
     <>
+      {error && <ErrorState error={error} onRetry={retry} />}
       {assignError && (
         <Banner tone="warning" role="alert">
           {friendlyMessage(assignError)}
@@ -132,7 +137,9 @@ export default function SupportQueuePage() {
   const [filters, setFilters] = useListParams(['status', 'priority', 'category', 'assigned', 'sort'], {
     sort: DEFAULT_SORT,
   })
-  const { data: counts } = useApiData(requestCountsPath())
+  const announce = useAnnounce()
+  const countsData = useApiData(requestCountsPath())
+  const counts = countsData.data
   const reviewActive = filters.status === REVIEW_STATUS
   const reviewCount = counts?.counts[REVIEW_STATUS]
 
@@ -145,19 +152,38 @@ export default function SupportQueuePage() {
     assigned_to: filters.assigned,
     ...sortParams(filters.sort),
   }
+  const list = useApiData(requestsPath(params))
+
+  // Skips anything still loading, so a timer and a click cannot send the same request twice.
+  function refresh() {
+    if (!list.loading) list.reload()
+    if (!countsData.loading) countsData.reload()
+  }
+  usePolling(refresh, { enabled: true, intervalMs: AUTO_REFRESH_MS })
 
   return (
     <>
       <div className="page-header">
         <h1>Support queue</h1>
-        <Button
-          variant="secondary"
-          className="btn-attention"
-          aria-pressed={reviewActive}
-          onClick={() => setFilters({ status: reviewActive ? '' : REVIEW_STATUS })}
-        >
-          Needs review{reviewCount !== undefined ? ` (${reviewCount})` : ''}
-        </Button>
+        <div className="btn-group">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              refresh()
+              announce('Queue refreshed.')
+            }}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="secondary"
+            className="btn-attention"
+            aria-pressed={reviewActive}
+            onClick={() => setFilters({ status: reviewActive ? '' : REVIEW_STATUS })}
+          >
+            Needs review{reviewCount !== undefined ? ` (${reviewCount})` : ''}
+          </Button>
+        </div>
       </div>
       <StatusCounts data={counts} />
       <Card as="div">
@@ -200,7 +226,7 @@ export default function SupportQueuePage() {
           />
         </div>
         <Queue
-          params={params}
+          list={list}
           filtered={Boolean(filters.status || filters.priority || filters.category || filters.assigned)}
           onPage={(offset) => setFilters({ offset })}
         />

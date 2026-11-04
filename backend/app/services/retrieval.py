@@ -23,6 +23,8 @@ class RetrievedArticle:
     category: str
     snippet: str
     rank: float
+    # The whole article, for the mock agent's replies. Live prompts send only the snippet.
+    body_markdown: str = ""
 
 
 class KnowledgeRetriever:
@@ -54,6 +56,7 @@ class KnowledgeRetriever:
                 category=result.article.category,
                 snippet=snippet,
                 rank=result.rank,
+                body_markdown=result.article.body_markdown,
             )
             for result, snippet in zip(results, snippets, strict=True)
         ]

@@ -42,7 +42,6 @@ FORBIDDEN_REQUESTER_KEYS = {
     "review_state",
     "model_id",
     "token_counts",
-    "attempts_remaining",
     "version",
 }
 

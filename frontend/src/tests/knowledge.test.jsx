@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { errorResponse, jsonResponse, mockFetch } from './helpers'
@@ -195,5 +195,21 @@ describe('knowledge article', () => {
     })
     renderSignedIn('/knowledge/a1')
     expect(await screen.findByText('DRAFT')).toBeInTheDocument()
+  })
+})
+
+describe('searching again', () => {
+  it('fetches again when Search is pressed with the same words', async () => {
+    const fetchMock = mockFetch({
+      ...HEALTH,
+      'GET /knowledge': () => jsonResponse({ items: [], total: 0, limit: 20, offset: 0 }),
+    })
+    renderSignedIn('/knowledge?q=wifi')
+    await screen.findByText(/No articles match your search/)
+    const calls = () => fetchMock.mock.calls.filter(([url]) => url.includes('/knowledge')).length
+    const before = calls()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Search' }))
+    await waitFor(() => expect(calls()).toBe(before + 1))
   })
 })

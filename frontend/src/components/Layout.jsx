@@ -11,7 +11,9 @@ export default function Layout() {
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
   const [message, setMessage] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
   const mainRef = useRef(null)
+  const menuButtonRef = useRef(null)
   const previousPath = useRef(pathname)
 
   // A client-side navigation does not move focus, so keyboard and screen reader users would stay
@@ -34,11 +36,36 @@ export default function Layout() {
           <Link to={homeFor(user)} className="brand">
             IknowServiceAI
           </Link>
-          <nav aria-label="Main">
+          {/* CSS shows this button on narrow screens only, where it collapses the links below. */}
+          <button
+            type="button"
+            ref={menuButtonRef}
+            className="btn btn-secondary btn-sm nav-toggle"
+            aria-expanded={menuOpen}
+            aria-controls="main-nav"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            Menu
+          </button>
+          <nav
+            id="main-nav"
+            aria-label="Main"
+            className={menuOpen ? 'nav-open' : undefined}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && menuOpen) {
+                setMenuOpen(false)
+                menuButtonRef.current?.focus()
+              }
+            }}
+          >
             <ul className="nav-list">
               {navItemsFor(user).map((item) => (
                 <li key={item.to}>
-                  <NavLink to={item.to} end={item.to === '/requests/new'}>
+                  <NavLink
+                    to={item.to}
+                    end={item.to === '/requests/new'}
+                    onClick={() => setMenuOpen(false)}
+                  >
                     {item.label}
                   </NavLink>
                 </li>

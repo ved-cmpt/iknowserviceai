@@ -1,7 +1,7 @@
 # Implementation status
 
 Updated: 2026-11-04
-Current phase: 9 (not started). Phases 0 to 8 are complete in mock mode.
+Current phase: Run 04 in progress. Checkpoint 14 (behaviour fixes) is committed; see `git log`.
 Branch: main; see `git log --oneline` for the commit
 Deployment status: not deployed; local Docker only
 
@@ -50,11 +50,8 @@ None known.
 
 ## Known limitations
 
-- Pages do not refresh themselves. A requester waiting for review must reload, which signs them out (ADR-009), or navigate away and back. Staff see other people's changes on reload, or through the stale-update message.
-- After a failed analysis, a page reload shows the plain Analyze button. The requester response has no attempt count, so the number remaining appears only after the next try.
-- The queue shows "Another team member" rather than a name, because list items hold only an ID. Assignment is to yourself only: there is no picker for other staff.
-- Pressing Search again with an unchanged query does not fetch again, because the URL has not changed.
-- Audit details show raw identifiers and enum values, such as `review state: PENDING_REVIEW`.
+- Assignment is to yourself only: there is no picker for other staff.
+- The staff detail page does not refresh by itself (ADR-041). The stale-update message covers conflicts there.
 - Staff cannot rate a suggestion on their own request from the UI (ADR-036).
 - While a draft is pending review, the status controls offer no moves, which is stricter than the API. A person can still use the API to move the request, which strands the draft until it is escalated again.
 - Browser checks ran in Chromium only, against the Vite dev server. No real screen reader has been tried. Axe finds only part of what affects accessibility.

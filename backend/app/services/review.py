@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import conflict, forbidden, unprocessable
-from app.db.models import RequestFeedback, ServiceRequest, User
+from app.db.models import AiSuggestion, RequestFeedback, ServiceRequest, User
 from app.db.models.enums import EventType, RequestStatus, ReviewState
 from app.schemas.ai import FeedbackCreate, ReviewCreate
 from app.services.policy import asks_for_credentials
@@ -16,10 +16,10 @@ from app.services.state_machine import ensure_staff_transition
 from app.services.suggestions import latest_suggestion, visible_reply
 
 
-def review_suggestion(
+def _checked_review(
     db: Session, reviewer: User, request_id: uuid.UUID, payload: ReviewCreate
-) -> ServiceRequest:
-    """Approve or reject the latest held suggestion. Nothing is changed until every check passes."""
+) -> tuple[ServiceRequest, AiSuggestion, RequestStatus]:
+    """Run every check on a review. A dry run and a real decision share this, so they agree."""
     request = get_visible_request(db, reviewer, request_id, lock=True)
     if request.requester_id == reviewer.id:
         raise forbidden("You cannot review a request you submitted")
@@ -39,6 +39,24 @@ def review_suggestion(
         raise unprocessable(
             "UNSAFE_REPLY", "A published reply must not ask for passwords, codes or tokens"
         )
+    return request, suggestion, target
+
+
+def validate_review(
+    db: Session, reviewer: User, request_id: uuid.UUID, payload: ReviewCreate
+) -> None:
+    """Raise what a real review would raise. Writes nothing, and releases the row lock."""
+    try:
+        _checked_review(db, reviewer, request_id, payload)
+    finally:
+        db.rollback()
+
+
+def review_suggestion(
+    db: Session, reviewer: User, request_id: uuid.UUID, payload: ReviewCreate
+) -> ServiceRequest:
+    """Approve or reject the latest held suggestion. Nothing is changed until every check passes."""
+    request, suggestion, target = _checked_review(db, reviewer, request_id, payload)
 
     approved = payload.decision == "APPROVED"
     suggestion.review_state = (ReviewState.APPROVED if approved else ReviewState.REJECTED).value

@@ -4,16 +4,21 @@ import { useApiData } from '../api/useApiData'
 import { useAuth } from '../auth/authContext'
 import { isStaff } from '../auth/roles'
 import { PriorityBadge, StatusBadge } from '../components/Badge'
+import Button from '../components/Button'
 import Card from '../components/Card'
 import ErrorState from '../components/ErrorState'
 import LoadingState from '../components/LoadingState'
 import { categoryLabel } from '../knowledge/categories'
 import { formatDateTime } from '../lib/format'
+import { usePolling } from '../lib/usePolling'
 import ActivitySection from '../requests/ActivitySection'
 import AiSection from '../requests/AiSection'
 import CommentsSection from '../requests/CommentsSection'
 import { useAnalysis, useAutoAnalyze } from '../requests/useAnalysis'
 import NotFoundPage from './NotFoundPage'
+
+const POLL_INTERVAL_MS = 5000
+const POLL_MAX_DURATION_MS = 5 * 60 * 1000
 
 function RequesterDetail({ id }) {
   const { loading, data, error, reload, setData } = useApiData(requestPath(id))
@@ -22,6 +27,19 @@ function RequesterDetail({ id }) {
     reload,
   })
   const autoPending = useAutoAnalyze(Boolean(data), analyze)
+
+  // While someone else holds the next step, keep the page current without a manual reload.
+  const waiting = data?.status === 'ANALYZING' || data?.suggestion_state === 'AWAITING_STAFF_REVIEW'
+  const { expired, restart } = usePolling(
+    () => {
+      if (!loading) reload()
+    },
+    {
+      enabled: waiting && !running && !autoPending && !failure,
+      intervalMs: POLL_INTERVAL_MS,
+      maxDurationMs: POLL_MAX_DURATION_MS,
+    },
+  )
 
   if (error?.status === 404) {
     return <NotFoundPage message="This request does not exist, or you do not have access to it." />
@@ -72,6 +90,21 @@ function RequesterDetail({ id }) {
           reload()
         }}
       />
+      {expired && (
+        <p className="meta">
+          Automatic updates have paused.{' '}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              restart()
+              reload()
+            }}
+          >
+            Check for updates
+          </Button>
+        </p>
+      )}
       <Card title="Your description">
         <div className="preserve-lines">{data.description}</div>
       </Card>

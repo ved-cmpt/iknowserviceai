@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { friendlyMessage, needsReload } from '../api/errors'
-import { reviewRequest } from '../api/requests'
+import { reviewRequest, validateReview } from '../api/requests'
 import { useAnnounce } from '../components/announcerContext'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
@@ -37,34 +37,53 @@ export default function ReviewPanel({ request, onReviewed, onConflict }) {
   const [serverError, setServerError] = useState(null)
   const [pendingDecision, setPendingDecision] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [checking, setChecking] = useState(null)
 
   const reply = replyDraft ?? suggestion.proposed_reply
   const outputFlags = suggestion.risk_flags.filter((flag) => flag.startsWith('OUTPUT_'))
 
-  function ask(decision) {
+  function reviewBody(decision) {
+    return {
+      decision,
+      ...(decision === 'APPROVED' ? { published_reply: reply.trim() } : {}),
+      review_reason: reason.trim(),
+      expected_suggestion_id: suggestion.id,
+      next_status: nextStatus,
+    }
+  }
+
+  function showFailure(cause) {
+    if (cause.code === 'UNSAFE_REPLY') setErrors({ reply: friendlyMessage(cause) })
+    else if (needsReload(cause)) onConflict(cause)
+    else setServerError(cause)
+  }
+
+  // Asks the server first, so a refusal appears on the field before any confirmation is shown.
+  async function ask(decision) {
+    if (checking) return
     const found = validate(decision, reply, reason)
     setErrors(found)
     setServerError(null)
-    if (Object.keys(found).length === 0) setPendingDecision(decision)
+    if (Object.keys(found).length > 0) return
+    setChecking(decision)
+    try {
+      await validateReview(request.id, reviewBody(decision))
+      setPendingDecision(decision)
+    } catch (cause) {
+      showFailure(cause)
+    } finally {
+      setChecking(null)
+    }
   }
 
   async function submit() {
-    const approved = pendingDecision === 'APPROVED'
     setSubmitting(true)
     try {
-      const updated = await reviewRequest(request.id, {
-        decision: pendingDecision,
-        ...(approved ? { published_reply: reply.trim() } : {}),
-        review_reason: reason.trim(),
-        expected_suggestion_id: suggestion.id,
-        next_status: nextStatus,
-      })
-      announce(approved ? 'Reply approved and published.' : 'Suggestion rejected.')
+      const updated = await reviewRequest(request.id, reviewBody(pendingDecision))
+      announce(pendingDecision === 'APPROVED' ? 'Reply approved and published.' : 'Suggestion rejected.')
       onReviewed(updated)
     } catch (cause) {
-      if (cause.code === 'UNSAFE_REPLY') setErrors({ reply: friendlyMessage(cause) })
-      else if (needsReload(cause)) onConflict(cause)
-      else setServerError(cause)
+      showFailure(cause)
     } finally {
       setSubmitting(false)
       setPendingDecision(null)
@@ -121,8 +140,15 @@ export default function ReviewPanel({ request, onReviewed, onConflict }) {
         )}
       </FormField>
       <div className="btn-group">
-        <Button onClick={() => ask('APPROVED')}>Approve</Button>
-        <Button variant="danger" onClick={() => ask('REJECTED')}>
+        {/* Not disabled during the check: that would drop keyboard focus, and the dialog returns it here. */}
+        <Button aria-busy={checking === 'APPROVED' || undefined} onClick={() => ask('APPROVED')}>
+          Approve
+        </Button>
+        <Button
+          variant="danger"
+          aria-busy={checking === 'REJECTED' || undefined}
+          onClick={() => ask('REJECTED')}
+        >
           Reject
         </Button>
       </div>

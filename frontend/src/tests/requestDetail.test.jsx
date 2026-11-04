@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { bodiesSentTo, callsTo, errorResponse, HEALTH, jsonResponse, mockFetch } from './helpers'
@@ -242,6 +242,157 @@ describe('AI section states', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Restart analysis' }))
     expect(await screen.findByTestId('suggestion-reply')).toBeInTheDocument()
     expect(callsTo(fetchMock, 'POST', '/requests/r1/analyze')).toHaveLength(1)
+  })
+})
+
+describe('reviewed replies', () => {
+  const REVIEWED = {
+    ...WITH_SUGGESTION,
+    suggestion: { ...SUGGESTION, source: 'STAFF_REVIEWED', label: 'Reviewed by the support team' },
+  }
+
+  it('labels a staff-approved reply as reviewed, not as AI', async () => {
+    renderDetail(REVIEWED)
+    expect(await screen.findByText('Reviewed by the support team')).toBeInTheDocument()
+    expect(screen.queryByText(/AI-generated suggestion/)).toBeNull()
+  })
+
+  it('keeps the AI label on an unreviewed suggestion', async () => {
+    renderDetail({ ...WITH_SUGGESTION, suggestion: { ...SUGGESTION, source: 'AI' } })
+    expect(await screen.findByText('AI-generated suggestion — verify before acting')).toBeInTheDocument()
+    expect(screen.queryByText('Reviewed by the support team')).toBeNull()
+  })
+})
+
+describe('failed analysis, after a reload', () => {
+  it('shows the attempts remaining without another try', async () => {
+    renderDetail({ ...NEW_REQUEST, attempts_remaining: 2, last_analysis_failed: true })
+    expect(await screen.findByText('The last analysis did not finish. Your request is saved.')).toBeInTheDocument()
+    expect(screen.getByText('2 attempts remaining.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Analyze' })).toBeNull()
+  })
+
+  it('uses the singular for one attempt', async () => {
+    renderDetail({ ...NEW_REQUEST, attempts_remaining: 1, last_analysis_failed: true })
+    expect(await screen.findByText('1 attempt remaining.')).toBeInTheDocument()
+  })
+
+  it('hands over to staff with no button when no attempts remain', async () => {
+    renderDetail({ ...NEW_REQUEST, attempts_remaining: 0, last_analysis_failed: true })
+    expect(await screen.findByText(/Our support team will triage this manually/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Analyze' })).toBeNull()
+  })
+
+  it('keeps the plain Analyze button when nothing has failed', async () => {
+    renderDetail({ ...NEW_REQUEST, attempts_remaining: 3, last_analysis_failed: false })
+    expect(await screen.findByRole('button', { name: 'Analyze' })).toBeInTheDocument()
+  })
+})
+
+describe('live updates', () => {
+  const AWAITING = {
+    ...BASE_REQUEST,
+    status: 'NEEDS_HUMAN_REVIEW',
+    suggestion_state: 'AWAITING_STAFF_REVIEW',
+  }
+  const reads = (fetchMock) => callsTo(fetchMock, 'GET', '/requests/r1').length
+
+  function setHidden(hidden) {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: hidden })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+    delete document.hidden
+  })
+
+  it('polls every 5 seconds while awaiting review, then shows the approved reply and stops', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    let approved = false
+    const fetchMock = mockFetch({
+      ...HEALTH,
+      'GET /requests/r1': () => jsonResponse(approved ? WITH_SUGGESTION : AWAITING),
+    })
+    renderSignedIn('/requests/r1')
+    await screen.findByText('Awaiting staff review')
+    const first = reads(fetchMock)
+
+    await vi.advanceTimersByTimeAsync(5100)
+    await waitFor(() => expect(reads(fetchMock)).toBe(first + 1))
+
+    approved = true
+    await vi.advanceTimersByTimeAsync(5100)
+    expect(await screen.findByTestId('suggestion-reply')).toBeInTheDocument()
+    const settled = reads(fetchMock)
+
+    await vi.advanceTimersByTimeAsync(20000)
+    expect(reads(fetchMock)).toBe(settled)
+  })
+
+  it('polls while analysis is running elsewhere', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { fetchMock } = renderDetail({ ...BASE_REQUEST, status: 'ANALYZING' })
+    await screen.findByText(/Analysis is running/)
+    const first = reads(fetchMock)
+    await vi.advanceTimersByTimeAsync(5100)
+    await waitFor(() => expect(reads(fetchMock)).toBe(first + 1))
+  })
+
+  it('does not poll a settled request', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { fetchMock } = renderDetail(WITH_SUGGESTION)
+    await screen.findByTestId('suggestion-reply')
+    const first = reads(fetchMock)
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(reads(fetchMock)).toBe(first)
+  })
+
+  it('never stacks requests while one is in flight', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    let hang = false
+    const fetchMock = mockFetch({
+      ...HEALTH,
+      'GET /requests/r1': () => (hang ? new Promise(() => {}) : jsonResponse(AWAITING)),
+    })
+    renderSignedIn('/requests/r1')
+    await screen.findByText('Awaiting staff review')
+    const first = reads(fetchMock)
+    hang = true
+    await vi.advanceTimersByTimeAsync(5100)
+    await waitFor(() => expect(reads(fetchMock)).toBe(first + 1))
+    await vi.advanceTimersByTimeAsync(9000)
+    expect(reads(fetchMock)).toBe(first + 1)
+  })
+
+  it('pauses while the tab is hidden, and checks at once on return', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { fetchMock } = renderDetail(AWAITING)
+    await screen.findByText('Awaiting staff review')
+    setHidden(true)
+    const first = reads(fetchMock)
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(reads(fetchMock)).toBe(first)
+
+    setHidden(false)
+    await waitFor(() => expect(reads(fetchMock)).toBe(first + 1))
+  })
+
+  it('stops after about 5 minutes, and offers a way to check again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { fetchMock } = renderDetail(AWAITING)
+    await screen.findByText('Awaiting staff review')
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 5100)
+    const button = await screen.findByRole('button', { name: 'Check for updates' })
+    const stopped = reads(fetchMock)
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(reads(fetchMock)).toBe(stopped)
+
+    fireEvent.click(button)
+    await waitFor(() => expect(reads(fetchMock)).toBe(stopped + 1))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Check for updates' })).toBeNull())
   })
 })
 

@@ -12,6 +12,7 @@ export const USERS = {
 }
 
 export const AI_LABEL = 'AI-generated suggestion — verify before acting'
+export const REVIEWED_LABEL = 'Reviewed by the support team'
 export const AWAITING_TEXT =
   "A support team member is reviewing this request. We'll show guidance here once it's approved."
 export const WIFI_TITLE = 'The campus Wi-Fi connects but I cannot open websites'
@@ -35,7 +36,12 @@ export async function signInAt(page, who, path = '/login') {
   await fillSignIn(page, who)
 }
 
+// On narrow screens the links sit behind the menu button.
 export async function openNav(page, name) {
+  const menu = page.getByRole('button', { name: 'Menu' })
+  if ((await menu.isVisible()) && (await menu.getAttribute('aria-expanded')) === 'false') {
+    await menu.click()
+  }
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true }).click()
 }
 

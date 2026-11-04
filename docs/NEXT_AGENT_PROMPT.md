@@ -1,7 +1,7 @@
 # Agent handoff
 
 Last updated: 2026-11-04
-Current phase and exact objective: Chunk 5, Phase 9 plus CI: evaluation, performance and log review, and GitHub Actions.
+Current phase and exact objective: Run 04 in progress. Checkpoint 14 is committed; next are deploy-readiness, evaluation and CI.
 Repo branch and last verified commit: `main`; run `git log --oneline`. Phases 0 to 8 passed a clean-state verification in mock mode.
 Implemented and verified: see `docs/IMPLEMENTATION_STATUS.md` and `docs/RUN_REPORTS/RUN_03.md`.
 Environment/service state: compose stack running in mock mode with default limits, migrated at `0004`, freshly reset demo data.

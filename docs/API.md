@@ -81,7 +81,7 @@ USER sees their own requests only. AGENT and ADMIN see all.
 | `sort` | `created_at` (default), `updated_at`, `priority`. `priority` sorts by severity. |
 | `direction` | `desc` (default), `asc` |
 
-Items: `id, title, status, category, priority, created_at, updated_at`. Staff also get `requester_id, assigned_agent_id, version`.
+Items: `id, title, status, category, priority, created_at, updated_at`. Staff also get `requester_id, assigned_agent_id, assigned_agent_name, version`.
 
 Errors: 401, 403, 422. List items never hold suggestion fields.
 
@@ -100,6 +100,7 @@ USER response: `id, title, description, status, category, priority, created_at, 
 - `comments`: public only, each `id, author_name, body, created_at`.
 - `events`: `event_type, details, created_at`. Details are limited to `from` and `to` for status, priority and category changes. Internal-comment events, AI and review events, reasons and staff identifiers are removed.
 - `suggestion_state` and `suggestion`. See [AI fields](#ai-fields-in-get-requestsid).
+- `attempts_remaining` and `last_analysis_failed`, so a page can explain a failed analysis after a reload (ADR-040).
 
 Staff response adds `version`, `requester`, `assigned_agent`, all comments with `author_id` and `is_internal`, full events with `id`, `actor_id` and all details, and `suggestion`, `ai_runs` and `attempts_remaining`.
 
@@ -179,9 +180,12 @@ Approve or reject the latest `PENDING_REVIEW` suggestion of a `NEEDS_HUMAN_REVIE
   "published_reply": "Required to approve, not allowed to reject. 1 to 1200 characters",
   "review_reason": "3 to 300 characters",
   "expected_suggestion_id": "<suggestion.id from the staff request detail>",
-  "next_status": "TRIAGED"
+  "next_status": "TRIAGED",
+  "dry_run": false
 }
 ```
+
+**Dry run:** with `"dry_run": true`, the server runs every check a real review runs, including permissions, conflicts and `UNSAFE_REPLY`, and then stops. It returns 200 `{ "valid": true }` or the same error, and saves nothing: no state change, no event, no audit row. A real review always validates again (ADR-039).
 
 `next_status` is `TRIAGED` (default) or `IN_PROGRESS`. `published_reply` is stored separately from `proposed_reply`. Events and audit hold the decision, reason and reviewer, never reply text.
 
@@ -210,19 +214,20 @@ USER:
     "id": "...",
     "reply": "...",
     "citations": [{ "id": "...", "title": "..." }],
+    "source": "AI",
     "label": "AI-generated suggestion; verify before acting",
     "feedback_submitted": false
   }
 }
 ```
 
-| `review_state` (staff-only) | `suggestion_state` | `suggestion.reply` |
-|---|---|---|
-| No suggestion | `null` | `suggestion` is `null` |
-| `NOT_REQUIRED` | `AVAILABLE` | The AI reply |
-| `PENDING_REVIEW` | `AWAITING_STAFF_REVIEW` | `suggestion` is `null` |
-| `APPROVED` | `AVAILABLE` | The staff-approved `published_reply` |
-| `REJECTED` | `null` | `suggestion` is `null` |
+| `review_state` (staff-only) | `suggestion_state` | `suggestion.reply` | `suggestion.source` and `label` |
+|---|---|---|---|
+| No suggestion | `null` | `suggestion` is `null` | |
+| `NOT_REQUIRED` | `AVAILABLE` | The AI reply | `AI`, "AI-generated suggestion; verify before acting" |
+| `PENDING_REVIEW` | `AWAITING_STAFF_REVIEW` | `suggestion` is `null` | |
+| `APPROVED` | `AVAILABLE` | The staff-approved `published_reply` | `STAFF_REVIEWED`, "Reviewed by the support team" |
+| `REJECTED` | `null` | `suggestion` is `null` | |
 
 Citations to articles that are no longer published are omitted for requesters.
 
@@ -324,6 +329,7 @@ class RetrievedArticle:
     category: str
     snippet: str  # plain text around the matched terms, at most 500 characters
     rank: float
+    body_markdown: str = ""  # For the mock agent. Live prompts send only the snippet.
 ```
 
 - Returns published articles only.
@@ -336,7 +342,7 @@ class RetrievedArticle:
 
 ### `GET /admin/audit` (ADMIN)
 
-Paginated, newest first. Query: `action` and `entity_type` (exact matches, up to 100 characters), `limit`, `offset`. Items: `id, actor_id, actor_name, entity_type, entity_id, action, safe_metadata, occurred_at`. `actor_name` is null when there is no actor, such as a failed sign-in for an unknown email. Metadata never contains passwords, tokens or comment bodies.
+Paginated, newest first. Query: `action` and `entity_type` (exact matches, up to 100 characters), `limit`, `offset`. Items: `id, actor_id, actor_name, entity_type, entity_id, entity_name, names, action, safe_metadata, occurred_at`. `actor_name` is null when there is no actor, such as a failed sign-in for an unknown email. `entity_name` is the title of the request or article, when there is one. `names` maps user IDs in `safe_metadata`, such as an assignee, to display names. Metadata never contains passwords, tokens or comment bodies.
 
 Audit actions so far: `auth.login_success`, `auth.login_failure`, `request.created`, `request.assigned`, `request.unassigned`, `request.priority_changed`, `request.category_changed`, `request.status_changed`, `request.comment_added`, `request.ai_analysis_started`, `request.ai_analysis_succeeded`, `request.ai_analysis_failed`, `request.review_approved`, `request.review_rejected`, `request.suggestion_withheld`, `request.feedback_added`, `knowledge.created`, `knowledge.updated`, `knowledge.published`, `knowledge.unpublished`, `knowledge.status_changed`.
 

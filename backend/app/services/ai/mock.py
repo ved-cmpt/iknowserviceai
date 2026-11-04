@@ -4,6 +4,8 @@ import re
 
 from app.db.models.enums import AiMode, Category, Priority
 from app.services.ai.base import AgentArticle, AgentInput, TriageResult
+from app.services.policy import asks_for_credentials, scan_article_text, scan_request_text
+from app.services.text import markdown_to_plain_text
 
 _CATEGORY_KEYWORDS: dict[Category, re.Pattern[str]] = {
     Category.NETWORK: re.compile(
@@ -23,11 +25,23 @@ _CATEGORY_KEYWORDS: dict[Category, re.Pattern[str]] = {
 _URGENT = re.compile(r"\b(outage|everyone|whole building|entire (?:floor|building|campus))\b")
 _HIGH = re.compile(r"\b(urgent|deadline|exam|cannot work|hacked|compromised)\b")
 _LOW = re.compile(r"\b(question|how do i|when is|minor|whenever|not urgent)\b")
+_ORDERED_STEP = re.compile(r"^\s*\d+[.)]\s+(.+)$", re.MULTILINE)
 
 SECOND_CITATION_MIN_RANK_RATIO = 0.7
+MAX_REPLY_STEPS = 3
+MAX_STEP_LENGTH = 220
 NO_SOURCES_REPLY = (
     "We could not find a published article that matches this request. "
     "A member of the support team will review it."
+)
+ESCALATION_LINE = (
+    "If this doesn't help, add a comment and our team will follow up. Never share your password."
+)
+CAUTIOUS_REPLY = (
+    "This request may involve account security or another sensitive issue, so a member of the "
+    "support team will review it before any steps are shared. Please do not share your password, "
+    "recovery codes or one-time codes with anyone. If you have more details, add a comment and "
+    "our team will follow up."
 )
 
 
@@ -66,6 +80,37 @@ def _citations(articles: tuple[AgentArticle, ...], category: Category) -> list[A
     return [top]
 
 
+def _steps(article: AgentArticle) -> list[str]:
+    """The first few steps of the article's ordered list, as plain text.
+
+    Article text is untrusted, so a step that reads like an instruction to the system or asks for
+    a secret is left out. Policy still holds any reply from such an article for review.
+    """
+    steps = []
+    for match in _ORDERED_STEP.finditer(article.body_markdown):
+        step = markdown_to_plain_text(match.group(1))[:MAX_STEP_LENGTH].strip()
+        if step and not scan_article_text(step) and not asks_for_credentials(step):
+            steps.append(step)
+        if len(steps) == MAX_REPLY_STEPS:
+            break
+    return steps
+
+
+def _reply_from_article(article: AgentArticle) -> str:
+    steps = _steps(article)
+    if not steps:
+        return (
+            f'The article "{article.title}" may help, so please check the guidance there.\n'
+            f"{ESCALATION_LINE}"
+        )
+    numbered = "\n".join(f"{number}. {step}" for number, step in enumerate(steps, start=1))
+    return f'These steps from "{article.title}" may help:\n{numbered}\n{ESCALATION_LINE}'
+
+
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
 class MockAgent:
     mode = AiMode.MOCK
     model_id = None
@@ -79,11 +124,9 @@ class MockAgent:
         reply = NO_SOURCES_REPLY
         confidence = 0.4
         if cited:
-            titles = ", ".join(f'"{article.title}"' for article in cited)
-            reply = (
-                f"These knowledge base articles may help: {titles}. Check the steps there, and "
-                "add a comment to this request if the problem continues."
-            )
+            # A sensitive request is held for review anyway, so its draft offers no procedure.
+            sensitive = bool(scan_request_text(text))
+            reply = CAUTIOUS_REPLY if sensitive else _reply_from_article(cited[0])
             # More keyword evidence and more sources raise confidence.
             confidence = 0.5 + 0.15 * min(hits, 2) + 0.05 * min(len(cited), 2)
 
@@ -98,7 +141,8 @@ class MockAgent:
                 "citation_article_ids": [article.id for article in cited],
                 "requires_human_review": not cited,
                 "rationale_short": (
-                    f"Matched {hits} {category.value} keywords and {len(cited)} articles."
+                    f"Matched {_plural(hits, f'{category.value} keyword')} "
+                    f"and {_plural(len(cited), 'article')}."
                 ),
             },
             strict=False,

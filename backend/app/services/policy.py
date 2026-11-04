@@ -213,8 +213,10 @@ def decide(
     Any flag means review, which is why `requires_human_review=false` cannot lower anything.
     """
     flags = set(result.risk_flags) | scan_request_text(redacted_text)
-    flags |= scan_model_reply(result.recommended_reply, cited_article_bodies)
-    if any(scan_article_text(text) for text in retrieved_article_texts):
+    cited_bodies = list(cited_article_bodies)
+    flags |= scan_model_reply(result.recommended_reply, cited_bodies)
+    # Whole cited articles are scanned too, because hostile text may sit outside the snippet.
+    if any(scan_article_text(text) for text in (*retrieved_article_texts, *cited_bodies)):
         flags.add(RiskFlag.KB_CONTENT_SUSPECT)
     if result.confidence < confidence_threshold:
         flags.add(RiskFlag.LOW_CONFIDENCE)

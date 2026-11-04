@@ -3,9 +3,11 @@ import {
   AI_LABEL,
   apiAs,
   AWAITING_TEXT,
+  expectAccessible,
   fillSignIn,
   newSession,
   openNav,
+  REVIEWED_LABEL,
   scenarioTitle,
   seedRequest,
   SENSITIVE_TEXT,
@@ -39,7 +41,12 @@ test.describe('1. Ordinary', () => {
     await expect(page.getByText('Analyzing your request…')).toBeVisible()
     await expect(page.getByText(AI_LABEL)).toBeVisible()
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
-    await expect(page.getByTestId('suggestion-reply')).toContainText(WIFI_ARTICLE)
+    // The reply is built from the article: an opening, its first steps and an escalation line.
+    const suggested = page.getByTestId('suggestion-reply')
+    await expect(suggested).toContainText(WIFI_ARTICLE)
+    await expect(suggested).toContainText('1. Turn Wi-Fi off and on again')
+    await expect(suggested).toContainText("If this doesn't help, add a comment")
+    await expect(page.getByText(REVIEWED_LABEL)).toHaveCount(0)
     await expect(page.getByText('Triaged', { exact: true })).toBeVisible()
 
     // Only the Wi-Fi article is cited, and the citation opens inside the app.
@@ -151,14 +158,14 @@ test.describe('2. Sensitive', () => {
     await expect(alex.getByTestId('ai-draft')).toHaveText(heldReply)
     await expect(alex.getByText('Possible account compromise').first()).toBeVisible()
 
-    // An unsafe reply is refused, with the explanation on the field.
+    // An unsafe reply is refused by the server check, on the field, before any dialog opens.
     const reply = alex.getByLabel(/^Reply to publish/)
     await expect(reply).toHaveValue(heldReply)
     await reply.fill(UNSAFE_REPLY)
     await alex.getByLabel(/^Review reason/).fill('Sensitive issue; using safe wording')
     await alex.getByRole('button', { name: 'Approve', exact: true }).click()
-    await alex.getByRole('dialog').getByRole('button', { name: 'Approve and publish' }).click()
     await expect(alex.getByText(/appears to ask for a password, code or token/)).toBeVisible()
+    await expect(alex.getByRole('dialog')).toHaveCount(0)
     await expect(reply).toHaveValue(UNSAFE_REPLY)
 
     // The edited safe reply goes through.
@@ -169,13 +176,11 @@ test.describe('2. Sensitive', () => {
     await expect(alex.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0)
     await staff.context.close()
 
-    // Reloading signs Riley out. After signing in again, Riley sees exactly the approved reply.
-    await page.reload()
-    await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
-    await fillSignIn(page, 'riley')
-    await expect(page).toHaveURL(requestUrl)
+    // Riley's open page updates by itself, showing exactly the approved reply, labelled as reviewed.
     await expect(page.getByTestId('suggestion-reply')).toHaveText(SAFE_REPLY)
-    await expect(page.getByText(AI_LABEL)).toBeVisible()
+    await expect(page).toHaveURL(requestUrl)
+    await expect(page.getByText(REVIEWED_LABEL)).toBeVisible()
+    await expect(page.getByText(AI_LABEL)).toHaveCount(0)
     await expect(page.locator('body')).not.toContainText(heldReply)
     await expect(page.getByText(AWAITING_TEXT)).toHaveCount(0)
   })
@@ -316,6 +321,40 @@ test.describe('5. Authorization', () => {
   test('an agent cannot open the admin pages', async ({ page }) => {
     await signInAt(page, 'alex', '/admin/audit')
     await expect(page.getByRole('heading', { name: "You don't have access" })).toBeVisible()
+  })
+})
+
+test.describe('7. Staying current', () => {
+  test('the Refresh button brings a new request into the queue', async ({ page }) => {
+    await signInAt(page, 'alex', '/support')
+    await expect(page.getByRole('table')).toBeVisible()
+
+    const title = `Arrived after loading ${uniqueTag()}`
+    await seedRequest('riley', {
+      title,
+      description: 'This request is created after the queue was loaded.',
+      analyze: false,
+    })
+    await expect(page.getByRole('link', { name: title })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Refresh' }).click()
+    await expect(page.getByRole('link', { name: title })).toBeVisible()
+  })
+
+  test('the narrow-screen menu opens, navigates and closes @mobile', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'The menu button only shows on narrow screens.')
+    await signInAt(page, 'riley')
+    const menu = page.getByRole('button', { name: 'Menu' })
+    const nav = page.getByRole('navigation', { name: 'Main' })
+    await expect(menu).toHaveAttribute('aria-expanded', 'false')
+    await expect(nav.getByRole('link', { name: 'Knowledge' })).toHaveCount(0)
+
+    await menu.click()
+    await expect(menu).toHaveAttribute('aria-expanded', 'true')
+    await expectAccessible(page, 'narrow-screen menu open')
+
+    await nav.getByRole('link', { name: 'Knowledge' }).click()
+    await expect(page.getByRole('heading', { name: 'Knowledge base' })).toBeVisible()
+    await expect(menu).toHaveAttribute('aria-expanded', 'false')
   })
 })
 

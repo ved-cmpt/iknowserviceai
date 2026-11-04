@@ -100,11 +100,17 @@ const QUEUE_ROUTES = {
   'GET /requests/counts': () => countsResponse({ NEEDS_HUMAN_REVIEW: 3, NEW: 1 }),
 }
 
-function renderDetail(detail = DETAIL, routes = {}, user = AGENT_USER) {
+// A review dry run passes by default. `dryRun` replaces its answer.
+function renderDetail(detail = DETAIL, { dryRun, ...routes } = {}, user = AGENT_USER) {
+  const review = routes['POST /requests/r1/review']
   const fetchMock = mockFetch({
     ...HEALTH,
     'GET /requests/r1': () => jsonResponse(detail),
     ...routes,
+    'POST /requests/r1/review': (call) => {
+      if (call.body.dry_run) return dryRun ? dryRun(call) : jsonResponse({ valid: true })
+      return review(call)
+    },
   })
   renderSignedIn('/support/r1', user)
   return fetchMock
@@ -314,6 +320,70 @@ describe('staff detail: AI analysis panel', () => {
   })
 })
 
+describe('support queue: names and refreshing', () => {
+  it("shows the assignee's name, and You for the signed-in person", async () => {
+    mockFetch({
+      ...QUEUE_ROUTES,
+      'GET /requests': () =>
+        page([
+          { ...QUEUE_ITEM, assigned_agent_id: 'u9', assigned_agent_name: 'Jordan Reyes' },
+          { ...QUEUE_ITEM, id: 'r2', title: 'Mine', assigned_agent_id: AGENT_USER.id, assigned_agent_name: AGENT_USER.display_name },
+        ]),
+    })
+    renderSignedIn('/support', AGENT_USER)
+    expect(await screen.findByText('Jordan Reyes')).toBeInTheDocument()
+    expect(screen.getByText('You')).toBeInTheDocument()
+    expect(screen.queryByText('Another team member')).toBeNull()
+  })
+
+  it('Refresh fetches the list and the counts again', async () => {
+    const fetchMock = mockFetch({ ...QUEUE_ROUTES, 'GET /requests': () => page([QUEUE_ITEM]) })
+    renderSignedIn('/support', AGENT_USER)
+    await screen.findByRole('link', { name: QUEUE_ITEM.title })
+    await waitFor(() => expect(callsTo(fetchMock, 'GET', '/requests/counts')).toHaveLength(1))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    await waitFor(() => expect(callsTo(fetchMock, 'GET', '/requests')).toHaveLength(2))
+    await waitFor(() => expect(callsTo(fetchMock, 'GET', '/requests/counts')).toHaveLength(2))
+  })
+
+  it('a failed refresh keeps the list on screen', async () => {
+    let calls = 0
+    mockFetch({
+      ...QUEUE_ROUTES,
+      'GET /requests': () => {
+        calls += 1
+        return calls === 1 ? page([QUEUE_ITEM]) : errorResponse(500, 'INTERNAL_ERROR', 'raw')
+      },
+    })
+    renderSignedIn('/support', AGENT_USER)
+    await screen.findByRole('link', { name: QUEUE_ITEM.title })
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    await waitFor(() => expect(calls).toBe(2))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: QUEUE_ITEM.title })).toBeInTheDocument()
+  })
+
+  describe('auto-refresh', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('refreshes every 30 seconds, with one request per tick', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const fetchMock = mockFetch({ ...QUEUE_ROUTES, 'GET /requests': () => page([QUEUE_ITEM]) })
+      renderSignedIn('/support', AGENT_USER)
+      await screen.findByRole('link', { name: QUEUE_ITEM.title })
+      const before = callsTo(fetchMock, 'GET', '/requests').length
+
+      await vi.advanceTimersByTimeAsync(29000)
+      expect(callsTo(fetchMock, 'GET', '/requests')).toHaveLength(before)
+      await vi.advanceTimersByTimeAsync(1500)
+      await waitFor(() => expect(callsTo(fetchMock, 'GET', '/requests')).toHaveLength(before + 1))
+    })
+  })
+})
+
 describe('staff detail: review', () => {
   async function fillReason(text = 'Safe escalation language') {
     await userEvent.type(await screen.findByLabelText(/^Review reason/), text)
@@ -364,14 +434,15 @@ describe('staff detail: review', () => {
     await userEvent.selectOptions(screen.getByLabelText('Next status'), 'IN_PROGRESS')
 
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
-    const dialog = screen.getByRole('dialog', { name: 'Approve and publish this reply?' })
+    const dialog = await screen.findByRole('dialog', { name: 'Approve and publish this reply?' })
     expect(dialog).toHaveTextContent('Edited safe reply.')
-    expect(callsTo(fetchMock, 'POST', '/requests/r1/review')).toHaveLength(0)
+    // So far, only the check has run.
+    expect(bodiesSentTo(fetchMock, 'POST', '/requests/r1/review').map((body) => body.dry_run)).toEqual([true])
     await userEvent.click(within(dialog).getByRole('button', { name: 'Approve and publish' }))
 
     expect(await screen.findByTestId('published-reply')).toHaveTextContent('Edited safe reply.')
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
-    expect(bodiesSentTo(fetchMock, 'POST', '/requests/r1/review')).toEqual([
+    expect(bodiesSentTo(fetchMock, 'POST', '/requests/r1/review').slice(1)).toEqual([
       {
         decision: 'APPROVED',
         published_reply: 'Edited safe reply.',
@@ -392,11 +463,11 @@ describe('staff detail: review', () => {
     await fillReason('Not useful')
 
     await userEvent.click(screen.getByRole('button', { name: 'Reject' }))
-    const dialog = screen.getByRole('dialog', { name: 'Reject this suggestion?' })
+    const dialog = await screen.findByRole('dialog', { name: 'Reject this suggestion?' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Reject suggestion' }))
 
     expect(await screen.findByText('Rejected')).toBeInTheDocument()
-    const [body] = bodiesSentTo(fetchMock, 'POST', '/requests/r1/review')
+    const body = bodiesSentTo(fetchMock, 'POST', '/requests/r1/review').at(-1)
     expect(body.decision).toBe('REJECTED')
     expect(body).not.toHaveProperty('published_reply')
   })
@@ -405,27 +476,67 @@ describe('staff detail: review', () => {
     const fetchMock = renderDetail()
     await fillReason()
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
 
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(callsTo(fetchMock, 'POST', '/requests/r1/review')).toHaveLength(0)
+    expect(bodiesSentTo(fetchMock, 'POST', '/requests/r1/review').filter((body) => !body.dry_run)).toEqual([])
+    expect(screen.getByRole('button', { name: 'Approve' })).toHaveFocus()
   })
 
-  it('shows UNSAFE_REPLY on the reply field and keeps the text', async () => {
-    renderDetail(DETAIL, {
-      'POST /requests/r1/review': () => errorResponse(422, 'UNSAFE_REPLY', 'raw'),
+  it('shows UNSAFE_REPLY on the reply field before any dialog opens, and keeps the text', async () => {
+    const fetchMock = renderDetail(DETAIL, {
+      dryRun: () => errorResponse(422, 'UNSAFE_REPLY', 'raw'),
     })
     await fillReason()
     const reply = screen.getByLabelText(/^Reply to publish/)
     await userEvent.clear(reply)
     await userEvent.type(reply, 'Please send us your password.')
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Approve and publish' }))
 
     const message = await screen.findByText(/appears to ask for a password, code or token/)
     expect(reply.getAttribute('aria-describedby')).toContain(message.id)
     expect(reply).toHaveAttribute('aria-invalid', 'true')
     expect(reply).toHaveValue('Please send us your password.')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(bodiesSentTo(fetchMock, 'POST', '/requests/r1/review').map((body) => body.dry_run)).toEqual([true])
+  })
+
+  it('sends one check for a double click', async () => {
+    let finish
+    const fetchMock = renderDetail(DETAIL, {
+      dryRun: () =>
+        new Promise((resolve) => {
+          finish = () => resolve(jsonResponse({ valid: true }))
+        }),
+    })
+    await fillReason()
+    const approve = screen.getByRole('button', { name: 'Approve' })
+    await userEvent.click(approve)
+    await userEvent.click(approve)
+    finish()
+    await screen.findByRole('dialog')
+    expect(bodiesSentTo(fetchMock, 'POST', '/requests/r1/review')).toHaveLength(1)
+  })
+
+  it('still shows UNSAFE_REPLY when only the real submit refuses the reply', async () => {
+    renderDetail(DETAIL, {
+      'POST /requests/r1/review': () => errorResponse(422, 'UNSAFE_REPLY', 'raw'),
+    })
+    await fillReason()
+    await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve and publish' }))
+
+    expect(await screen.findByText(/appears to ask for a password, code or token/)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('prompts a reload when the check finds a conflict, with no dialog', async () => {
+    renderDetail(DETAIL, { dryRun: () => errorResponse(409, 'STALE_REVIEW', 'raw') })
+    await fillReason()
+    await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByRole('button', { name: 'Reload' })).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
@@ -435,7 +546,7 @@ describe('staff detail: review', () => {
       renderDetail(DETAIL, { 'POST /requests/r1/review': () => errorResponse(409, code, 'raw') })
       await fillReason()
       await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
-      await userEvent.click(screen.getByRole('button', { name: 'Approve and publish' }))
+      await userEvent.click(await screen.findByRole('button', { name: 'Approve and publish' }))
 
       const alert = await screen.findByRole('alert')
       expect(within(alert).getByRole('button', { name: 'Reload' })).toBeInTheDocument()

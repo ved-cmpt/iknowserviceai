@@ -18,6 +18,7 @@ _RULE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$", re.MULTILINE)
 _EMPHASIS = re.compile(r"(\*{1,3}|_{2,3}|~~|`+)")
 _ANGLE_BRACKETS = re.compile(r"[<>]")
 _WHITESPACE = re.compile(r"\s+")
+_NUMBERED_STEP = re.compile(r"^\s*(\d+)[.)]\s+")
 
 
 def markdown_to_plain_text(markdown: str) -> str:
@@ -33,6 +34,19 @@ def markdown_to_plain_text(markdown: str) -> str:
     text = _EMPHASIS.sub("", text)
     text = _ANGLE_BRACKETS.sub(" ", text)
     return _WHITESPACE.sub(" ", text).strip()
+
+
+def markdown_to_plain_lines(markdown: str) -> str:
+    """Like markdown_to_plain_text, but keeps line breaks and step numbers, for readable replies."""
+    # Multi-line tags and script blocks must go first, because each line is cleaned on its own.
+    text = _HTML_TAG.sub(" ", _SCRIPT_OR_STYLE.sub(" ", markdown))
+    lines = []
+    for line in text.splitlines():
+        step = _NUMBERED_STEP.match(line)
+        clean = markdown_to_plain_text(line)
+        if clean:
+            lines.append(f"{step.group(1)}. {clean}" if step else clean)
+    return "\n".join(lines)
 
 
 def make_snippet(markdown: str, max_length: int) -> str:

@@ -84,7 +84,8 @@ def test_approval_publishes_only_the_edited_reply(
     visible = client.get(f"{REQUESTS}/{held.id}", headers=auth(requester))
     assert visible.json()["suggestion_state"] == "AVAILABLE"
     assert visible.json()["suggestion"]["reply"] == SAFE_REPLY
-    assert visible.json()["suggestion"]["label"] == "AI-generated suggestion; verify before acting"
+    assert visible.json()["suggestion"]["label"] == "Reviewed by the support team"
+    assert visible.json()["suggestion"]["source"] == "STAFF_REVIEWED"
     assert DRAFT_MARKER not in visible.text
 
 

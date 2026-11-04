@@ -10,8 +10,10 @@ from app.db.models.enums import AiMode, AiRunStatus, ArticleStatus, Category, Pr
 from app.schemas.common import NoNul, ORMModel, StrictInput
 
 AI_SUGGESTION_LABEL = "AI-generated suggestion; verify before acting"
+STAFF_REVIEWED_LABEL = "Reviewed by the support team"
 
 SuggestionState = Literal["AVAILABLE", "AWAITING_STAFF_REVIEW"]
+SuggestionSource = Literal["AI", "STAFF_REVIEWED"]
 
 PublishedReply = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1200), NoNul
@@ -28,6 +30,8 @@ class ReviewCreate(StrictInput):
     review_reason: ReviewReason
     expected_suggestion_id: uuid.UUID
     next_status: Literal["TRIAGED", "IN_PROGRESS"] = "TRIAGED"
+    # Runs every check, then stops. Nothing is saved or audited as a decision.
+    dry_run: StrictBool = False
 
     @model_validator(mode="after")
     def validate_reply(self) -> "ReviewCreate":
@@ -36,6 +40,12 @@ class ReviewCreate(StrictInput):
         if self.decision == "REJECTED" and self.published_reply is not None:
             raise ValueError("published_reply is only allowed when approving")
         return self
+
+
+class ReviewValidated(ORMModel):
+    """The response to a dry run that passed every check."""
+
+    valid: bool = True
 
 
 class FeedbackCreate(StrictInput):
@@ -62,6 +72,7 @@ class RequesterSuggestion(ORMModel):
     id: uuid.UUID
     reply: str
     citations: list[CitationLink]
+    source: SuggestionSource  # STAFF_REVIEWED means a person approved exactly this text.
     label: str
     feedback_submitted: bool
 

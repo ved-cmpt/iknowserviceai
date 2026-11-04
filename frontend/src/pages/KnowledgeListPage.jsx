@@ -12,10 +12,8 @@ import { CATEGORIES, categoryLabel } from '../knowledge/categories'
 const MAX_QUERY_LENGTH = 200
 const PAGE_SIZE = 20
 
-function Results({ query, category, offset, onPage }) {
-  const { loading, data, error, retry } = useApiData(
-    knowledgePath({ limit: PAGE_SIZE, offset, q: query, category }),
-  )
+function Results({ list, query, onPage }) {
+  const { loading, data, error, retry } = list
 
   if (error) return <ErrorState error={error} onRetry={retry} />
   if (loading && !data) return <LoadingState label="Searching articles…" />
@@ -60,6 +58,7 @@ export default function KnowledgeListPage() {
   const category = searchParams.get('category') ?? ''
   const offset = Number(searchParams.get('offset')) || 0
   const [draft, setDraft] = useState(query)
+  const list = useApiData(knowledgePath({ limit: PAGE_SIZE, offset, q: query, category }))
 
   function apply(nextQuery, nextCategory, nextOffset = 0) {
     const next = {}
@@ -71,7 +70,9 @@ export default function KnowledgeListPage() {
 
   function handleSubmit(event) {
     event.preventDefault()
-    apply(draft.trim(), category)
+    // The same search leaves the URL unchanged, so it would not fetch by itself.
+    if (draft.trim() === query && offset === 0) list.reload()
+    else apply(draft.trim(), category)
   }
 
   return (
@@ -101,9 +102,8 @@ export default function KnowledgeListPage() {
         <Button type="submit">Search</Button>
       </form>
       <Results
+        list={list}
         query={query}
-        category={category}
-        offset={offset}
         onPage={(nextOffset) => apply(query, category, nextOffset)}
       />
     </>

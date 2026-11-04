@@ -43,7 +43,7 @@ from app.services.requests import get_visible_request, record_change
 from app.services.retrieval import KnowledgeRetriever, RetrievedArticle
 from app.services.state_machine import ensure_system_transition
 from app.services.suggestions import count_attempts
-from app.services.text import markdown_to_plain_text
+from app.services.text import markdown_to_plain_lines, markdown_to_plain_text
 
 logger = logging.getLogger("app.ai")
 
@@ -176,7 +176,8 @@ def _call_provider(
             categories=tuple(Category),
             priorities=tuple(Priority),
             articles=tuple(
-                AgentArticle(a.id, a.title, a.snippet, a.category, a.rank) for a in retrieved
+                AgentArticle(a.id, a.title, a.snippet, a.category, a.rank, a.body_markdown)
+                for a in retrieved
             ),
             prompt_version=PROMPT_VERSION,
         )
@@ -271,7 +272,7 @@ def _validated_output(
 ) -> tuple[TriageResult, list[KnowledgeArticle], bool]:
     """Strip markup and keep only citations that were retrieved and are still published."""
     summary = _clean_model_text(result.summary)
-    reply = _clean_model_text(result.recommended_reply)
+    reply = markdown_to_plain_lines(result.recommended_reply)
     if not summary or not reply:
         raise ProviderInvalidOutput
 

@@ -68,6 +68,31 @@
   text-underline-offset: 3px;
 }
 
+.nav-toggle {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .nav-toggle {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  .topbar nav {
+    display: none;
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .topbar nav.nav-open {
+    display: block;
+  }
+
+  .nav-list {
+    flex-direction: column;
+  }
+}
+
 .topbar-user {
   display: flex;
   flex-wrap: wrap;
