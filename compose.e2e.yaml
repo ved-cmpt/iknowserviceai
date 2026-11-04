@@ -8,3 +8,21 @@ services:
       GEMINI_API_KEY: ""
       RATE_LIMIT_LOGIN_PER_MINUTE: "1000"
       RATE_LIMIT_ANALYZE_PER_HOUR: "1000"
+
+  e2e:
+    profiles: [e2e]
+    build: ./e2e
+    environment:
+      CI: "1"
+      API_URL: http://backend:8000/api/v1
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?set in .env}
+      SCREENSHOT_DIR: /screenshots
+    volumes:
+      - ./e2e:/e2e
+      - /e2e/node_modules
+      - ./assets/screenshots:/screenshots
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
