@@ -411,3 +411,19 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Decision:** `render.yaml` defines one free Docker web service in Oregon, matching Neon's `us-west-2`, with `healthCheckPath: /healthz`. No database is in the Blueprint. Migrations and seeding run from a workstation before deploying. Secrets are `sync: false`. `DEMO_PASSWORD` is inline, because it is published on the sign-in page on purpose, and the daily reset needs it to match the seed.
 - **`autoDeploy`:** Render's docs now prefer `autoDeployTrigger`, with `autoDeploy: true` documented as equivalent to `commit`. Its published schema still accepts `autoDeploy`, and the file validates against that schema.
 - **Trade-offs:** A deploy can go live while the database is behind, so migrate first, and keep migrations backward compatible. `/readyz` shows that state. A failed database does not take the service down, and pages show their own errors.
+
+## ADR-054: The hosted database runs PostgreSQL 18
+
+- **Context:** The prompt expected PostgreSQL 17 on Neon, and the provisioning script found 18. Development and CI are pinned to 17, and a Neon project's major version cannot be lowered in place.
+- **Alternatives:** Stop and ask for a new project on 17, which an unattended run could not do. Move development and CI to 18, which is a wider change with no demand for it.
+- **Decision:** Keep Neon on 18, and keep development and CI on 17. The script accepts 17 or newer, and notes the difference.
+- **Evidence:** The backend suite passed against a throwaway `postgres:18-alpine` container: 873 passed, 1 skipped. Provisioning, the app-role checks and the browser suite ran against the Neon server itself.
+- **Trade-offs:** CI does not test the production database's major version, so a later change that depends on the version could pass CI and fail on Neon. The owner can recreate the project on 17 to remove this: rerun `deploy/neon/provision.py` with the new connection, and paste `.env.render` again.
+
+## ADR-055: A provisioning script, rather than a list of manual steps
+
+- **Context:** The hosted database needs a role, migrations, grants, a seed, a switch and checks, in that order, and each step could leak a secret if done by hand.
+- **Decision:** `deploy/neon/provision.py` runs inside the production image, so it needs nothing installed. It hides the output of the commands it runs, reports database errors by class name only, and writes secrets only to git-ignored files, after all checks pass.
+- **Neon detail:** Neon refuses pre-hashed passwords when a role is created by SQL ("Neon only supports being given plaintext passwords"), so the plain password travels inside the TLS connection. The role is created by SQL, so it is not a member of `neon_superuser`, which the script confirms.
+- **`channel_binding`:** The connection string keeps Neon's `channel_binding=require`. The image's driver accepted it, so nothing was dropped.
+- **Trade-offs:** A repeat rotates the password and JWT secret, so the host must be updated each time. That is deliberate: there is no state to drift, and the same command serves as rotation.

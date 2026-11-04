@@ -3,7 +3,7 @@
 Updated: 2026-11-04
 Current phase: 10 (deployment), not started. Phases 0 to 9 are complete, and CI and the production image are ready.
 Branch: main; see `git log --oneline` for the commit
-Deployment status: not deployed. The production image is tested locally. Private remote: `origin`
+Deployment status: not deployed. The production image is tested locally and against the provisioned Neon database. The owner still has to apply the Render Blueprint. Private remote: `origin`
 
 | Phase | Status | Evidence | Remaining |
 |---|---|---|---|
@@ -30,6 +30,7 @@ Current blockers: none.
 
 - **Checkpoint 18, public-demo safeguards: DONE.** `tests/test_demo_safeguards.py` (31 tests, including as `app_user`), production E2E banner check. See ADR-051.
 - **Checkpoint 19, Render and Neon settings: DONE.** `render.yaml` validates against the schema Render publishes; `tests/test_health.py`; production E2E 43 passed, 1 skipped. See ADR-052 and ADR-053. The Blueprint itself has not been applied to Render.
+- **Checkpoint 20, Neon provisioned: DONE.** `deploy/neon/provision.py`: role, migrations at `0007`, seed twice (4 users, 13 articles, 9 requests), all `app_user` checks passed, reset works as `app_user`. Production image on Neon: browser suite 43 passed, 1 skipped by design; demo data reset afterwards. Neon runs PostgreSQL 18, and development and CI use 17 (ADR-054); the backend suite passed on 18 too, 873 passed, 1 skipped. See `docs/DEPLOYMENT.md`.
 
 ## Test results (clean state: `down -v`, rebuild, migrate, seed)
 
