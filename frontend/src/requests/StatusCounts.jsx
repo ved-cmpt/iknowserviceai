@@ -1,9 +1,7 @@
-import { useApiData } from '../api/useApiData'
 import { STATUS_OPTIONS } from '../lib/labels'
 
 // Counts are a summary, so a failed load simply leaves them out. The list has its own error state.
-export default function StatusCounts({ path }) {
-  const { data } = useApiData(path)
+export default function StatusCounts({ data }) {
   if (!data) return null
   return (
     <ul className="count-list" aria-label="Requests by status">

@@ -50,6 +50,27 @@
   color: #ffffff;
 }
 
+.btn-attention {
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-text);
+  color: var(--color-warning-text);
+}
+
+.btn-attention:hover:not(:disabled) {
+  background: #f8e6b8;
+  color: var(--color-warning-text);
+}
+
+.btn-attention[aria-pressed='true'] {
+  background: var(--color-warning-text);
+  color: #ffffff;
+}
+
+.btn-attention[aria-pressed='true']:hover:not(:disabled) {
+  background: #573a00;
+  color: #ffffff;
+}
+
 .btn-sm {
   min-height: 32px;
   padding: var(--space-1) var(--space-3);

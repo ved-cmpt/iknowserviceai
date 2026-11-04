@@ -201,7 +201,9 @@ describe('new request form', () => {
     await fillIn()
     await userEvent.click(screen.getByRole('button', { name: 'Submit request' }))
 
-    await screen.findByRole('heading', { name: /Support request/ })
+    await screen.findByRole('heading', { level: 1, name: VALID_TITLE })
+    expect(screen.getByText('Support request')).toBeInTheDocument()
     expect(callsTo(fetchMock, 'POST', '/requests')).toHaveLength(1)
+    await waitFor(() => expect(callsTo(fetchMock, 'POST', '/requests/r1/analyze')).toHaveLength(1))
   })
 })

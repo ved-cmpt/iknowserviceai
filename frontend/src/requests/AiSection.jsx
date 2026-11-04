@@ -8,7 +8,7 @@ import Card from '../components/Card'
 import FormField from '../components/FormField'
 import { Spinner } from '../components/LoadingState'
 import { AI_LABEL, aiSectionState, AWAITING_REVIEW_TEXT } from './aiState'
-import { describeFailure } from './analysisFailure'
+import AnalysisFailedPanel from './AnalysisFailedPanel'
 import { FEEDBACK_COMMENT_MAX } from './limits'
 
 function Feedback({ requestId, alreadySubmitted }) {
@@ -104,33 +104,6 @@ function SuggestionCard({ requestId, suggestion }) {
   )
 }
 
-function FailedPanel({ failure, running, onAnalyze, onCheckAgain }) {
-  const view = describeFailure(failure)
-  return (
-    <Banner tone={view.tone} title="Analysis did not finish" role="alert">
-      <p>{view.message}</p>
-      {view.action === 'retry' && (
-        <>
-          {view.attemptsRemaining !== null && view.attemptsRemaining !== undefined && (
-            <p>
-              {view.attemptsRemaining} {view.attemptsRemaining === 1 ? 'attempt' : 'attempts'}{' '}
-              remaining.
-            </p>
-          )}
-          <Button variant="secondary" size="sm" busy={running} onClick={onAnalyze}>
-            Try again
-          </Button>
-        </>
-      )}
-      {view.action === 'reload' && (
-        <Button variant="secondary" size="sm" onClick={onCheckAgain}>
-          Check again
-        </Button>
-      )}
-    </Banner>
-  )
-}
-
 export default function AiSection({ request, running, failure, onAnalyze, onCheckAgain }) {
   switch (aiSectionState({ request, running, failure })) {
     case 'analyzing':
@@ -144,7 +117,7 @@ export default function AiSection({ request, running, failure, onAnalyze, onChec
       )
     case 'failed':
       return (
-        <FailedPanel
+        <AnalysisFailedPanel
           failure={failure}
           running={running}
           onAnalyze={onAnalyze}

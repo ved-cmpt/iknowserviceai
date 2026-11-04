@@ -11,6 +11,8 @@ import LoginPage from './pages/LoginPage'
 import NewRequestPage from './pages/NewRequestPage'
 import NotFoundPage from './pages/NotFoundPage'
 import RequestDetailPage from './pages/RequestDetailPage'
+import SupportDetailPage from './pages/SupportDetailPage'
+import SupportQueuePage from './pages/SupportQueuePage'
 
 function Upcoming({ title }) {
   return <h1>{title}</h1>
@@ -45,8 +47,8 @@ export default function App() {
           <Route path="/knowledge" element={<KnowledgeListPage />} />
           <Route path="/knowledge/:id" element={<KnowledgeArticlePage />} />
           <Route element={<RoleRoute allow={STAFF_ROLES} />}>
-            <Route path="/support" element={<Upcoming title="Support queue" />} />
-            <Route path="/support/:id" element={<Upcoming title="Support request" />} />
+            <Route path="/support" element={<SupportQueuePage />} />
+            <Route path="/support/:id" element={<SupportDetailPage />} />
           </Route>
           <Route element={<RoleRoute allow={ADMIN_ROLES} />}>
             <Route path="/admin/knowledge" element={<Upcoming title="Knowledge admin" />} />

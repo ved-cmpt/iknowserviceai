@@ -15,7 +15,7 @@ Deployment status: not deployed; local Docker only
 | 5 AI orchestration | DONE. Live Gemini DONE, owner-verified | `tests/test_analyze.py`, `tests/test_redaction.py`, `tests/test_gemini_agent.py`, `tests/test_mock_citations.py`; owner's live smoke test, see below | None |
 | 6 Review gates and hardening | DONE | `tests/test_policy.py`, `tests/test_review.py`, `tests/test_adversarial.py`, `tests/test_hardening.py`, `tests/test_append_only.py`; `docs/SECURITY.md` | Staff screens belong to Phase 8 |
 | 7 Requester frontend | DONE at component level | `src/tests/newRequest.test.jsx`, `requestDetail.test.jsx`, `dashboard.test.jsx`, `shell.test.jsx` | Browser journeys, keyboard and mobile checks come with Phase 8 E2E |
-| 8 Staff and admin frontend, E2E | IN PROGRESS | | Staff screens, admin screens, Playwright, axe, screenshots |
+| 8 Staff and admin frontend, E2E | IN PROGRESS | Staff queue and review workspace: `src/tests/support.test.jsx` | Admin screens, Playwright, axe, screenshots |
 | 9 Quality and evaluation | NOT_STARTED | | All |
 | 10 GitHub, CI, deployment | NOT_STARTED | | All |
 | 11 Portfolio packaging | NOT_STARTED | | All |

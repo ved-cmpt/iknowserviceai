@@ -67,6 +67,7 @@ export default function DashboardPage() {
   const [filters, setFilters] = useListParams(['status', 'category', 'sort'], {
     sort: DEFAULT_SORT,
   })
+  const { data: counts } = useApiData(requestCountsPath({ mine: 'true' }))
   const params = {
     mine: 'true',
     limit: PAGE_SIZE,
@@ -82,7 +83,7 @@ export default function DashboardPage() {
         <h1>My requests</h1>
         <ButtonLink to="/requests/new">New request</ButtonLink>
       </div>
-      <StatusCounts path={requestCountsPath({ mine: 'true' })} />
+      <StatusCounts data={counts} />
       <Card as="div">
         <div className="filter-bar">
           <FormField label="Status">
