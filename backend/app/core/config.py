@@ -26,7 +26,9 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     gemini_model: str | None = None
     ai_request_timeout_seconds: float = Field(default=20, gt=0, le=120)
-    ai_max_output_tokens: int = Field(default=1024, ge=128, le=8192)
+    ai_max_output_tokens: int = Field(default=2048, ge=128, le=8192)
+    # "low" is the one low setting that every current Flash model accepts (ADR-029).
+    ai_thinking_level: Literal["minimal", "low", "medium", "high"] = "low"
     ai_review_confidence_threshold: float = Field(default=0.70, ge=0, le=1)
     ai_max_analyze_attempts: int = Field(default=3, ge=1, le=20)
     ai_stale_run_seconds: int = Field(default=120, ge=1)

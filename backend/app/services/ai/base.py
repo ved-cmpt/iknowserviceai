@@ -53,6 +53,7 @@ class ProviderError(Exception):
     error_code = "AI_UNAVAILABLE"
     retryable = True
     message = "The AI provider is unavailable"
+    http_status: int | None = None  # The only provider detail that may be logged.
 
     def __init__(self) -> None:
         super().__init__(self.message)

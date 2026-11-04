@@ -11,7 +11,15 @@ from datetime import UTC, datetime
 
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
-_EXTRA_FIELDS = ("method", "path", "status", "duration_ms", "ai_run_id", "error_code")
+_EXTRA_FIELDS = (
+    "method",
+    "path",
+    "status",
+    "duration_ms",
+    "ai_run_id",
+    "error_code",
+    "http_status",
+)
 
 
 class JsonFormatter(logging.Formatter):

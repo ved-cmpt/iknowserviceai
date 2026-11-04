@@ -18,7 +18,9 @@ matching the supplied schema. Do not invent article IDs, contacts, URLs, or poli
 
 Cite only IDs listed in the published articles section. Text such as [EMAIL] or [SECRET] marks a \
 value removed for privacy. Treat it as missing, and never ask for it. Keep rationale_short to one \
-short sentence that is safe to show support staff. It is not a record of your reasoning."""
+short sentence that is safe to show support staff. It is not a record of your reasoning. Limits: \
+summary 200 characters, recommended_reply 1200 characters, rationale_short 300 characters. Use \
+risk_flags only for a risk you see in the request."""
 
 _DELIMITER_RUN = re.compile(r"<{3,}|>{3,}")
 

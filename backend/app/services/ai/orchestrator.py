@@ -243,7 +243,12 @@ def _record_failure(
     remaining = max(0, get_settings().ai_max_analyze_attempts - count_attempts(db, request.id))
     db.commit()
     logger.warning(
-        "ai_run_failed", extra={"ai_run_id": str(run.id), "error_code": error.error_code}
+        "ai_run_failed",
+        extra={
+            "ai_run_id": str(run.id),
+            "error_code": error.error_code,
+            "http_status": error.http_status,
+        },
     )
     # Requesters get one generic code; provider failure details are for staff (ADR-028).
     return AppError(
