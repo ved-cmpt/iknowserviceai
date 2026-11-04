@@ -18,7 +18,7 @@ Deployment status: not deployed. The production image is tested locally and agai
 | 8 Staff and admin frontend, E2E | DONE | `src/tests/support.test.jsx`, `admin.test.jsx`; `e2e/tests/`: 28 tests, 38 axe checks; screenshots in `assets/screenshots/` | None |
 | 9 Quality and evaluation | DONE | `docs/EVALUATION.md`, `backend/eval/`, `tests/test_eval_regression.py`. Sensitive hold recall 100% on a tuned fixture; 0 invented citations kept | A held-out set, and scoring reply quality, are future work |
 | 10 GitHub, CI, deployment | PARTIAL | Remote pushed; `.github/workflows/ci.yml` passes `actionlint`, and its commands pass locally. Production image passes the full browser suite | **The workflow on GitHub is UNVERIFIED until the owner checks the Actions tab.** Hosted deployment, public release |
-| 11 Portfolio packaging | NOT_STARTED | | All |
+| 11 Portfolio packaging | DONE, except the live link | Redesign (ADR-056), `README.md`, `docs/ARCHITECTURE.md`, `docs/DEMO.md`, `docs/RUNBOOK.md`, `LICENSE`, screenshots, video | The README link and `v1.0.0`, after Run 06 |
 
 **Live Gemini:** the owner's adapter smoke test passed after Run 02. In Run 04, a 10-case sample ran through the real orchestrator, using 11 of the 12 allowed calls, with no failures. Results are in `docs/EVALUATION.md`. In Run 05, the running app in `AI_MODE=gemini` handled 2 requests through its HTTP endpoints, using at most 3 calls.
 
@@ -34,6 +34,7 @@ Current blockers: none.
 - **Checkpoint 21, visual redesign: DONE.** ADR-056. Frontend 237 passed. Dev browser suite 33 passed, 11 skipped by design. Production browser suite 45 passed, 1 skipped by design. axe now fails on any finding, in both themes, at 1440 and 375 px: 94 checks on the production image, all with 0 findings. Every screen reviewed by eye in both themes.
 - **Checkpoint 24, polish: DONE, ahead of 22 and 23.** Staff page refreshes by itself (ADR-059), 10 minute access tokens (ADR-058), browser subset on pull requests (ADR-057), live path through HTTP checked with 2 requests and at most 3 provider calls (`docs/EVALUATION.md`), article IDs replaced in replies (ADR-060).
 - **Checkpoint 22, screenshots and demo: DONE.** `npm --prefix e2e run screenshots` (production image, 16 files, 622 KB after optimizing) and `npm --prefix e2e run demo:record` (86 s H.264 video of 1.1 MB, and a 3.1 MB animated preview).
+- **Checkpoint 23, documentation: DONE.** README, architecture, demo script, runbook, MIT license. 7 Mermaid diagrams rendered with the Mermaid CLI, and lychee found 0 broken local links.
 
 ## Test results (clean state: `down -v`, rebuild, migrate, seed)
 
@@ -81,7 +82,6 @@ None known.
 - `ai_runs.redacted_input` has no retention job. The demo reset is the only cleanup.
 - The relevance floor was measured again on the fixture, and no value separates noise from fair sources (`docs/EVALUATION.md`).
 - An access token stays valid for up to 10 minutes after sign-out (ADR-058).
-- `docs/ARCHITECTURE.md`, `docs/DEMO.md` and `LICENSE` do not exist yet. Phase 11 adds them.
 - Refresh token rows are only removed when that person signs in again after they expire. The demo reset also clears them.
 - Browsers without the Web Locks API can sign a person out if two tabs reload at the same moment (ADR-045).
 - The Content-Security-Policy blocks images hosted elsewhere in article markdown (ADR-048).

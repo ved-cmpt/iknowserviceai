@@ -1,73 +1,135 @@
 # IknowServiceAI
 
 [![CI](https://github.com/ved-cmpt/iknowserviceai/actions/workflows/ci.yml/badge.svg)](https://github.com/ved-cmpt/iknowserviceai/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-0b7a75.svg)](LICENSE)
 
-An AI-assisted IT service-request platform with knowledge-grounded suggestions and human review gates. This is a portfolio project that uses only synthetic data.
+**An IT service desk where AI drafts the answer and people stay in charge.** A bounded AI workflow triages requests and suggests fixes from a real knowledge base, while deterministic code decides what a person must review first.
 
-**Status: complete locally for requesters, support staff and admins, with an evaluated pipeline and a tested production image.** Nothing is deployed yet. A 10-case live sample has run through the analysis pipeline, but the running app has not been used in live mode. See [implementation status](docs/IMPLEMENTATION_STATUS.md) for verified progress, and [the evaluation](docs/EVALUATION.md) for what the numbers do and do not show.
+This is a portfolio project that uses only synthetic data.
 
-![Staff review workspace, showing the AI analysis, risk flags and the reply to publish](assets/screenshots/review-workspace.png)
+## Live demo
 
-## Features
+Live demo: coming soon (deployment in progress)
 
-- [x] Docker Compose stack with health and readiness checks
-- [x] Sign-in with Argon2id passwords and short-lived JWTs, plus USER, AGENT and ADMIN roles
-- [x] Full database schema, Alembic migrations, idempotent synthetic seed and guarded reset
-- [x] Request lifecycle: filters, comments, state machine, optimistic concurrency, events and audit
-- [x] Knowledge base: PostgreSQL full-text search, retriever for the AI workflow, safe markdown rendering
-- [x] AI triage with a deterministic mock agent, redaction, citation checks and retry limits
-- [x] Deterministic policy gate, staff review, feedback, rate limiting and adversarial tests
-- [x] Live Gemini adapter, with one passing owner-run smoke test
-- [x] Requester screens: dashboard, new request, automatic analysis, labelled suggestion, citations, feedback, comments, timeline
-- [x] Staff screens: queue with filters and assignment, review workspace, status and priority controls, internal comments
-- [x] Admin screens: knowledge editor with safe preview, publish and unpublish, audit log
-- [x] Playwright E2E, axe accessibility checks and a 375 px mobile pass, against both the dev stack and the production image
-- [x] Sessions that survive a reload, through a rotating refresh token in an `HttpOnly` cookie
-- [x] Pages that keep themselves current, and a server check of a reply before the confirm dialog
-- [x] One production container, a least-privilege database role and security headers
-- [x] [Evaluation](docs/EVALUATION.md): 43 synthetic cases, and a capped live sample
-- [x] GitHub Actions: backend, frontend, E2E, image build and secret scan
-- [ ] Hosted demo
+The site will share these fictional accounts, on the reserved `.test` domain. Their password is **intentionally public**, `demo-only-public-2026`, and protects synthetic data only.
+
+| Sign in as | Role | Try this |
+|---|---|---|
+| `riley.morgan@demo.iknowservice.test` | Requester | Report a problem and get a cited suggestion |
+| `sam.patel@demo.iknowservice.test` | Requester | Confirm you can't see Riley's requests |
+| `alex.chen@demo.iknowservice.test` | Support agent | Review a held draft, and publish a safe reply |
+| `jordan.reyes@demo.iknowservice.test` | Admin | Publish an article, and read the audit log |
+
+[A 3-minute guided walkthrough](docs/DEMO.md) says what to click.
+
+![Walkthrough: a requester gets a cited suggestion, a sensitive request is held, staff refuse an unsafe reply and approve a safe one, and the audit log shows it all](assets/demo/iknowserviceai-demo.gif)
+
+[Watch the full video](assets/demo/iknowserviceai-demo.mp4) (86 seconds, silent, with captions).
+
+## The problem
+
+Small organizations and campus help desks get repetitive IT requests in free text. Staff read each one, find the right guide and write much the same reply. AI could help, but a help desk is a risky place for it: a confident wrong answer to "I think my account was hacked" does real harm, and text in a ticket can try to steer the model.
+
+## What it does
+
+- **Requesters** describe a problem in their own words. Ordinary requests get suggested steps, labeled as AI, with links to the articles they came from.
+- **Sensitive requests,** such as a suspected compromise or a request for admin rights, are held. The requester sees no AI text until a person approves a reply.
+- **Support staff** work a queue, see why a request was held, and edit the draft side by side with the reply they will publish. A reply that asks for a password is refused.
+- **Admins** manage the knowledge base and read an append-only audit log.
+
+## How the AI agent works
+
+The model only proposes text. It has no tools, and application code validates and writes everything.
+
+```mermaid
+flowchart TD
+    A[Request saved first] --> B[Redact sensitive values]
+    B --> C[Retrieve published articles<br/>PostgreSQL full-text search]
+    C --> D[Provider: structured output only<br/>no tools, text marked as untrusted]
+    D --> E[Validate: schema, allowed flags,<br/>citations must be retrieved and published]
+    E --> F{Deterministic policy gate<br/>scans input, output and sources}
+    F -->|No flags, confident, cited| G[Requester sees a labeled<br/>AI suggestion with sources]
+    F -->|Any flag| H[Held: requester sees<br/>'Awaiting staff review']
+    H --> I[Staff edit, approve or reject]
+    I -->|Approved, passes the safety scan| J[Requester sees<br/>'Reviewed by the support team']
+    D -. Failure .-> K[Request stays saved:<br/>retry, or staff triage by hand]
+```
+
+## Engineering highlights
+
+- **A human-in-the-loop policy gate in code.** Flags only accumulate, so a model that says "no review needed" lowers nothing. ([`policy.py`](backend/app/services/policy.py), ADR-027)
+- **Citation validation.** A citation must be in the retrieved set and currently published. Anything else is dropped and forces review.
+- **Redaction before anything leaves the process.** Emails, phone numbers, tokens, keys and similar values are masked before retrieval, the prompt and storage. ([`redaction.py`](backend/app/services/redaction.py))
+- **Prompt-injection defenses in layers.** No tools, delimited untrusted text, input and output scanning, and review. None of them is treated as sufficient alone.
+- **Sessions.** A short-lived access token in memory, plus a rotating refresh token in an `HttpOnly` cookie, where reusing an old token revokes that whole sign-in.
+- **A least-privilege database role.** The app cannot run DDL, truncate, or change history. Tests prove this by connecting as that role. ([ADR-047](docs/ARCHITECTURE_DECISIONS.md))
+- **Append-only audit,** enforced twice: by grants and by database triggers.
+- **Public-demo safeguards.** A daily self-reset through one narrow `SECURITY DEFINER` function, volume caps and a banner. ([ADR-051](docs/ARCHITECTURE_DECISIONS.md))
+- **An evaluation that found real gaps.** Its first run missed 3 of 22 sensitive cases, which led to wider patterns. See below.
+- **CI** with pinned actions, no secrets, a browser subset on pull requests, the full suite on `main`, and a secret scan of the full history.
+
+## Evaluation
+
+43 synthetic cases through the real pipeline, measured on 2026-11-04. [Full results and limitations](docs/EVALUATION.md).
+
+| Metric | Mock, all 43 cases | Live, 10-case sample |
+|---|---|---|
+| Sensitive hold recall | 100% (22 of 22) | 100% (3 of 3) |
+| False holds, ordinary requests | 10% (1 of 10) | 0% (0 of 2) |
+| Invented citations kept | 0 | 0 |
+| Category accuracy, with acceptable alternatives | 97.7% | 100% |
+| Latency, median | 18.8 ms | 16.3 s |
+
+**Read these carefully.** Mock results measure the pipeline, not model quality. The 100% is on a fixture used to tune the patterns, after a first run of 86.4%, and it says little about new text. The live sample is small. Pattern-based policy can be evaded by rephrasing or other languages.
 
 ## Screenshots
 
-| Requester | Support and admin |
+Taken from the production image, with synthetic data. All screens pass axe in both themes, at 1440 and 375 px.
+
+| | |
 |---|---|
-| ![Requester dashboard with status counts and filters](assets/screenshots/requester-dashboard.png) | ![Knowledge editor with a live, inert preview](assets/screenshots/knowledge-admin-preview.png) |
-| ![Request detail with a labelled AI suggestion and its source](assets/screenshots/request-suggestion.png) | ![Audit log with actor, action and safe metadata](assets/screenshots/audit-log.png) |
-| ![Awaiting staff review banner, with no AI text](assets/screenshots/awaiting-review.png) | ![Sign-in page](assets/screenshots/login.png) |
+| ![Sign-in page with a product pitch and demo account cards](assets/screenshots/login.png) | ![Requester dashboard with summary cards and a request list](assets/screenshots/requester-dashboard.png) |
+| ![Request with a labeled AI suggestion and its source](assets/screenshots/request-suggestion.png) | ![Held request: awaiting staff review, with no AI text](assets/screenshots/awaiting-review.png) |
+| ![Support queue with status and priority badges, and held requests highlighted](assets/screenshots/support-queue.png) | ![Reply labeled as reviewed by the support team](assets/screenshots/reviewed-reply.png) |
+| ![Knowledge article](assets/screenshots/knowledge-article.png) | ![Audit log with actors, actions and safe details](assets/screenshots/audit-log.png) |
+| ![Article editor with a live, inert preview](assets/screenshots/knowledge-admin-preview.png) | ![Staff review workspace in the dark theme](assets/screenshots/review-workspace-dark.png) |
 
-<img src="assets/screenshots/mobile-dashboard.png" alt="Dashboard at 375 pixels wide, with the table stacked as cards" width="240"> <img src="assets/screenshots/mobile-request-suggestion.png" alt="Request detail at 375 pixels wide" width="240">
+**Staff review workspace,** with the AI draft beside the reply to publish:
 
-## Stack
+![Staff review workspace: AI analysis with a confidence meter and risk flags, the draft beside the reply, and a side column for status and assignment](assets/screenshots/review-workspace.png)
 
-React and Vite (JavaScript), FastAPI (Python 3.12), PostgreSQL 17, SQLAlchemy 2, Alembic, Docker Compose, pytest, Vitest, Playwright, GitHub Actions.
+**On a phone:**
+
+<img src="assets/screenshots/mobile-login.png" alt="Sign-in page at 375 pixels wide" width="200"> <img src="assets/screenshots/mobile-dashboard.png" alt="Dashboard at 375 pixels wide" width="200"> <img src="assets/screenshots/mobile-request-suggestion.png" alt="Suggestion at 375 pixels wide" width="200"> <img src="assets/screenshots/mobile-review-workspace.png" alt="Review workspace at 375 pixels wide" width="200">
 
 ## Architecture
 
-```text
-Browser
-   |  One origin: the page, /api/v1 and an HttpOnly session cookie
-Production container (non-root, read-only)
-   |-- Built React app, with hashed assets cached long-term
-   |-- FastAPI: authentication, roles, state machine, policy gate, review
-   |      |-- Provider adapter: mock by default, or live Gemini. Redacted text only
-   |      '-- SQLAlchemy, connecting as app_user: no DDL, and history cannot be changed
-PostgreSQL (migrations and the demo reset run separately, as the owner role)
+```mermaid
+flowchart LR
+    B[Browser] -->|"HTTPS, one origin"| A
+    subgraph A["One non-root container"]
+      S[Built React app] --- F[FastAPI: auth, roles,<br/>state machine, policy, review]
+    end
+    F -->|"app_user: no DDL,<br/>history cannot change"| D[(PostgreSQL)]
+    F -->|"Redacted text only"| P["Provider adapter:<br/>mock or Gemini"]
 ```
 
-This is one service with clear module boundaries, not microservices (ADR-001). In development, Vite serves the frontend and passes `/api` to a separate backend container, so the browser still sees one origin (ADR-044).
+One service with clear module boundaries, not microservices (ADR-001). More in [the architecture guide](docs/ARCHITECTURE.md).
 
-The model only proposes text. It has no tools, and application code validates and writes everything. Anything sensitive, uncited, low-confidence or otherwise flagged waits for a person. See [security](docs/SECURITY.md).
+## Tech stack
 
-## Quickstart
+React and Vite (JavaScript, plain CSS), FastAPI (Python 3.12), PostgreSQL, SQLAlchemy 2, Alembic, Docker Compose, pytest, Vitest, Playwright with axe, GitHub Actions. Hosting is planned on Render and Neon.
+
+## Local quickstart
 
 You need Docker Desktop running. Commands are for PowerShell, from the project root.
 
-1. Create your local environment file with a random JWT secret:
+1. Create your local settings, with a random JWT secret:
 
    ```powershell
-   $secret = python -c "import secrets; print(secrets.token_urlsafe(48))"
+   $bytes = New-Object byte[] 32
+   [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+   $secret = -join ($bytes | ForEach-Object { $_.ToString('x2') })
    (Get-Content .env.example) -replace '<replace-with-a-long-random-string>', $secret | Set-Content -Encoding ascii .env
    ```
 
@@ -80,40 +142,18 @@ You need Docker Desktop running. Commands are for PowerShell, from the project r
 2. Start the stack, apply migrations and load the demo data:
 
    ```powershell
-   docker compose up --build -d
+   docker compose up --build -d --wait
    docker compose exec backend alembic upgrade head
    docker compose exec backend python -m app.scripts.seed_demo
    ```
 
-3. Open the app:
+3. Open http://localhost:5173 and pick a demo account. API docs are at http://localhost:8000/docs, in development only.
 
-   | What | URL |
-   |---|---|
-   | App | http://localhost:5173 (Vite passes `/api` to the backend, so the browser stays on one origin) |
-   | API docs (development only) | http://localhost:8000/docs |
-   | Liveness | http://localhost:8000/healthz |
-   | Readiness | http://localhost:8000/readyz |
+If another PostgreSQL already uses port 5432, set `POSTGRES_HOST_PORT` in `.env`. After pulling a change to frontend dependencies, run `docker compose up -d --build --renew-anon-volumes frontend`.
 
-   The health endpoints are also served at `/api/v1/healthz` and `/api/v1/readyz`.
+The app runs in mock mode by default, with no key and no network. To reset the demo data: `docker compose exec backend python -m app.scripts.reset_demo --yes`. To stop: `docker compose down`, or add `-v` to delete the data too.
 
-If another PostgreSQL already uses port 5432, set `POSTGRES_HOST_PORT` in `.env` to a free port.
-
-**Upgrading an older checkout:** the app now connects as a least-privilege database role, created only when the database volume is first initialized. Add the new variables from `.env.example` to `.env`, then run `docker compose down -v` once. That deletes the local demo data, which the commands above recreate.
-
-## Demo accounts
-
-These are fictional accounts on the reserved `.test` domain. They share one **intentionally public** password, `demo-only-public-2026` (`DEMO_PASSWORD` in `.env`), which protects synthetic data only.
-
-| Email | Role | Name | Starts at |
-|---|---|---|---|
-| `riley.morgan@demo.iknowservice.test` | USER | Riley Morgan | My requests |
-| `sam.patel@demo.iknowservice.test` | USER | Sam Patel | My requests |
-| `alex.chen@demo.iknowservice.test` | AGENT | Alex Chen | Support queue |
-| `jordan.reyes@demo.iknowservice.test` | ADMIN | Jordan Reyes | Support queue |
-
-Reloading the page keeps you signed in, for up to 8 hours per sign-in. **Sign out** ends the session.
-
-## Tests and checks
+## Tests and evaluation
 
 ```powershell
 # Backend, in the container
@@ -125,119 +165,64 @@ docker compose exec backend ruff format --check .
 docker compose exec frontend npm run lint
 docker compose exec frontend npm test -- --run
 docker compose exec frontend npm run build
-```
 
-Frontend checks also work on the host with Node 24. Run `npm ci` once in `frontend/`, then use `npm --prefix frontend run lint`, `npm --prefix frontend test -- --run` and `npm --prefix frontend run build`.
+# Browser suites, in Docker. The first deletes and reseeds local demo data.
+npm --prefix e2e run e2e        # Development stack
+npm --prefix e2e run e2e:prod   # Production image, on its own throwaway stack
+npm --prefix e2e run e2e:smoke  # The pull request subset
 
-Backend tests use the separate `iknowserviceai_test` database and never touch demo data. They use mock and fake providers and make no provider calls.
-
-### Browser E2E
-
-One command runs everything, in Docker, with the browser inside the official Playwright image:
-
-```powershell
-npm --prefix e2e run e2e
-```
-
-It needs Node on the host only to start `e2e/run.mjs`, and installs nothing there. **It deletes and reseeds the demo data.** It starts the stack with high rate limits and `AI_MODE=mock` from `compose.e2e.yaml`, runs the journeys and axe checks at 1440 px and 375 px, captures the screenshots into `assets/screenshots/`, then restores the default settings and fresh demo data. To run some tests, without screenshots and at desktop size only:
-
-```powershell
-npm --prefix e2e run e2e -- --grep "Stale update"
-```
-
-### Evaluation
-
-This runs the 43 cases through the real pipeline, and writes nothing to the database:
-
-```powershell
+# Evaluation, which writes nothing to the database
 docker compose exec backend python -m app.scripts.run_eval --mode mock
 ```
 
-Results go to `backend/eval/results/`. See [the evaluation](docs/EVALUATION.md). A live sample spends your quota, so it needs a limit, and the run refuses to make more than 12 calls: `--mode gemini --limit 10 --sleep 6`.
+**Latest results:** 874 backend tests, 242 frontend tests and both browser suites pass, on 2026-11-04. [The status document](docs/IMPLEMENTATION_STATUS.md) has exact results.
 
-### Continuous integration
+To regenerate the pictures, run `npm --prefix e2e ci` once, then `npm --prefix e2e run screenshots` and `npm --prefix e2e run demo:record`.
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint, tests and builds, with E2E on pushes to `main`, and a gitleaks scan of the full history. It uses mock mode and no secrets (ADR-050).
+### Live mode
 
-### Live Gemini smoke test
+To try the real provider, set `AI_MODE=gemini`, `GEMINI_API_KEY` and `GEMINI_MODEL` in `.env`, then run `docker compose up -d --force-recreate backend`. Free-tier content may be used to improve the provider's products, so **use synthetic text only**. An opt-in smoke test makes at most 2 calls: `docker compose exec -e RUN_LIVE_GEMINI_TESTS=1 backend pytest -q -s tests/live`.
 
-This is opt-in, and makes at most 2 API calls:
-
-```powershell
-docker compose exec -e RUN_LIVE_GEMINI_TESTS=1 backend pytest -q -s tests/live
-```
-
-## Production container
-
-One image serves the built frontend and the API from the same origin (ADR-044). To try it locally, on port 8080, with its own database:
+### Production image
 
 ```powershell
 Copy-Item .env.prod.example .env.prod   # Then replace every placeholder.
 docker compose -f compose.prod.yaml --env-file .env.prod up --build -d --wait db app
 docker compose -f compose.prod.yaml --env-file .env.prod run --rm tools alembic upgrade head
-```
-
-Nothing migrates or seeds by itself. To load demo data, set `DEMO_PASSWORD` in `.env.prod`, then run this. It refuses without the flag:
-
-```powershell
 docker compose -f compose.prod.yaml --env-file .env.prod run --rm tools python -m app.scripts.seed_demo --allow-production
 ```
 
-Open http://localhost:8080. The demo accounts and password show only with `DEMO_MODE=true`. To run the whole browser suite against this image, with its own throwaway stack:
+It runs on http://localhost:8080. Set `DEMO_PASSWORD` in `.env.prod` first for the seed. The [deployment guide](docs/DEPLOYMENT.md) covers hosting.
 
-```powershell
-npm --prefix e2e run e2e:prod
-```
+## Security notes and limitations
 
-## Reset the demo data
+This is a demo. It has had no independent review. [The security document](docs/SECURITY.md) has the threat model, and the risks in full. In short:
 
-This deletes all data and reseeds it:
+- **Do not enter real personal data.** Demo accounts, including the admin, are shared and public.
+- **Pattern scanning can be evaded,** and produces false holds. Replies that pass every check are shown unreviewed, labeled as AI, and may still be wrong.
+- **Rate limits are per process,** so this runs as one instance.
+- **The live path has small samples:** 10 cases through the orchestrator, and 2 requests through the running app.
+- **Browser checks ran in Chromium only.** No real screen reader has been tried.
 
-```powershell
-docker compose exec backend python -m app.scripts.reset_demo --yes
-```
+## Roadmap
 
-It refuses to run unless `ALLOW_DEMO_RESET=true`, and in `APP_ENV=production` it also requires `--allow-production`.
-
-## AI mode
-
-`AI_MODE=mock` is the default. It is deterministic and uses no network or key.
-
-To try Gemini, set these in `.env`, then recreate the backend:
-
-```dotenv
-AI_MODE=gemini
-GEMINI_API_KEY=<your key>
-GEMINI_MODEL=<a free-tier Flash model>
-```
-
-```powershell
-docker compose up -d --force-recreate backend
-```
-
-Set `AI_MODE=mock` and recreate it again to switch back.
-
-- **Free tier:** each analysis makes up to 2 provider calls, and free-tier quotas are small. In the 10-case sample, the median analysis took about 16 seconds, and one can take over a minute at worst. A request is always saved first, and a failed analysis can be retried or handled by staff.
-- **Synthetic data only:** Google's pricing page says free-tier content may be used to improve its products. Text is redacted before sending, but patterns can miss things. **Do not enter real personal data.** See [security](docs/SECURITY.md).
-- **What has been verified:** the adapter passed one live smoke test, and 10 evaluation cases ran through the orchestrator ([results](docs/EVALUATION.md)). The running app has not been used in this mode, so this is a good first thing to watch.
-
-## Useful commands
-
-```powershell
-docker compose logs -f backend
-docker compose exec backend alembic current
-docker compose down        # stop, keep data
-docker compose down -v     # stop and delete the database volume
-```
+- Verify the hosted demo, and link it above
+- A held-out evaluation set, and scoring of reply quality
+- Trying the prompt against a larger live sample
+- Assignment to other staff, and a retention job for stored prompts
 
 ## Documentation
 
-- [Project context](docs/PROJECT_CONTEXT.md)
-- [Product contract](docs/PRODUCT_CONTRACT.md)
-- [API reference](docs/API.md)
-- [Architecture decisions](docs/ARCHITECTURE_DECISIONS.md)
-- [Security](docs/SECURITY.md)
-- [Evaluation](docs/EVALUATION.md)
-- [Implementation status](docs/IMPLEMENTATION_STATUS.md)
-- [Implementation blueprint](docs/IMPLEMENTATION_BLUEPRINT.md)
-- [Latest run report](docs/RUN_REPORTS/RUN_04.md)
+[Architecture](docs/ARCHITECTURE.md) · [Demo script](docs/DEMO.md) · [Deployment](docs/DEPLOYMENT.md) · [Runbook](docs/RUNBOOK.md) · [Security](docs/SECURITY.md) · [Evaluation](docs/EVALUATION.md) · [API](docs/API.md) · [Decision log](docs/ARCHITECTURE_DECISIONS.md) · [Status](docs/IMPLEMENTATION_STATUS.md) · [Product contract](docs/PRODUCT_CONTRACT.md) · [Project context](docs/PROJECT_CONTEXT.md) · [Blueprint](docs/IMPLEMENTATION_BLUEPRINT.md)
+
+## Credits and licenses
+
+This project is under the [MIT license](LICENSE).
+
+| Used | License |
+|---|---|
+| [IBM Plex Sans and Mono](https://github.com/IBM/plex), through Fontsource, self-hosted | SIL Open Font License 1.1 |
+| React, React Router, react-markdown, Vite, FastAPI, SQLAlchemy, Alembic, Playwright, axe-core | MIT (Playwright: Apache-2.0; axe-core: MPL-2.0) |
+| sharp, for optimizing screenshots | Apache-2.0 |
+
+The logo and icons are original to this project. All people, requests and articles in the demo are fictional.
