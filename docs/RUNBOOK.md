@@ -27,11 +27,19 @@ In Render, open the service, then **Logs**. Entries are JSON with a `request_id`
 
 | Symptom | Likely cause | What to do |
 |---|---|---|
-| First visit takes about a minute | Render spun down after 15 idle minutes | Nothing. This is expected |
-| A slow first query after 5 idle minutes | Neon suspended its compute | Nothing. The pool reconnects |
-| Sessions vanish and rate limits reset | The instance restarted or slept. Limits live in memory (ADR-030) | Nothing |
+| First visit takes up to about a minute | Render spun down after 15 idle minutes. One measurement was 32 s | Nothing. This is expected |
+| A slow first query after 5 idle minutes | Neon suspended its compute. One measurement added about 0.6 s | Nothing. The pool reconnects |
+| Rate limits reset | The instance restarted or slept. Limits live in memory (ADR-030). Sign-ins survive, because they are in the database | Nothing |
 | The service is suspended near the end of a month | Render's 750 free hours per workspace were used up | Wait for the next month. Sleep time does not count |
 | Database errors after heavy use | Neon's 100 compute-unit hours or 1 GB limit | Check the Neon console |
+
+## Checking the live site
+
+`node e2e/verify-live.mjs` runs about 60 gentle HTTP checks: headers, cookies, sessions, the rate limiter and error bodies. It only limits invented emails. **Run it after any change in hosting.** If the sixth wrong password stops getting 429, the proxy chain has probably changed (ADR-061).
+
+`npm --prefix e2e run e2e:live -- desktop` runs a paced browser subset, labeled `[verification]`. A desktop run sends about 350 requests and uses 6 of Riley's 10 analyses for the hour, which visitors share. So run it rarely, and reset the data afterwards.
+
+A deploy shows no version on the site, and `Last-Modified` stays the same when the frontend has not changed. Check **Events** in Render to see that it finished. **A change to `render.yaml` can restart the service twice,** once for the code and once for the setting, so wait before trusting a result.
 
 ## Demo data
 

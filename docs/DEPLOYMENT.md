@@ -1,10 +1,10 @@
 # Deployment
 
-The public demo is one Render web service in front of one Neon PostgreSQL database. The service runs the production image from `deploy/Dockerfile`, in mock mode. **It is not live until the owner applies the Blueprint and Run 06 verifies it.**
+The public demo is one Render web service in front of one Neon PostgreSQL database. The service runs the production image from `deploy/Dockerfile`, in mock mode. **It is live at https://iknowserviceai.onrender.com,** and was verified on 2026-11-04. The results are below.
 
 ```mermaid
 flowchart LR
-    B[Browser] -->|HTTPS, one origin| P[Render proxy]
+    B[Browser] -->|HTTPS, one origin| P[Cloudflare, then Render's proxy]
     P --> A["Web service, free plan, Oregon<br/>one uvicorn process<br/>SPA and API"]
     A -->|"app_user, direct endpoint, TLS"| N[("Neon PostgreSQL, us-west-2")]
     W[Owner's workstation] -->|"owner role: migrations, seed, reset"| N
@@ -27,7 +27,7 @@ Read from the providers' docs on 2026-11-04. Check again before relying on them.
 | Neon | 100 compute-unit hours a month per project, 1 GB of storage | Far more than this demo needs |
 | Neon | Instant restore up to 6 hours back, limited to 1 GB of change history, and 1 manual snapshot | Demo data can be recreated anyway |
 
-A cold visit can wait for both: about a minute for Render, plus the time Neon takes to wake. Run 06 measures this.
+A cold visit can wait for both. One measurement is under [verified results](#verified-results). Render's own figure is about a minute, so the README promises that.
 
 ## Environment variables
 
@@ -43,7 +43,7 @@ Non-secret values are in [`render.yaml`](../render.yaml).
 | `DEMO_PASSWORD` | No, published on purpose | Must match the value the database was seeded with |
 | `AI_MODE`, `GEMINI_MODEL` | No | `mock`, and a model name that mock mode ignores |
 | `CORS_ALLOWED_ORIGINS` | No | The Render URL. The app is same-origin |
-| `TRUSTED_PROXY_HOPS` | No | `1`, to be verified in Run 06 |
+| `TRUSTED_PROXY_HOPS` | No | `3`, measured on the live site (ADR-061) |
 | `FORWARDED_ALLOW_IPS` | No | `*`, on Render only (ADR-052) |
 | `HSTS_ENABLED` | No | `true` |
 | `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_HOURS` | No | `10`, `8` |
@@ -111,23 +111,43 @@ docker run --rm --env-file .env.neon-migrate iknowserviceai:local python -m app.
 
 ## Smoke test
 
-Over HTTPS, on the live URL. Run 06 turns this into a repeatable suite.
+Over HTTPS, on the live URL. `node e2e/verify-live.mjs` and `npm --prefix e2e run e2e:live` automate most of this. The [runbook](RUNBOOK.md#checking-the-live-site) says how often to use them.
 
-- [ ] `/healthz` 200, `/readyz` 200 `at_head`, `/docs` shows no API docs
-- [ ] Headers: `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security`
-- [ ] No content security violations in the browser console
-- [ ] The session cookie is `HttpOnly`, `Secure`, `SameSite=Strict`, on `/api/v1/auth`
-- [ ] Sign in, reload and stay signed in. Sign out, reload and stay signed out
-- [ ] The demo banner shows on the sign-in page and in the app
-- [ ] Ordinary request: labeled suggestion with a citation that opens
-- [ ] Sensitive request: awaiting review, with no draft in the page or responses
-- [ ] Staff: an unsafe reply is refused, and a safe one is approved and reaches the requester
-- [ ] Admin: publish an article, and read the audit log
-- [ ] A requester gets 403 at `/support`, and 404 for another person's request
-- [ ] Wrong passwords reach 429, while a visitor on another network is not limited, which proves `TRUSTED_PROXY_HOPS`
-- [ ] Logs hold no bodies, tokens or keys
-- [ ] After a redeploy, data persists
-- [ ] After a sleep, the site wakes, and sign-in works
+- `/healthz` 200, `/readyz` 200 `at_head`, `/docs` shows no API docs
+- Headers: `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security`
+- No content security violations in the browser console
+- The session cookie is `HttpOnly`, `Secure`, `SameSite=Strict`, on `/api/v1/auth`
+- Sign in, reload and stay signed in. Sign out, reload and stay signed out
+- The demo banner shows on the sign-in page and in the app
+- Ordinary request: labeled suggestion with a citation that opens
+- Sensitive request: awaiting review, with no draft in the page or responses
+- Staff: an unsafe reply is refused, and a safe one is approved and reaches the requester
+- Admin: publish an article, and read the audit log
+- A requester gets 403 at `/support`, and 404 for another person's request
+- Wrong passwords reach 429, while a visitor on another network is not limited, which proves `TRUSTED_PROXY_HOPS`. Forged headers must not bypass it
+- Logs hold no bodies, tokens or keys
+- After a redeploy, data persists
+- After a sleep, the site wakes, and sign-in works
+
+## Verified results
+
+On 2026-11-04, against the live site. Everything here used one network and Chromium.
+
+| Check | Result |
+|---|---|
+| `/healthz`, `/readyz`, config, JSON 404, no API docs, deep links | Pass |
+| Headers, HSTS, HTTP to HTTPS (301), cookie attributes, rotation, reuse, sign-out | Pass. See [the security document](SECURITY.md#verified-on-the-live-site) |
+| Login limiter, forged headers | Failed at first, because `TRUSTED_PROXY_HOPS=1` read Render's internal proxy. Pass with `3` (ADR-061) |
+| A second network is not limited | **Not tested.** Only one network was available |
+| Browser subset, 1440 px | 21 passed, 1 skipped because it is for narrow screens |
+| Browser subset, 375 px | 7 passed |
+| axe, both themes | 72 checks, no findings |
+| Data and sign-ins after a redeploy | Both survive |
+| Cold start, after 19 idle minutes | **32.2 s** to first byte, then 0.14 s |
+| Database wake-up | First `/readyz` 0.71 s, then 0.14 s, so about 0.6 s |
+| First sign-in after waking | 1.7 s |
+
+The cold start figures are **one sample**. Render's documented figure is about a minute, so expect some variation.
 
 ## Rollback
 

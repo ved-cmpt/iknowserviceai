@@ -1,9 +1,9 @@
 # Implementation status
 
 Updated: 2026-11-04
-Current phase: 10 (deployment). Everything is ready for the owner to apply the Render Blueprint, and Run 06 then verifies the live site.
+Current phase: complete, in maintenance. The public demo is live and verified, and `v1.0.0` is the first release.
 Branch: main; see `git log --oneline` for the commit
-Deployment status: not deployed. The production image is tested locally and against the provisioned Neon database. The owner still has to apply the Render Blueprint. Private remote: `origin`
+Deployment status: live at https://iknowserviceai.onrender.com, on Render and Neon. Remote: `origin`, private until the owner makes it public
 
 | Phase | Status | Evidence | Remaining |
 |---|---|---|---|
@@ -17,14 +17,20 @@ Deployment status: not deployed. The production image is tested locally and agai
 | 7 Requester frontend | DONE | `src/tests/newRequest.test.jsx`, `requestDetail.test.jsx`, `dashboard.test.jsx`, `shell.test.jsx`; E2E scenarios 1, 2, 3, 5 at 1440 px; 1, 2, 5 at 375 px; keyboard-only test | None |
 | 8 Staff and admin frontend, E2E | DONE | `src/tests/support.test.jsx`, `admin.test.jsx`; `e2e/tests/`: 28 tests, 38 axe checks; screenshots in `assets/screenshots/` | None |
 | 9 Quality and evaluation | DONE | `docs/EVALUATION.md`, `backend/eval/`, `tests/test_eval_regression.py`. Sensitive hold recall 100% on a tuned fixture; 0 invented citations kept | A held-out set, and scoring reply quality, are future work |
-| 10 GitHub, CI, deployment | PARTIAL | CI confirmed on GitHub. `render.yaml` validated. Neon provisioned and checked. Production image passed on Neon | Applying the Blueprint, and verifying the live site (Run 06) |
-| 11 Portfolio packaging | DONE, except the live link | Redesign (ADR-056), `README.md`, `docs/ARCHITECTURE.md`, `docs/DEMO.md`, `docs/RUNBOOK.md`, `LICENSE`, screenshots, video | The README link and `v1.0.0`, after Run 06 |
+| 10 GitHub, CI, deployment | DONE | CI confirmed on GitHub. Live site verified in Run 06: `e2e/verify-live.mjs` 54 of 54, browser subset 21 and 7 passed, data survives a redeploy, cold start 32.2 s. See `docs/DEPLOYMENT.md` | Testing the limiter from a second network |
+| 11 Portfolio packaging | DONE | Redesign (ADR-056), `README.md`, `CHANGELOG.md`, `docs/ARCHITECTURE.md`, `docs/DEMO.md`, `docs/RUNBOOK.md`, `LICENSE`, screenshots, video, tag `v1.0.0` | None |
 
 **Live Gemini:** the owner's adapter smoke test passed after Run 02. In Run 04, a 10-case sample ran through the real orchestrator, using 11 of the 12 allowed calls, with no failures. Results are in `docs/EVALUATION.md`. In Run 05, the running app in `AI_MODE=gemini` handled 2 requests through its HTTP endpoints, using at most 3 calls.
 
-Decisions changed since blueprint: ADR-000 (doc file mapping), ADR-015 (any-term search ordering), ADR-021 (schema refinements), ADR-024 (query-focused snippets), ADR-025 (append-only triggers narrow ADR-007), ADR-027 (uncited replies always need review), ADR-028 (generic failure code for requesters), ADR-029 (Gemini call shape), ADR-031 (escalation withholds a visible reply), ADR-032 (mock citations), ADR-033 (added API filters and counts), ADR-034 (frontend structure), ADR-035 (auto-analysis), ADR-036 (staff screen for every request), ADR-037 (Playwright in Docker), ADR-038 to ADR-043 (Run 04 behavior changes), ADR-044 (one production container, replacing the blueprint's separate hosts), ADR-045 (refresh cookie, replacing ADR-009's reload behavior), ADR-046 to ADR-050 (demo help, database role, headers, evaluation, CI). See [the ADR log](ARCHITECTURE_DECISIONS.md).
+Decisions changed since blueprint: ADR-000 (doc file mapping), ADR-015 (any-term search ordering), ADR-021 (schema refinements), ADR-024 (query-focused snippets), ADR-025 (append-only triggers narrow ADR-007), ADR-027 (uncited replies always need review), ADR-028 (generic failure code for requesters), ADR-029 (Gemini call shape), ADR-031 (escalation withholds a visible reply), ADR-032 (mock citations), ADR-033 (added API filters and counts), ADR-034 (frontend structure), ADR-035 (auto-analysis), ADR-036 (staff screen for every request), ADR-037 (Playwright in Docker), ADR-038 to ADR-043 (Run 04 behavior changes), ADR-044 (one production container, replacing the blueprint's separate hosts), ADR-045 (refresh cookie, replacing ADR-009's reload behavior), ADR-046 to ADR-050 (demo help, database role, headers, evaluation, CI), ADR-061 (three proxy hops on Render, replacing part of ADR-052). See [the ADR log](ARCHITECTURE_DECISIONS.md).
 
 Current blockers: none.
+
+## Run 06 progress
+
+- **Checkpoint 26, live verification: DONE, with one check not possible.** `TRUSTED_PROXY_HOPS=1` was wrong, and the limiter was unreliable. Fixed with `3`, from a measurement (ADR-061). Results are in `docs/DEPLOYMENT.md` and `docs/RUN_REPORTS/RUN_06.md`. A second network was not available.
+- **Checkpoint 27, live demo docs: DONE.**
+- **Checkpoint 28, release readiness: DONE.** See `docs/RUN_REPORTS/RUN_06.md`.
 
 ## Run 05 progress
 
@@ -38,11 +44,11 @@ Current blockers: none.
 
 ## Test results
 
-**GitHub CI, run 41914247955, on `5d84409`, from a clean checkout: success.** Later commits change docs only.
+**GitHub CI, run 41928487186, on `699204a`, from a clean checkout: success.** This is the commit with the proxy fix and the live test tooling. Later commits change docs only.
 
 | Check | Result |
 |---|---|
-| `pytest -q`, ruff, format, `alembic check` | 874 passed, 1 skipped (the opt-in live test). Clean |
+| `pytest -q`, ruff, format, `alembic check` | 876 passed, 1 skipped (the opt-in live test). Clean |
 | `npm run lint`, `npm test -- --run`, `npm run build` | 242 passed. Clean |
 | `npm --prefix e2e run e2e` | 34 passed, 13 skipped by design |
 | `npm --prefix e2e run e2e:prod` | 46 passed, 1 skipped by design |
@@ -51,7 +57,9 @@ Current blockers: none.
 
 **Local, 2026-11-04:** from `down -v`: `/readyz` 503 `behind_head`, upgrade and `alembic check` exit 0, seed twice gives 4 users, 13 articles, 9 requests, `/readyz` 200. **The local run was stopped there by the system, for low memory, and was not restarted.** Also local: backend suite on PostgreSQL 18, 873 passed, 1 skipped; production image on Neon, 43 passed, 1 skipped, before the redesign; `actionlint` and lychee clean; 7 Mermaid diagrams render.
 
-**Not done:** a local fresh-clone walkthrough of the README, and the production image on Neon after the redesign.
+**Live site, 2026-11-04:** `node e2e/verify-live.mjs` 54 of 54. `npm --prefix e2e run e2e:live`: desktop 21 passed, 1 skipped, and a narrowed mobile run 7 passed, with 72 axe checks and no findings.
+
+**Not done:** a local fresh-clone walkthrough of the README.
 
 Skips by design: production-only checks on the dev stack, and the layout tests on the viewport they do not apply to.
 
@@ -68,7 +76,7 @@ None known.
 - Pattern-based policy scanning can be evaded by rephrasing or other languages, and produces false positives. The evaluation's 100% hold rate is on a fixture used to tune the patterns (`docs/EVALUATION.md`).
 - A shared word can retrieve an unrelated article. In live mode, only the model's judgment stops a confident reply citing it, and this is not measured (`docs/EVALUATION.md`).
 - Seeded `TRIAGED` and `NEEDS_HUMAN_REVIEW` requests have no suggestion, so staff move them with the status controls.
-- Rate limits are per process and count all login attempts (ADR-030). `TRUSTED_PROXY_HOPS` must be set per host (ADR-048).
+- Rate limits are per process and count all login attempts (ADR-030). `TRUSTED_PROXY_HOPS` must be set per host (ADR-048), and on Render it depends on a proxy chain the host could change (ADR-061).
 - A crashed analysis blocks retries for up to `AI_STALE_RUN_SECONDS` and uses one attempt (ADR-026).
 - A request with history cannot be hard-deleted, because the append-only trigger refuses the cascade (ADR-025).
 - `ai_runs.redacted_input` has no retention job. The demo reset is the only cleanup.

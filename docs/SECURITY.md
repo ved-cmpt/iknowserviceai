@@ -101,6 +101,23 @@ Limited responses are 429 with `Retry-After`. See ADR-030.
 - With `APP_ENV=production`, API docs are disabled and every response has a strict `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and `Permissions-Policy`. `HSTS_ENABLED=true` adds `Strict-Transport-Security` once HTTPS works (ADR-048).
 - Startup fails if `AI_MODE=gemini` lacks a key or model, or if `JWT_SECRET` is short. In production it also fails on a placeholder or repetitive secret.
 
+### Verified on the live site
+
+Checked on 2026-11-04 over HTTPS at `https://iknowserviceai.onrender.com`. Repeat with `node e2e/verify-live.mjs`.
+
+| What | Result |
+|---|---|
+| Headers on pages and API responses | `Content-Security-Policy` with `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Strict-Transport-Security: max-age=31536000; includeSubDomains` |
+| Transport | TLS 1.3. Plain HTTP gets a 301 to HTTPS |
+| Refresh cookie | `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth` |
+| Sessions | Rotation works. Replaying an old token gets 401 and revokes the sign-in. Sign-out revokes the refresh token. A missing custom header gets 403 |
+| Client address | `X-Forwarded-For` ends with the client, Cloudflare's edge and Render's proxy, so `TRUSTED_PROXY_HOPS=3` (ADR-061) |
+| Login limiter | The sixth attempt gets 429 with `Retry-After`. Another email or route is unaffected. Forged single, chained, repeated and rotating headers do not bypass it |
+| Error responses | 9 malformed or unauthorized cases: no stack traces or internal details |
+| API docs | `/openapi.json` is 404. `/docs` and `/redoc` serve the app, with no API docs |
+
+**Not verified:** a second visitor on another network staying unaffected. The header's measured shape supports it, but only one network was available.
+
 ## Database roles
 
 | Role | Used by | Can do |
@@ -129,7 +146,7 @@ So a compromised app on a demo database could erase that demo's synthetic data a
 - **A shared word can retrieve an unrelated article.** In live mode, only the model's judgment stops a confident reply citing it. This is not measured. See [the evaluation](EVALUATION.md).
 - **An uncited reply is always held,** even when harmless (ADR-027).
 - **Model replies that pass every check are shown unreviewed,** labeled "AI-generated suggestion; verify before acting". They may still be wrong.
-- **Rate limits are per process.** They reset on restart and do not work across instances. Behind a proxy, `TRUSTED_PROXY_HOPS` must match the host, or all users share one address, or an address can be forged (ADR-048).
+- **Rate limits are per process.** They reset on restart and do not work across instances. Behind a proxy, `TRUSTED_PROXY_HOPS` must match the host, or all users share one address, or an address can be forged (ADR-048). The first value on Render was wrong in just this way, and only a test on the live site showed it (ADR-061).
 - **Login limits can lock out a real user** for up to a minute if someone else tries that email from the same address.
 - **The triggers and grants do not stop the owner role** (ADR-025, ADR-047). Whoever holds `MIGRATION_DATABASE_URL` can change history, so keep it away from the running app.
 - **The access token cannot be revoked** before it expires, up to 10 minutes after sign-out (ADR-058), although a deactivated user is refused immediately.

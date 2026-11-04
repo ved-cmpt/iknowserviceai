@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/ved-cmpt/iknowserviceai/actions/workflows/ci.yml/badge.svg)](https://github.com/ved-cmpt/iknowserviceai/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b7a75.svg)](LICENSE)
+[![Status: v1.0, live demo](https://img.shields.io/badge/status-v1.0%20%E2%80%94%20live%20demo-0b7a75.svg)](https://iknowserviceai.onrender.com)
 
 **An IT service desk where AI drafts the answer and people stay in charge.** A bounded AI workflow triages requests and suggests fixes from a real knowledge base, while deterministic code decides what a person must review first.
 
@@ -9,9 +10,13 @@ This is a portfolio project that uses only synthetic data.
 
 ## Live demo
 
-Live demo: coming soon (deployment in progress)
+### [Open the live demo: iknowserviceai.onrender.com](https://iknowserviceai.onrender.com)
 
-The site will share these fictional accounts, on the reserved `.test` domain. Their password is **intentionally public**, `demo-only-public-2026`, and protects synthetic data only.
+- **The first load after idle may take about a minute,** because it runs on free hosting that sleeps when nobody is using it.
+- **The AI here is the built-in mock agent,** so the public site shows the workflow and its safety gates, not model quality. The real provider's results are in [the evaluation](docs/EVALUATION.md).
+- **Data is shared, and resets daily.** Don't enter anything real.
+
+Sign in with these fictional accounts, on the reserved `.test` domain. Their password is **intentionally public**, `demo-only-public-2026`, and protects synthetic data only.
 
 | Sign in as | Role | Try this |
 |---|---|---|
@@ -118,7 +123,7 @@ One service with clear module boundaries, not microservices (ADR-001). More in [
 
 ## Tech stack
 
-React and Vite (JavaScript, plain CSS), FastAPI (Python 3.12), PostgreSQL, SQLAlchemy 2, Alembic, Docker Compose, pytest, Vitest, Playwright with axe, GitHub Actions. Hosting is planned on Render and Neon.
+React and Vite (JavaScript, plain CSS), FastAPI (Python 3.12), PostgreSQL, SQLAlchemy 2, Alembic, Docker Compose, pytest, Vitest, Playwright with axe, GitHub Actions. The demo is hosted on Render and Neon.
 
 ## Local quickstart
 
@@ -171,11 +176,15 @@ npm --prefix e2e run e2e        # Development stack
 npm --prefix e2e run e2e:prod   # Production image, on its own throwaway stack
 npm --prefix e2e run e2e:smoke  # The pull request subset
 
+# Against the live site: gentle, paced and labeled. Read e2e/run-live.mjs first.
+node e2e/verify-live.mjs             # HTTP checks
+npm --prefix e2e run e2e:live -- desktop
+
 # Evaluation, which writes nothing to the database
 docker compose exec backend python -m app.scripts.run_eval --mode mock
 ```
 
-**Latest results:** in CI on 2026-11-04, from a clean checkout: 874 backend tests and 242 frontend tests passed, the browser suites passed 34 tests on the development stack and 46 on the production image, and 172 axe checks had no findings. [The status document](docs/IMPLEMENTATION_STATUS.md) has the details.
+**Latest results:** in CI on 2026-11-04, from a clean checkout: 876 backend tests and 242 frontend tests passed, the browser suites passed 34 tests on the development stack and 46 on the production image, and 172 axe checks had no findings. A paced subset also passed against the live site. [The status document](docs/IMPLEMENTATION_STATUS.md) has the details.
 
 To regenerate the pictures, run `npm --prefix e2e ci` once, then `npm --prefix e2e run screenshots` and `npm --prefix e2e run demo:record`.
 
@@ -206,7 +215,6 @@ This is a demo. It has had no independent review. [The security document](docs/S
 
 ## Roadmap
 
-- Verify the hosted demo, and link it above
 - A held-out evaluation set, and scoring of reply quality
 - Trying the prompt against a larger live sample
 - Assignment to other staff, and a retention job for stored prompts
