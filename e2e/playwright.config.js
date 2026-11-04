@@ -27,18 +27,28 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
-      testIgnore: /screenshots\.spec\.js/,
+      testIgnore: /(screenshots|demo)\.spec\.js/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
       name: 'mobile',
-      testIgnore: /screenshots\.spec\.js/,
+      testIgnore: /(screenshots|demo)\.spec\.js/,
       grep: /@mobile/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 375, height: 812 },
         isMobile: true,
         hasTouch: true,
+      },
+    },
+    {
+      name: 'demo',
+      testMatch: /demo\.spec\.js/,
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+        contextOptions: { reducedMotion: 'no-preference' },
+        video: { mode: 'on', size: { width: 1280, height: 720 } },
       },
     },
     {

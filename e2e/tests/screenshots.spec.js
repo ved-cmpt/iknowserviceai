@@ -31,13 +31,14 @@ async function setTheme(page, theme) {
   }, theme)
 }
 
-async function capture(page, name, fullPage = false) {
+async function capture(page, name, fullPage = false, scrollTo = null) {
   // Let the health check and any late layout settle, so pictures are stable.
   await expect(page.getByText('Checking API…')).toHaveCount(0)
   await page.evaluate(() => document.fonts.ready)
   // A full-page picture of a sticky column is only right from the top of the page.
   await page.evaluate(() => document.activeElement?.blur())
   await page.evaluate(() => window.scrollTo(0, 0))
+  if (scrollTo) await scrollTo.scrollIntoViewIfNeeded()
   await setTheme(page, 'light')
   await page.screenshot({ path: join(DIRECTORY, `${name}.png`), fullPage })
   if (ALL_DARK || TRACKED_DARK.has(name)) {
@@ -56,7 +57,7 @@ test('sign-in page', async ({ page }) => {
   await capture(page, 'login')
 
   await page.setViewportSize(MOBILE)
-  await capture(page, 'mobile-login', true)
+  await capture(page, 'mobile-login')
 })
 
 test('requester pages', async ({ page }) => {
@@ -87,11 +88,11 @@ test('mobile requester pages', async ({ page }) => {
   await page.setViewportSize(MOBILE)
   await signInAt(page, 'riley')
   await expect(page.getByRole('table')).toBeVisible()
-  await capture(page, 'mobile-dashboard', true)
+  await capture(page, 'mobile-dashboard')
 
   await page.getByRole('link', { name: WIFI_TITLE }).click()
   await expect(page.getByText(AI_LABEL)).toBeVisible()
-  await capture(page, 'mobile-request-suggestion', true)
+  await capture(page, 'mobile-request-suggestion')
 })
 
 test('staff pages', async ({ page }) => {
@@ -107,7 +108,7 @@ test('staff pages', async ({ page }) => {
   await capture(page, 'review-workspace', true)
 
   await page.setViewportSize(MOBILE)
-  await capture(page, 'mobile-review-workspace', true)
+  await capture(page, 'mobile-review-workspace', false, page.getByRole('heading', { name: 'Review the AI draft' }))
 })
 
 test('reviewed reply', async ({ page }) => {

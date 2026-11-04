@@ -33,6 +33,7 @@ Current blockers: none.
 - **Checkpoint 20, Neon provisioned: DONE.** `deploy/neon/provision.py`: role, migrations at `0007`, seed twice (4 users, 13 articles, 9 requests), all `app_user` checks passed, reset works as `app_user`. Production image on Neon: browser suite 43 passed, 1 skipped by design; demo data reset afterwards. Neon runs PostgreSQL 18, and development and CI use 17 (ADR-054); the backend suite passed on 18 too, 873 passed, 1 skipped. See `docs/DEPLOYMENT.md`.
 - **Checkpoint 21, visual redesign: DONE.** ADR-056. Frontend 237 passed. Dev browser suite 33 passed, 11 skipped by design. Production browser suite 45 passed, 1 skipped by design. axe now fails on any finding, in both themes, at 1440 and 375 px: 94 checks on the production image, all with 0 findings. Every screen reviewed by eye in both themes.
 - **Checkpoint 24, polish: DONE, ahead of 22 and 23.** Staff page refreshes by itself (ADR-059), 10 minute access tokens (ADR-058), browser subset on pull requests (ADR-057), live path through HTTP checked with 2 requests and at most 3 provider calls (`docs/EVALUATION.md`), article IDs replaced in replies (ADR-060).
+- **Checkpoint 22, screenshots and demo: DONE.** `npm --prefix e2e run screenshots` (production image, 16 files, 622 KB after optimizing) and `npm --prefix e2e run demo:record` (86 s H.264 video of 1.1 MB, and a 3.1 MB animated preview).
 
 ## Test results (clean state: `down -v`, rebuild, migrate, seed)
 

@@ -117,7 +117,7 @@ ADR-016 asked for `KB_MIN_RANK` to be measured again. Over the fixture's queries
 - **The fixture is small, synthetic and tuned against.** It has no held-out set.
 - **The knowledge base is small.** 12 published articles do not stress retrieval.
 - **The live sample is small.** 10 cases at one point in time, on the free tier, with one model and prompt version. Its latency only describes that run.
-- **`AI_MODE=gemini` through the running app's HTTP endpoints is still unverified.** The evaluation calls the orchestrator directly.
+- **The live path through the running app has seen only 2 requests.** See the section below.
 - **Reply quality was not scored.** Results deliberately hold no reply text, so nothing here says whether a live reply was helpful or accurate.
 
 ## Next improvements

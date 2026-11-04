@@ -269,9 +269,13 @@ def _clean_model_text(value: str) -> str:
 
 
 def _name_articles(reply: str, retrieved: list[RetrievedArticle]) -> str:
-    """Article IDs mean nothing to a requester, and a live model wrote one into a reply (ADR-060)."""
+    """Article IDs mean nothing to a requester. A live model wrote one into a reply (ADR-060)."""
     for article in retrieved:
-        reply = re.sub(re.escape(str(article.id)), f'"{article.title}"', reply, flags=re.IGNORECASE)
+        # A function, so a backslash in a title is not read as a group reference.
+        name = f'"{article.title}"'
+        reply = re.sub(
+            re.escape(str(article.id)), lambda _, text=name: text, reply, flags=re.IGNORECASE
+        )
     return reply
 
 

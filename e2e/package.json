@@ -8,10 +8,12 @@
     "e2e": "node run.mjs",
     "e2e:prod": "node run-prod.mjs",
     "e2e:smoke": "node run-prod.mjs --project=desktop --grep @smoke",
-    "screenshots": "node run-prod.mjs --project=screenshots"
+    "screenshots": "node run-prod.mjs --project=screenshots && node optimize-screenshots.mjs",
+    "demo:record": "node record-demo.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
-    "@playwright/test": "1.64.1"
+    "@playwright/test": "1.64.1",
+    "sharp": "0.34.5"
   }
 }
