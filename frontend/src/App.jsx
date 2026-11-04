@@ -4,6 +4,9 @@ import ProtectedRoute from './auth/ProtectedRoute'
 import RoleRoute from './auth/RoleRoute'
 import { ADMIN_ROLES, homeFor, STAFF_ROLES } from './auth/roles'
 import Layout from './components/Layout'
+import AdminArticleEditorPage from './pages/AdminArticleEditorPage'
+import AdminAuditPage from './pages/AdminAuditPage'
+import AdminKnowledgePage from './pages/AdminKnowledgePage'
 import DashboardPage from './pages/DashboardPage'
 import KnowledgeArticlePage from './pages/KnowledgeArticlePage'
 import KnowledgeListPage from './pages/KnowledgeListPage'
@@ -13,10 +16,6 @@ import NotFoundPage from './pages/NotFoundPage'
 import RequestDetailPage from './pages/RequestDetailPage'
 import SupportDetailPage from './pages/SupportDetailPage'
 import SupportQueuePage from './pages/SupportQueuePage'
-
-function Upcoming({ title }) {
-  return <h1>{title}</h1>
-}
 
 function Home() {
   const { user } = useAuth()
@@ -51,8 +50,10 @@ export default function App() {
             <Route path="/support/:id" element={<SupportDetailPage />} />
           </Route>
           <Route element={<RoleRoute allow={ADMIN_ROLES} />}>
-            <Route path="/admin/knowledge" element={<Upcoming title="Knowledge admin" />} />
-            <Route path="/admin/audit" element={<Upcoming title="Audit log" />} />
+            <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
+            <Route path="/admin/knowledge/new" element={<AdminArticleEditorPage />} />
+            <Route path="/admin/knowledge/:id/edit" element={<AdminArticleEditorPage />} />
+            <Route path="/admin/audit" element={<AdminAuditPage />} />
           </Route>
         </Route>
       </Route>

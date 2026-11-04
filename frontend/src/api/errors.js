@@ -54,7 +54,7 @@ export function friendlyMessage(error) {
   return MESSAGES[error.code] ?? error.message ?? 'Something went wrong. Please try again.'
 }
 
-// Codes that mean the page is out of date, so the fix is to reload it.
+// Codes that mean the page is out of date, so reloading it is the fix.
 const RELOAD_CODES = new Set([
   'STALE_UPDATE',
   'STALE_REVIEW',

@@ -281,7 +281,7 @@ Errors: 401, 404.
 
 ### `GET /admin/knowledge` (ADMIN)
 
-Lists every status, newest update first. Query: `status`, `category`, `limit`, `offset`. Items are the public summary plus `status` and `updated_by`.
+Lists every status, newest update first. Query: `status`, `category`, `q`, `limit`, `offset`. `q` (up to 200 characters) is a case-insensitive substring match on title and slug, with no ranking. Items are the public summary plus `status` and `updated_by`.
 
 Errors: 401; 403 for USER and AGENT; 422.
 
@@ -336,7 +336,7 @@ class RetrievedArticle:
 
 ### `GET /admin/audit` (ADMIN)
 
-Paginated, newest first. Items: `id, actor_id, entity_type, entity_id, action, safe_metadata, occurred_at`. Metadata never contains passwords, tokens or comment bodies.
+Paginated, newest first. Query: `action` and `entity_type` (exact matches, up to 100 characters), `limit`, `offset`. Items: `id, actor_id, actor_name, entity_type, entity_id, action, safe_metadata, occurred_at`. `actor_name` is null when there is no actor, such as a failed sign-in for an unknown email. Metadata never contains passwords, tokens or comment bodies.
 
 Audit actions so far: `auth.login_success`, `auth.login_failure`, `request.created`, `request.assigned`, `request.unassigned`, `request.priority_changed`, `request.category_changed`, `request.status_changed`, `request.comment_added`, `request.ai_analysis_started`, `request.ai_analysis_succeeded`, `request.ai_analysis_failed`, `request.review_approved`, `request.review_rejected`, `request.suggestion_withheld`, `request.feedback_added`, `knowledge.created`, `knowledge.updated`, `knowledge.published`, `knowledge.unpublished`, `knowledge.status_changed`.
 

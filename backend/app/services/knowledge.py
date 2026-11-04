@@ -3,7 +3,7 @@
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import ColumnElement, Select, Text, cast, func, literal_column, select, text
+from sqlalchemy import ColumnElement, Select, Text, cast, func, literal_column, or_, select, text
 from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -134,6 +134,7 @@ def list_all(
     *,
     status: ArticleStatus | None,
     category: Category | None,
+    q: str | None = None,
     limit: int,
     offset: int,
 ) -> tuple[list[KnowledgeArticle], int]:
@@ -142,6 +143,16 @@ def list_all(
         query = query.where(KnowledgeArticle.status == status.value)
     if category:
         query = query.where(KnowledgeArticle.category == category.value)
+    if q and q.strip():
+        # A plain substring match on title and slug, for finding an article you know exists.
+        # Unlike public search, this has no ranking and covers every status.
+        term = q.strip()
+        query = query.where(
+            or_(
+                KnowledgeArticle.title.icontains(term, autoescape=True),
+                KnowledgeArticle.slug.icontains(term, autoescape=True),
+            )
+        )
     return _paged(db, query, limit, offset)
 
 

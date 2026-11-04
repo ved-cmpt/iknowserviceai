@@ -239,8 +239,8 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 
 - **Context:** Blueprint section 8.1 and the run prompt need counts by status, and a "My requests" page. Staff can see every request, so the existing list could not show only their own. Fetching counts with one `limit=1` call per status would take 7 calls per page load.
 - **Alternatives:** Seven list calls; filtering on the client, which breaks pagination.
-- **Decision:** Add `GET /requests/counts` and a `mine=true` filter on `GET /requests`. Both start from the same visibility query as the list, so they cannot widen what a user may see.
-- **Trade-offs:** Two more API surfaces to keep tested and documented.
+- **Decision:** Add `GET /requests/counts` and a `mine=true` filter on `GET /requests`. Both start from the same visibility query as the list, so they cannot widen what a user may see. For the admin screens, add `q` on `GET /admin/knowledge`, and `action`, `entity_type` and `actor_name` on `GET /admin/audit`. The run prompt allowed a client-side filter over the current page instead, but that silently misses matches on other pages.
+- **Trade-offs:** More API surface to keep tested and documented. `/admin/knowledge?q=` is a substring match, not the ranked full-text search, because admins look for an article they already know exists, in any status.
 
 ## ADR-034: Frontend structure and design system
 

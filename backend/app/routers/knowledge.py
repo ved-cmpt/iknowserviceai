@@ -90,13 +90,14 @@ def get_article(
 def admin_list_knowledge(
     status: ArticleStatus | None = None,
     category: Category | None = None,
+    q: Annotated[str | None, Query(max_length=MAX_QUERY_LENGTH), NoNul] = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
     _: User = Depends(require_roles(Role.ADMIN)),
     db: Session = Depends(get_db),
 ) -> Page[AdminArticleSummary]:
     articles, total = knowledge_service.list_all(
-        db, status=status, category=category, limit=limit, offset=offset
+        db, status=status, category=category, q=q, limit=limit, offset=offset
     )
     return Page(
         items=[_admin_summary(article) for article in articles],

@@ -8,6 +8,7 @@ from app.schemas.common import ORMModel
 class AuditEntry(ORMModel):
     id: uuid.UUID
     actor_id: uuid.UUID | None
+    actor_name: str | None = None
     entity_type: str
     entity_id: uuid.UUID | None
     action: str
