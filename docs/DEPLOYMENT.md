@@ -143,6 +143,7 @@ On 2026-11-04, against the live site. Everything here used one network and Chrom
 | Browser subset, 375 px | 7 passed |
 | axe, both themes | 72 checks, no findings |
 | Data and sign-ins after a redeploy | Both survive |
+| Daily reset | Backdated `last_reset_at` by 25 hours as the owner. One ordinary API request then emptied and reseeded the data through the service's `app_user` connection: 4 users, 13 articles, 9 requests, 0 AI runs, 0 audit rows, 0 refresh tokens |
 | Cold start, after 19 idle minutes | **32.2 s** to first byte, then 0.14 s |
 | Database wake-up | First `/readyz` 0.71 s, then 0.14 s, so about 0.6 s |
 | First sign-in after waking | 1.7 s |
