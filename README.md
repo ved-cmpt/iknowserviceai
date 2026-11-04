@@ -10,7 +10,7 @@ An AI-assisted IT service-request platform with knowledge-grounded suggestions a
 - [x] Sign-in with Argon2id passwords and short-lived JWTs, plus USER, AGENT and ADMIN roles
 - [x] Full database schema, Alembic migrations, idempotent synthetic seed and guarded reset
 - [x] Login page and dashboard
-- [ ] Request lifecycle API
+- [x] Request lifecycle API: filters, comments, state machine, optimistic concurrency, events and audit
 - [ ] Knowledge base and full-text retrieval
 - [ ] AI triage (mock and Gemini), policy gate and staff review
 - [ ] Complete requester, staff and admin screens
@@ -112,6 +112,7 @@ docker compose down -v     # stop and delete the database volume
 
 - [Project context](docs/PROJECT_CONTEXT.md)
 - [Product contract](docs/PRODUCT_CONTRACT.md)
+- [API reference](docs/API.md)
 - [Architecture decisions](docs/ARCHITECTURE_DECISIONS.md)
 - [Implementation status](docs/IMPLEMENTATION_STATUS.md)
 - [Implementation blueprint](docs/IMPLEMENTATION_BLUEPRINT.md)

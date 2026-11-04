@@ -5,10 +5,64 @@ Requester schemas are explicit allowlists. A new staff field cannot reach a requ
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field, StringConstraints, model_validator
 
 from app.db.models.enums import Category, Priority, RequestStatus, Role
-from app.schemas.common import ORMModel
+from app.schemas.common import NoNul, ORMModel, StrictInput
+
+Title = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=3, max_length=120), NoNul
+]
+Description = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=10, max_length=4000), NoNul
+]
+CommentBody = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000), NoNul
+]
+Reason = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=3, max_length=300), NoNul
+]
+
+
+class RequestCreate(StrictInput):
+    title: Title
+    description: Description
+
+
+class RequestCreated(ORMModel):
+    id: uuid.UUID
+    title: str
+    status: RequestStatus
+    created_at: datetime
+
+
+class CommentCreate(StrictInput):
+    body: CommentBody
+    is_internal: bool = False
+
+
+class RequestUpdate(StrictInput):
+    """Staff update. Omitting a field leaves it unchanged; `assigned_agent_id: null` unassigns."""
+
+    expected_version: Annotated[int, Field(ge=1)]
+    assigned_agent_id: uuid.UUID | None = None
+    priority: Priority | None = None
+    category: Category | None = None
+    status: RequestStatus | None = None
+    reason: Reason | None = None
+
+    @model_validator(mode="after")
+    def validate_change(self) -> "RequestUpdate":
+        for field in ("priority", "category", "status"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
+        if self.model_fields_set <= {"expected_version", "reason"}:
+            raise ValueError("Provide at least one field to change")
+        if (self.priority or self.category) and not self.reason:
+            raise ValueError("A reason is required to change priority or category")
+        return self
 
 
 class RequestListItem(ORMModel):
@@ -24,6 +78,7 @@ class RequestListItem(ORMModel):
 class StaffRequestListItem(RequestListItem):
     requester_id: uuid.UUID
     assigned_agent_id: uuid.UUID | None
+    version: int
 
 
 class PublicComment(ORMModel):
@@ -80,6 +135,7 @@ class StaffRequestDetail(ORMModel):
     created_at: datetime
     updated_at: datetime
     resolved_at: datetime | None
+    version: int
     requester: PersonSummary
     assigned_agent: PersonSummary | None
     comments: list[StaffComment]

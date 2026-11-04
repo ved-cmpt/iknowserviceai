@@ -1,5 +1,3 @@
-from typing import Annotated
-
 from pydantic import AfterValidator, BaseModel, ConfigDict
 
 
@@ -10,7 +8,9 @@ def _reject_nul(value: str) -> str:
     return value
 
 
-NoNulStr = Annotated[str, AfterValidator(_reject_nul)]
+# Put this after any length constraints: Annotated[str, StringConstraints(...), NoNul].
+# Wrapping an already-validated type in StringConstraints silently drops strip and length rules.
+NoNul = AfterValidator(_reject_nul)
 
 
 class ORMModel(BaseModel):

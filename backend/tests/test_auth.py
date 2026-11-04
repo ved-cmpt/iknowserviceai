@@ -2,6 +2,7 @@ from collections.abc import Callable
 from datetime import timedelta
 
 import jwt
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -91,6 +92,20 @@ def test_login_validation_error_does_not_echo_password(client: TestClient) -> No
     )
     assert response.status_code == 422
     assert "secret" not in response.text
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"email": "ab", "password": "x"},
+        {"email": "a" * 255, "password": "x"},
+        {"email": "a@example.test", "password": ""},
+        {"email": "a@example.test", "password": "x" * 1025},
+        {"email": "a\x00b@example.test", "password": "x"},
+    ],
+)
+def test_login_input_bounds(client: TestClient, payload: dict) -> None:
+    assert client.post(LOGIN, json=payload).status_code == 422
 
 
 def test_missing_token(client: TestClient) -> None:

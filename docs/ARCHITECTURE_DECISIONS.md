@@ -63,7 +63,7 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Context:** Tests need real PostgreSQL behavior and speed, while service code commits.
 - **Alternatives:** Truncate between tests, or recreate the database per test.
 - **Decision:** Migrate once per session, then run each test in an outer transaction that always rolls back, with `join_transaction_mode="create_savepoint"`. `conftest.py` refuses a test database whose name lacks `test`.
-- **Trade-offs:** Fast and isolated, but real multi-connection races cannot be simulated this way. Tests that need them must open their own connections and clean up after themselves.
+- **Trade-offs:** Fast and isolated, but real multi-connection races cannot be simulated this way. Tests that need them must open their own connections and clean up after themselves, as `tests/test_concurrency.py` does.
 
 ## ADR-009: Access token held in memory only
 
@@ -85,6 +85,20 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Alternatives:** `BaseHTTPMiddleware` with an `Exception` handler.
 - **Decision:** The order is request context (outermost), CORS, unhandled-error catcher (innermost). Health endpoints are served at `/healthz` and `/readyz` for infrastructure, and under `/api/v1` for the frontend, because `VITE_API_BASE_URL` includes the prefix.
 - **Trade-offs:** Slightly more middleware code, and two paths for each health endpoint.
+
+## ADR-012: Interpreting the state machine for manual staff actions
+
+- **Context:** Blueprint section 4.3 leaves some details open: "manual triage" from `NEW`, what "staff-owned" means for escalation, and whether resolved requests can reopen.
+- **Alternatives:** Allow free staff transitions, or require an assignee before escalating.
+- **Decision:** `NEW` can go to `TRIAGED` (the manual triage path) or `NEEDS_HUMAN_REVIEW`. Any staff member can escalate any non-closed, non-analyzing request; assignment is not required, because blocking an escalation is the riskier failure. `RESOLVED` can only reopen by escalating, which clears `resolved_at`. `CLOSED` is terminal, so every PATCH to it returns 409 `REQUEST_CLOSED`, including assignment. Same-status updates are illegal. `ANALYZING` can only be left by the AI service, so a seeded `ANALYZING` request stays there until Chunk 3 builds that service.
+- **Trade-offs:** No direct `NEW` to `IN_PROGRESS`, so staff take two steps.
+
+## ADR-013: Comments increment the request version
+
+- **Context:** The spec says to increment `version` on every change. Comments do not edit the request row itself.
+- **Alternatives:** Only bump for PATCH.
+- **Decision:** A comment takes the row lock and bumps `version`, so staff acting on an outdated view get `STALE_UPDATE` and see the new comment first. The lock also prevents a comment racing a close.
+- **Trade-offs:** A requester's comment can force an agent to reload before an update.
 
 ## ADR-014: Requester-visible timeline uses an allowlist
 
