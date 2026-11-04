@@ -36,3 +36,24 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Alternatives:** Provider-side conversation state.
 - **Decision:** Each analysis is a single bounded workflow containing only the current request and retrieved excerpts. Prefer `store=false` when supported; verify at implementation time.
 - **Trade-offs:** No conversational memory, which v1 does not need.
+
+## ADR-005: Development-only container choices
+
+- **Context:** Phase 1 needs a reproducible local stack on Windows.
+- **Alternatives:** Production-style images now.
+- **Decision:** Dockerfiles target development: dev dependencies installed, `uvicorn --reload`, the Vite dev server, source bind mounts and polling. Both containers run as non-root users and contain no secrets. Production images come with Phase 10.
+- **Trade-offs:** The images are larger than production images and must not be deployed as they are.
+
+## ADR-011: Pure ASGI middleware and dual health paths
+
+- **Context:** Every response needs `X-Request-ID`, including 500s and CORS preflights. Starlette's `Exception` handler runs outside user middleware, so its responses lose CORS headers.
+- **Alternatives:** `BaseHTTPMiddleware` with an `Exception` handler.
+- **Decision:** The order is request context (outermost), CORS, unhandled-error catcher (innermost). Health endpoints are served at `/healthz` and `/readyz` for infrastructure, and under `/api/v1` for the frontend, because `VITE_API_BASE_URL` includes the prefix.
+- **Trade-offs:** Slightly more middleware code, and two paths for each health endpoint.
+
+## ADR-020: Project-local tool caches
+
+- **Context:** The autonomous run may only write inside the project folder.
+- **Alternatives:** Default user-level uv and npm caches.
+- **Decision:** Host-side `uv` and `npm` runs set `UV_CACHE_DIR` and `npm_config_cache` under the git-ignored `.cache/`. Normal development by the owner does not need this.
+- **Trade-offs:** A larger project folder until `.cache/` is deleted.
