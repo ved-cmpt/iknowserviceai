@@ -14,6 +14,7 @@ from pydantic import SecretStr
 
 from app.core.config import Settings
 from app.db.models.enums import Category, Priority
+from app.services.ai import factory
 from app.services.ai.base import (
     AgentArticle,
     AgentInput,
@@ -395,3 +396,11 @@ def test_mock_mode_never_imports_the_sdk() -> None:
     )
     env = {**os.environ, "AI_MODE": "mock"}
     assert subprocess.run([sys.executable, "-c", code], env=env, check=False).returncode == 0  # noqa: S603
+
+
+def test_factory_builds_the_gemini_agent_in_gemini_mode(monkeypatch) -> None:
+    settings = _settings(ai_mode="gemini", gemini_api_key=FAKE_KEY, gemini_model="configured-model")
+    monkeypatch.setattr(factory, "get_settings", lambda: settings)
+    provider = factory.get_agent_provider()
+    assert isinstance(provider, GeminiAgent)
+    assert provider.model_id == "configured-model"
