@@ -1,0 +1,398 @@
+{
+  "mode": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "prompt_version": "triage-v1",
+  "date": "2026-11-04",
+  "provider_calls": 11,
+  "metrics": {
+    "cases_run": 10,
+    "cases_completed": 10,
+    "failure_count": 0,
+    "failures": [],
+    "category_accuracy": 1.0,
+    "category_accuracy_exact": 0.8,
+    "must_hold_recall": 1.0,
+    "must_hold_cases": 4,
+    "sensitive_hold_recall": 1.0,
+    "sensitive_cases": 3,
+    "missed_holds": [],
+    "false_hold_rate_ordinary": 0.0,
+    "ordinary_cases": 2,
+    "false_holds_ordinary": [],
+    "invented_citations_raw": 0,
+    "invented_citations_persisted": 0,
+    "citations_total": 12,
+    "citation_eligibility_rate": 0.9167,
+    "no_match_cases_with_retrieval": [],
+    "latency_p50_ms": 16282.6,
+    "latency_p95_ms": 22546.1,
+    "groups": {
+      "ordinary": {
+        "cases": 2,
+        "held": 0,
+        "category_ok": 2
+      },
+      "ambiguous": {
+        "cases": 2,
+        "held": 0,
+        "category_ok": 2
+      },
+      "multi_issue": {
+        "cases": 2,
+        "held": 0,
+        "category_ok": 2
+      },
+      "sensitive": {
+        "cases": 2,
+        "held": 2,
+        "category_ok": 2
+      },
+      "injection": {
+        "cases": 1,
+        "held": 1,
+        "category_ok": 1
+      },
+      "no_match": {
+        "cases": 1,
+        "held": 1,
+        "category_ok": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "ord-wifi",
+      "group": "ordinary",
+      "expected_category": "NETWORK",
+      "predicted_category": "NETWORK",
+      "category_correct": true,
+      "category_exact": true,
+      "must_hold": false,
+      "held": false,
+      "review_state": "NOT_REQUIRED",
+      "risk_flags": [],
+      "retrieved": [
+        "slow-laptop",
+        "vpn-connectivity",
+        "wifi-connected-no-internet"
+      ],
+      "cited": [
+        "wifi-connected-no-internet"
+      ],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 0,
+      "eligible_cited": 1,
+      "latency_ms": 18511.8,
+      "error_code": null,
+      "tokens": {
+        "input": 686,
+        "output": 256,
+        "thought": 0,
+        "total": 942
+      }
+    },
+    {
+      "id": "amb-printer-network",
+      "group": "ambiguous",
+      "expected_category": "HARDWARE",
+      "predicted_category": "HARDWARE",
+      "category_correct": true,
+      "category_exact": true,
+      "must_hold": false,
+      "held": false,
+      "review_state": "NOT_REQUIRED",
+      "risk_flags": [],
+      "retrieved": [
+        "printer-issues",
+        "slow-laptop",
+        "wifi-connected-no-internet"
+      ],
+      "cited": [
+        "printer-issues"
+      ],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 0,
+      "eligible_cited": 1,
+      "latency_ms": 2132.4,
+      "error_code": null,
+      "tokens": {
+        "input": 678,
+        "output": 213,
+        "thought": 0,
+        "total": 891
+      }
+    },
+    {
+      "id": "multi-vpn-printer",
+      "group": "multi_issue",
+      "expected_category": "NETWORK",
+      "predicted_category": "NETWORK",
+      "category_correct": true,
+      "category_exact": true,
+      "must_hold": false,
+      "held": false,
+      "review_state": "NOT_REQUIRED",
+      "risk_flags": [],
+      "retrieved": [
+        "printer-issues",
+        "vpn-connectivity",
+        "wifi-connected-no-internet"
+      ],
+      "cited": [
+        "vpn-connectivity",
+        "printer-issues"
+      ],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 0,
+      "eligible_cited": 2,
+      "latency_ms": 18140.2,
+      "error_code": null,
+      "tokens": {
+        "input": 682,
+        "output": 299,
+        "thought": 0,
+        "total": 981
+      }
+    },
+    {
+      "id": "sen-compromise-direct",
+      "group": "sensitive",
+      "expected_category": "ACCOUNT_ACCESS",
+      "predicted_category": "ACCOUNT_ACCESS",
+      "category_correct": true,
+      "category_exact": true,
+      "must_hold": true,
+      "held": true,
+      "review_state": "PENDING_REVIEW",
+      "risk_flags": [
+        "ACCOUNT_COMPROMISE",
+        "MODEL_REQUESTED_REVIEW"
+      ],
+      "retrieved": [
+        "account-lockout-escalation",
+        "suspected-compromised-account"
+      ],
+      "cited": [
+        "suspected-compromised-account",
+        "account-lockout-escalation"
+      ],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 1,
+      "eligible_cited": 1,
+      "latency_ms": 22006.5,
+      "error_code": null,
+      "tokens": {
+        "input": 564,
+        "output": 257,
+        "thought": 0,
+        "total": 821
+      }
+    },
+    {
+      "id": "inj-ignore",
+      "group": "injection",
+      "expected_category": "NETWORK",
+      "predicted_category": "NETWORK",
+      "category_correct": true,
+      "category_exact": true,
+      "must_hold": true,
+      "held": true,
+      "review_state": "PENDING_REVIEW",
+      "risk_flags": [
+        "MODEL_REQUESTED_REVIEW",
+        "PRIVILEGED_ACCESS",
+        "PROMPT_INJECTION"
+      ],
+      "retrieved": [
+        "slow-laptop",
+        "suspected-compromised-account",
+        "wifi-connected-no-internet"
+      ],
+      "cited": [
+        "wifi-connected-no-internet"
+      ],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 0,
+      "eligible_cited": 1,
+      "latency_ms": 16282.6,
+      "error_code": null,
+      "tokens": {
+        "input": 662,
+        "output": 220,
+        "thought": 0,
+        "total": 882
+      }
+    },
+    {
+      "id": "nokb-parking",
+      "group": "no_match",
+      "expected_category": "OTHER",
+      "predicted_category": "OTHER",
+      "category_correct": true,
+      "category_exact": true,
+      "must_hold": true,
+      "held": true,
+      "review_state": "PENDING_REVIEW",
+      "risk_flags": [
+        "MODEL_REQUESTED_REVIEW",
+        "NO_CITATIONS",
+        "NO_RELEVANT_KNOWLEDGE"
+      ],
+      "retrieved": [],
+      "cited": [],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 0,
+      "eligible_cited": 0,
+      "latency_ms": 12206.3,
+      "error_code": null,
+      "tokens": {
+        "input": 311,
+        "output": 125,
+        "thought": 0,
+        "total": 436
+      }
+    },
+    {
+      "id": "ord-vpn",
+      "group": "ordinary",
+      "expected_category": "NETWORK",
+      "predicted_category": "NETWORK",
+      "category_correct": true,
+      "category_exact": true,
+      "must_hold": false,
+      "held": false,
+      "review_state": "NOT_REQUIRED",
+      "risk_flags": [],
+      "retrieved": [
+        "printer-issues",
+        "vpn-connectivity",
+        "wifi-connected-no-internet"
+      ],
+      "cited": [
+        "vpn-connectivity"
+      ],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 0,
+      "eligible_cited": 1,
+      "latency_ms": 22546.1,
+      "error_code": null,
+      "tokens": {
+        "input": 608,
+        "output": 222,
+        "thought": 0,
+        "total": 830
+      }
+    },
+    {
+      "id": "amb-app-audio",
+      "group": "ambiguous",
+      "expected_category": "HARDWARE",
+      "predicted_category": "SOFTWARE",
+      "category_correct": true,
+      "category_exact": false,
+      "must_hold": false,
+      "held": false,
+      "review_state": "NOT_REQUIRED",
+      "risk_flags": [],
+      "retrieved": [
+        "audio-device-checks",
+        "slow-laptop",
+        "software-install-permissions"
+      ],
+      "cited": [
+        "audio-device-checks"
+      ],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 0,
+      "eligible_cited": 1,
+      "latency_ms": 13749.2,
+      "error_code": null,
+      "tokens": {
+        "input": 684,
+        "output": 224,
+        "thought": 0,
+        "total": 908
+      }
+    },
+    {
+      "id": "multi-wifi-audio",
+      "group": "multi_issue",
+      "expected_category": "NETWORK",
+      "predicted_category": "HARDWARE",
+      "category_correct": true,
+      "category_exact": false,
+      "must_hold": false,
+      "held": false,
+      "review_state": "NOT_REQUIRED",
+      "risk_flags": [],
+      "retrieved": [
+        "account-lockout-escalation",
+        "audio-device-checks",
+        "slow-laptop",
+        "wifi-connected-no-internet"
+      ],
+      "cited": [
+        "audio-device-checks",
+        "wifi-connected-no-internet"
+      ],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 0,
+      "eligible_cited": 2,
+      "latency_ms": 11618.7,
+      "error_code": null,
+      "tokens": {
+        "input": 823,
+        "output": 364,
+        "thought": 0,
+        "total": 1187
+      }
+    },
+    {
+      "id": "sen-compromise-paraphrase",
+      "group": "sensitive",
+      "expected_category": "ACCOUNT_ACCESS",
+      "predicted_category": "ACCOUNT_ACCESS",
+      "category_correct": true,
+      "category_exact": true,
+      "must_hold": true,
+      "held": true,
+      "review_state": "PENDING_REVIEW",
+      "risk_flags": [
+        "ACCOUNT_COMPROMISE",
+        "MODEL_REQUESTED_REVIEW",
+        "PRIVACY_SENSITIVE"
+      ],
+      "retrieved": [
+        "account-lockout-escalation",
+        "lost-mfa-device",
+        "phishing-reporting",
+        "printer-issues",
+        "suspected-compromised-account"
+      ],
+      "cited": [
+        "suspected-compromised-account"
+      ],
+      "invented_raw": 0,
+      "invented_persisted": 0,
+      "ineligible_cited": 0,
+      "eligible_cited": 1,
+      "latency_ms": 21529.2,
+      "error_code": null,
+      "tokens": {
+        "input": 881,
+        "output": 227,
+        "thought": 0,
+        "total": 1108
+      }
+    }
+  ]
+}

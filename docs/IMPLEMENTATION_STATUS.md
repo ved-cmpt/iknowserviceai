@@ -1,7 +1,7 @@
 # Implementation status
 
 Updated: 2026-11-04
-Current phase: Run 04 in progress. Checkpoints 14 and 15 are committed; see `git log`.
+Current phase: Run 04 in progress. Checkpoints 14 to 16 are committed; see `git log`.
 Branch: main; see `git log --oneline` for the commit
 Deployment status: not deployed; local Docker only
 
@@ -55,12 +55,13 @@ None known.
 - Staff cannot rate a suggestion on their own request from the UI (ADR-036).
 - While a draft is pending review, the status controls offer no moves, which is stricter than the API. A person can still use the API to move the request, which strands the draft until it is escalated again.
 - Browser checks ran in Chromium only, against both the Vite dev server and the production image. No real screen reader has been tried. Axe finds only part of what affects accessibility.
-- Pattern-based policy scanning can be evaded by rephrasing or other languages, and produces false positives. Rates have not been measured (Phase 9).
+- Pattern-based policy scanning can be evaded by rephrasing or other languages, and produces false positives. The evaluation's 100% hold rate is on a fixture used to tune the patterns (`docs/EVALUATION.md`).
+- A shared word can retrieve an unrelated article. In live mode, only the model's judgment stops a confident reply citing it, and this is not measured (`docs/EVALUATION.md`).
 - Seeded `TRIAGED` and `NEEDS_HUMAN_REVIEW` requests have no suggestion, so staff move them with the status controls.
 - Rate limits are per process and count all login attempts (ADR-030). `TRUSTED_PROXY_HOPS` must be set per host (ADR-048).
 - A crashed analysis blocks retries for up to `AI_STALE_RUN_SECONDS` and uses one attempt (ADR-026).
 - A request with history cannot be hard-deleted, because the append-only trigger refuses the cascade (ADR-025).
 - `ai_runs.redacted_input` has no retention job. The demo reset is the only cleanup.
-- The relevance floor is measured on 12 articles and should be re-measured in Phase 9.
+- The relevance floor was measured again on the fixture, and no value separates noise from fair sources (`docs/EVALUATION.md`).
 - An access token stays valid for up to 30 minutes after sign-out (ADR-045).
 - `docs/ARCHITECTURE.md`, `docs/DEMO.md`, `docs/EVALUATION.md`, CI and `LICENSE` do not exist yet. Later phases add them.

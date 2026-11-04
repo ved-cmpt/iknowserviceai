@@ -33,6 +33,13 @@ HARD_SIGNALS: dict[RiskFlag, tuple[re.Pattern[str], ...]] = {
         r"\b(?:hacked|hijacked|compromised|taken over)\b",
         r"\bunauthori[sz]ed\b.{0,20}\b(?:access|log ?in|sign-?in|activity|charges?|use)\b",
         r"\bsuspicious\b.{0,20}\b(?:log ?in|sign-?in|activity)\b",
+        # Added after evaluation: symptoms described without the obvious words.
+        r"\b(?:messages?|emails?)\b.{0,30}\b(?:never|did not|didn't|not)\s+"
+        r"(?:wrote|write|send|sent)\b",
+        r"\b(?:sign-?ins?|log-?ins?|signed in|logged in)\b.{0,50}"
+        r"\b(?:never|unfamiliar|unknown|unrecogni[sz]ed|(?:do not|don't) recogni[sz]e)\b",
+        r"\b(?:typed|entered|gave|submitted)\b.{0,30}\b" + _CONFIDENTIAL_NOUN + r"\b.{0,30}"
+        r"\b(?:page|site|website|link|form|message|email)\b",
     ),
     RiskFlag.CREDENTIAL_REQUEST: _patterns(
         r"\b(?:need|give|send|share|want|provide|tell|reveal|show|print|leak|what is|what's)\b"
@@ -45,6 +52,11 @@ HARD_SIGNALS: dict[RiskFlag, tuple[re.Pattern[str], ...]] = {
         r"\bscam\w*\b",
         r"\bsuspicious\b.{0,20}\b(?:emails?|messages?|links?|attachments?|texts?|calls?)\b",
         r"\bfake\b.{0,20}\b(?:emails?|log ?in|sign-?in|site|website|page)\b",
+        # Added after evaluation.
+        r"\b(?:strange|odd|weird|unexpected|unknown)\b.{0,20}\b(?:emails?|messages?|links?"
+        r"|attachments?|texts?|calls?)\b",
+        r"\bclick(?:ed|ing)?\b.{0,30}\b(?:links?|attachments?)\b.{0,60}"
+        r"\b(?:password|credentials?|details|log ?in|sign-?in)\b",
     ),
     RiskFlag.PRIVACY_SENSITIVE: _patterns(
         r"\b(?:student|employee|patient|medical|health|personal|salary|payroll|grades?|hr|staff)\b"
@@ -76,7 +88,7 @@ HARD_SIGNALS: dict[RiskFlag, tuple[re.Pattern[str], ...]] = {
         r"\bwip(?:e|ed|ing)\b.{0,30}\b(?:laptop|device|phone|computer|drive|disk|data|machine)\b",
         r"\b(?:laptop|device|phone|computer|drive|disk|machine)\b.{0,30}\bwip(?:e|ed|ing)\b",
         r"\b(?:factory reset|re-?image|remote wipe)\b",
-        r"\b(?:erase|format)\b.{0,15}\b(?:laptop|device|phone|computer|drive|disk)\b",
+        r"\b(?:erase|format|reformat)\b.{0,25}\b(?:laptop|device|phone|computer|drive|disk)\b",
     ),
     RiskFlag.DESTRUCTIVE_ACTION: _patterns(
         r"\b(?:delete|drop|remove|purge|destroy|erase)\b.{0,30}\b(?:all|every|entire|database|table"
@@ -100,6 +112,12 @@ HARD_SIGNALS: dict[RiskFlag, tuple[re.Pattern[str], ...]] = {
         r"\bjailbreak\w*\b",
         r"\brequires_human_review\b",
         r"\b(?:set|mark|report)\b.{0,20}\bconfidence\b",
+        # Added after evaluation: attempts that avoid the words "instructions" and "prompt".
+        r"\b(?:ignore|disregard|forget)\b.{0,15}\b(?:everything|all|anything)\b.{0,15}"
+        r"\b(?:above|before|earlier|said|told)\b",
+        r"\bfrom now on\b.{0,30}\byou\b",
+        r"\b(?:approve|accept|close)\b.{0,25}\bwithout\b.{0,15}"
+        r"\b(?:any )?(?:review|check|checks)\b",
     ),
 }
 

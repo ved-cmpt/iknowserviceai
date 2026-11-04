@@ -115,7 +115,8 @@ Limited responses are 429 with `Retry-After`. See ADR-030.
 ## Known risks
 
 - **Pattern scanning can be evaded.** Rephrasing, other languages, homoglyphs or text split across fields can get past it. Citation, schema and output checks still apply, but a cleverly worded harmless-looking reply could be shown without review.
-- **False positives are expected.** Ordinary requests that mention passwords or admin rights go to staff. This costs staff time, and has not been measured yet (Phase 9).
+- **False positives are expected.** Ordinary requests that mention passwords or admin rights go to staff, which costs staff time. On the evaluation fixture, 1 of 10 ordinary cases was held in mock mode, and that came from the mock's low confidence. See [the evaluation](EVALUATION.md).
+- **A shared word can retrieve an unrelated article.** In live mode, only the model's judgment stops a confident reply citing it. This is not measured. See [the evaluation](EVALUATION.md).
 - **An uncited reply is always held,** even when harmless (ADR-027).
 - **Model replies that pass every check are shown unreviewed,** labeled "AI-generated suggestion; verify before acting". They may still be wrong.
 - **Rate limits are per process.** They reset on restart and do not work across instances. Behind a proxy, `TRUSTED_PROXY_HOPS` must match the host, or all users share one address, or an address can be forged (ADR-048).
@@ -126,7 +127,7 @@ Limited responses are 429 with `Retry-After`. See ADR-030.
 - **A script injected into the page could still use the session** while the page is open, although it could not read the refresh token. The Content-Security-Policy is the defense against that, in production only.
 - **Staff replies are only scanned for credential requests.** A reviewer can still publish poor advice. Their identity and reason are recorded.
 - **`redacted_input` is stored indefinitely.** There is no retention job. The demo reset is the only cleanup.
-- **The live Gemini path has one passing call.** The owner's smoke test passed, but one synthetic request is not evidence about quality or latency in general. See ADR-029.
+- **The live Gemini path has a small sample.** 10 synthetic cases through the orchestrator, plus the owner's smoke test. That is not evidence about quality or latency in general, and the running app's HTTP path has not been exercised in this mode. See [the evaluation](EVALUATION.md).
 
 ## Demo limitations
 
