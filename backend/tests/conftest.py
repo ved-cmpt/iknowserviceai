@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from app.core.rate_limit import analyze_limiter, login_limiter, refresh_limiter  # noqa: E402
 from app.core.security import create_access_token, hash_password  # noqa: E402
-from app.db.models import Base, ServiceRequest, User  # noqa: E402
+from app.db.models import ServiceRequest, User, data_tables  # noqa: E402
 from app.db.models.enums import Role  # noqa: E402
 from app.db.session import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
@@ -65,7 +65,7 @@ def truncate_all_tables() -> None:
 
     TRUNCATE is the only way to clear append-only history, because row triggers refuse DELETE.
     """
-    tables = ", ".join(f'"{table.name}"' for table in Base.metadata.sorted_tables)
+    tables = ", ".join(f'"{table.name}"' for table in data_tables())
     with engine.begin() as connection:
         connection.execute(text(f"TRUNCATE {tables} CASCADE"))
 

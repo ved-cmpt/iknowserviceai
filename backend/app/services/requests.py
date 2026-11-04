@@ -28,7 +28,7 @@ from app.schemas.requests import (
     StaffRequestDetail,
     StaffRequestListItem,
 )
-from app.services import suggestions
+from app.services import demo, suggestions
 from app.services.audit import record_audit
 from app.services.state_machine import ensure_staff_transition
 
@@ -170,6 +170,7 @@ def record_change(
 
 
 def create_request(db: Session, user: User, payload: RequestCreate) -> ServiceRequest:
+    demo.check_request_caps(db, user)
     request = ServiceRequest(
         requester_id=user.id,
         title=payload.title,

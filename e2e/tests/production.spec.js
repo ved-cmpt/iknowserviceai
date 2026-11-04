@@ -1,6 +1,6 @@
 // Checks that only make sense against the production image. Other runs skip this file.
 import { expect, request as playwrightRequest, test } from '@playwright/test'
-import { expectAccessible, signInAt } from './helpers'
+import { expectAccessible, fillSignIn, signInAt } from './helpers'
 
 test.skip(!process.env.PRODUCTION, 'Runs against the production image only.')
 
@@ -25,6 +25,16 @@ test.describe('Production image @mobile', () => {
     expect(await (await api.get(`${BASE}/docs`)).text()).not.toContain('swagger')
     expect((await api.get(`${BASE}/api/v1/no-such-endpoint`)).status()).toBe(404)
     await api.dispose()
+  })
+
+  test('the public demo banner is on the sign-in page and in the app shell', async ({ page }) => {
+    await page.goto('/login')
+    const banner = page.getByTestId('demo-banner')
+    await expect(banner).toContainText('Public demo — shared synthetic data, resets daily.')
+    await expect(banner).toContainText('simulated by the built-in mock agent')
+    await fillSignIn(page, 'riley')
+    await expect(page.getByTestId('demo-banner')).toContainText('resets daily')
+    await expectAccessible(page, 'production: shell with demo banner')
   })
 
   test('hashed assets are cached for a long time', async ({ page }) => {

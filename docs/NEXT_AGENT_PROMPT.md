@@ -3,7 +3,7 @@
 Last updated: 2026-11-04
 Current phase and exact objective: Chunk 6, Phase 10 deployment: put the production image and a managed PostgreSQL on a free or low-cost host.
 Repo branch and last verified commit: `main`, pushed to the private remote `origin`. Run `git log --oneline`. Phases 0 to 9 passed a clean-state verification.
-Implemented and verified: see `docs/IMPLEMENTATION_STATUS.md` and `docs/RUN_REPORTS/RUN_04.md`.
+Run 05 in progress: Checkpoint 18 (demo safeguards, ADR-051) is committed; Checkpoints 19 onward follow. Implemented and verified: see `docs/IMPLEMENTATION_STATUS.md` and `docs/RUN_REPORTS/RUN_04.md`.
 Environment/service state: dev stack running in mock mode with default limits, migrated at `0006`, freshly reset demo data.
 Known bugs / incomplete tests: no known bugs. **The CI workflow had not run on GitHub when this was written.** Check the Actions tab first. The running app has not been used with `AI_MODE=gemini`.
 Decisions and assumptions made: ADR-000 to ADR-050.

@@ -32,8 +32,13 @@ class Settings(BaseSettings):
     trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
     # Send Strict-Transport-Security. Turn on only when the site is served over HTTPS.
     hsts_enabled: bool = False
-    # Shows the sign-in help on a public demo. Development always shows it.
+    # A public demo: shows the sign-in help and banner, and turns on the safeguards below (ADR-051).
+    # Development always shows the sign-in help, and nothing else.
     demo_mode: bool = False
+    demo_reset_interval_hours: int = Field(default=24, ge=1, le=720)
+    demo_max_requests_per_account_per_day: int = Field(default=20, ge=1)
+    demo_max_requests_total: int = Field(default=300, ge=1)
+    demo_max_articles: int = Field(default=30, ge=1)
 
     ai_mode: Literal["mock", "gemini"] = "mock"
     # SecretStr keeps the key out of reprs and logs. Read it only where the SDK client is built.

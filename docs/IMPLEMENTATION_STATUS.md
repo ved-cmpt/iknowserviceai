@@ -26,6 +26,10 @@ Decisions changed since blueprint: ADR-000 (doc file mapping), ADR-015 (any-term
 
 Current blockers: none.
 
+## Run 05 progress
+
+- **Checkpoint 18, public-demo safeguards: DONE.** `tests/test_demo_safeguards.py` (31 tests, including as `app_user`), production E2E banner check. See ADR-051.
+
 ## Test results (clean state: `down -v`, rebuild, migrate, seed)
 
 Exit codes were captured directly, with no pipe in between.

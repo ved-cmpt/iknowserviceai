@@ -6,6 +6,7 @@ import { roleLabel } from '../lib/labels'
 import { AnnouncerContext } from './announcerContext'
 import ApiStatus from './ApiStatus'
 import Button from './Button'
+import DemoBanner from './DemoBanner'
 
 export default function Layout() {
   const { user, logout } = useAuth()
@@ -31,6 +32,7 @@ export default function Layout() {
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
+      <DemoBanner />
       <header className="topbar">
         <div className="topbar-inner">
           <Link to={homeFor(user)} className="brand">

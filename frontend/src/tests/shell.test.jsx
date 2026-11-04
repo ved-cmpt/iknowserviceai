@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { friendlyMessage, needsReload } from '../api/errors'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { countsResponse, HEALTH, mockFetch, page } from './helpers'
+import { countsResponse, HEALTH, jsonResponse, mockFetch, page } from './helpers'
 import { ADMIN_USER, AGENT_USER, DEFAULT_USER, renderApp, renderSignedIn } from './renderApp'
 
 const ROUTES = {
@@ -44,6 +44,21 @@ describe('role-aware navigation', () => {
     const banner = screen.getByRole('banner')
     expect(within(banner).getByText('Alex Chen · Support agent')).toBeInTheDocument()
     expect(within(banner).getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
+  })
+
+  it('shows the public demo notice in the app shell', async () => {
+    mockFetch({
+      ...ROUTES,
+      'GET /config': () =>
+        jsonResponse({
+          demo_mode: true,
+          demo_password_hint: 'x',
+          demo_banner: 'Public demo — resets daily.',
+          ai_notice: null,
+        }),
+    })
+    renderSignedIn('/knowledge', DEFAULT_USER)
+    expect(await screen.findByTestId('demo-banner')).toHaveTextContent('Public demo — resets daily.')
   })
 
   it('has a skip link, a main landmark and a polite live region', () => {

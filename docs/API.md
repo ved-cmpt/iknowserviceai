@@ -20,7 +20,7 @@ This covers implemented endpoints only. The base path is `/api/v1`, except that 
 | 405 | Wrong method | `METHOD_NOT_ALLOWED` |
 | 409 | Conflict with current state | `INVALID_TRANSITION`, `STALE_UPDATE`, `REQUEST_CLOSED`, `SLUG_CONFLICT`, `INVALID_STATE`, `ANALYSIS_IN_PROGRESS`, `ANALYSIS_SUPERSEDED`, `NO_PENDING_SUGGESTION`, `STALE_REVIEW`, `ALREADY_REVIEWED`, `NO_VISIBLE_SUGGESTION`, `FEEDBACK_EXISTS` |
 | 422 | Invalid input | `VALIDATION_ERROR`, `INVALID_ASSIGNEE`, `UNSAFE_REPLY` |
-| 429 | Limit reached. `RATE_LIMITED` includes a `Retry-After` header | `RATE_LIMITED`, `ANALYZE_LIMIT_REACHED` |
+| 429 | Limit reached. `RATE_LIMITED` includes a `Retry-After` header | `RATE_LIMITED`, `ANALYZE_LIMIT_REACHED`, `DEMO_LIMIT_REACHED` |
 | 500 | Unexpected failure, with no internal detail | `INTERNAL_ERROR` |
 | 503 | Not ready, or the AI provider failed | `NOT_READY`, `ANALYSIS_FAILED`, `AI_TIMEOUT`, `AI_RATE_LIMITED`, `AI_UNAVAILABLE`, `AI_INVALID_OUTPUT`, `AI_AUTH` |
 
@@ -76,7 +76,9 @@ Returns the `user` object above. Errors: 401.
 
 ### `GET /config` (public)
 
-Returns what the sign-in page may show: `{ "demo_mode": true, "demo_password_hint": "..." }`. In production both are off unless `DEMO_MODE=true`.
+Returns what the pages may show: `{ "demo_mode": true, "demo_password_hint": "...", "demo_banner": "...", "ai_notice": "..." }`. In production `demo_mode` and the hint are off unless `DEMO_MODE=true`. `demo_banner` is set only with `DEMO_MODE=true`, and `ai_notice` only when that demo also uses `AI_MODE=mock` (ADR-051).
+
+With `DEMO_MODE=true`, an API request may first start the daily demo reset. It has no effect on the response.
 
 ## Requests
 
@@ -86,7 +88,7 @@ Request: `{ "title": "...", "description": "..." }`, trimmed. Title is 3 to 120 
 
 Response 201: `{ "id", "title", "status": "NEW", "created_at" }`. Category defaults to `OTHER` and priority to `MEDIUM`.
 
-Errors: 401, 422.
+Errors: 401, 422. With `DEMO_MODE=true` only: 429 `DEMO_LIMIT_REACHED` when this account reached its daily limit, and 409 `DEMO_CAPACITY_REACHED` when the demo holds too many created requests. `POST /admin/knowledge` returns the same 409 for too many created articles.
 
 ### `GET /requests` (any signed-in role)
 

@@ -5,11 +5,14 @@ import re
 import time
 import uuid
 
+from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.core.config import Settings
 from app.core.errors import error_response
 from app.core.logging import request_id_var
+from app.services.demo import DemoResetSchedule, reset_if_due
 
 logger = logging.getLogger("app.request")
 
@@ -94,6 +97,34 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_with_headers)
+
+
+class DemoResetMiddleware:
+    """Starts the public demo's daily reset from ordinary API traffic (ADR-051).
+
+    A free host has no scheduler and may sleep for days, so traffic is the only reliable trigger.
+    Health checks and static files never touch the database. The caller that does the reset waits
+    for it, and a failure is logged and tried again later: it must never fail the visitor's request.
+    """
+
+    def __init__(self, app: ASGIApp, *, settings: Settings) -> None:
+        self.app = app
+        self.settings = settings
+        self.schedule = DemoResetSchedule()
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if (
+            scope["type"] == "http"
+            and scope["path"].startswith("/api/")
+            and not scope["path"].endswith(("/healthz", "/readyz"))
+            and self.schedule.claim()
+        ):
+            try:
+                await run_in_threadpool(reset_if_due, self.settings)
+            except Exception as error:
+                # The class name only: a database error message could quote a connection detail.
+                logger.warning("demo_reset_failed", extra={"error_type": type(error).__name__})
+        await self.app(scope, receive, send)
 
 
 class UnhandledErrorMiddleware:

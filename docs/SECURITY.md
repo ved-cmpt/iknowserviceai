@@ -106,11 +106,21 @@ Limited responses are 429 with `Retry-After`. See ADR-030.
 | Role | Used by | Can do |
 |---|---|---|
 | Owner | Migrations and `reset_demo` only, through `MIGRATION_DATABASE_URL` | Everything |
-| `app_user` | The running app, through `DATABASE_URL` | `SELECT`, `INSERT`, `UPDATE`, `DELETE`; only `SELECT` and `INSERT` on `audit_logs` and `request_events`; only `SELECT` on `alembic_version`. No `TRUNCATE`, no DDL, owns nothing |
+| `app_user` | The running app, through `DATABASE_URL` | `SELECT`, `INSERT`, `UPDATE`, `DELETE`; only `SELECT` and `INSERT` on `audit_logs` and `request_events`; only `SELECT` on `alembic_version` and `demo_state`; `EXECUTE` on `demo_reset_begin`. No `TRUNCATE`, no DDL, owns nothing |
 
 **Local:** `db/init/02-create-app-role.sh` creates `app_user` when the volume is first initialized, and revision `0006` grants its access.
 
 **Hosted:** as the owner, run `deploy/sql/create_app_role.sql` once with a generated password, then `alembic upgrade head`. If the role was created after migrating, run `deploy/sql/grant_app_role.sql`. Give the running app only `DATABASE_URL`, and keep `MIGRATION_DATABASE_URL` for one-off commands. Check the result with the queries in `tests/test_db_role.py`. A managed provider's default role may have extra rights, so confirm that the role you create does not inherit them.
+
+## Public demo reset
+
+The demo resets itself daily with `DEMO_MODE=true`, through a `SECURITY DEFINER` function the app role may call (ADR-051). **This is a deliberate exception to "the app role cannot erase history".** Its limits, all enforced in the database:
+
+- It does nothing unless the owner role has set `demo_state.reset_enabled`, which `app_user` cannot change. The default is off.
+- It runs at most once an hour, whatever interval the caller asks for, and only one caller can win its advisory lock.
+- It has a fixed table list and a pinned `search_path`, takes no text from the caller, and only `app_user` may execute it.
+
+So a compromised app on a demo database could erase that demo's synthetic data at most hourly, and on any other database not at all. The demo also caps created requests and articles (ADR-051).
 
 ## Known risks
 
@@ -132,6 +142,7 @@ Limited responses are 429 with `Retry-After`. See ADR-030.
 ## Demo limitations
 
 - All data is synthetic. **Do not enter real personal data, credentials or support cases.**
+- Anyone can sign in as any demo account, including the admin, and change shared data until the next reset. Volume caps limit how much.
 - The shared demo password is intentionally public. It is shown on the login page in development, and in production only with `DEMO_MODE=true`.
 - `store=False` is requested from Gemini, but Google's pricing page states that free-tier content may be used to improve its products. That is another reason to send only synthetic, redacted text.
 - There is no TLS locally. `compose.prod.yaml` over `http://localhost` works because browsers treat localhost as secure for cookies. On any other host, serve it over HTTPS, or the `Secure` cookie will not be kept.

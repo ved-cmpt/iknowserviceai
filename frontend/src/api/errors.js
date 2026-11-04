@@ -30,6 +30,10 @@ const MESSAGES = {
     'Remove that wording and try again.',
   INVALID_ASSIGNEE: 'That person cannot be assigned. Choose an active support team member.',
 
+  // Public demo limits
+  DEMO_LIMIT_REACHED: 'This demo account has reached its daily request limit. Data resets daily.',
+  DEMO_CAPACITY_REACHED: 'The public demo is busy; data resets daily. Please try again later.',
+
   // Access and transport
   UNAUTHORIZED: 'Your session has ended. Please sign in again.',
   FORBIDDEN: "You don't have access to do that.",

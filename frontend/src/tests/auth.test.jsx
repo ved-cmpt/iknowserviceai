@@ -130,6 +130,30 @@ describe('login', () => {
     expect(screen.queryByText(/demo password/i)).toBeNull()
   })
 
+  it('shows the public demo notice only when the server sends one', async () => {
+    mockFetch({
+      ...HEALTH,
+      'GET /config': () =>
+        jsonResponse({
+          demo_mode: true,
+          demo_password_hint: 'public-demo-hint',
+          demo_banner: 'Public demo — resets daily.',
+          ai_notice: 'AI responses are simulated.',
+        }),
+    })
+    renderApp('/login')
+    const notice = await screen.findByRole('complementary', { name: 'Public demo notice' })
+    expect(notice).toHaveTextContent('Public demo — resets daily.')
+    expect(notice).toHaveTextContent('AI responses are simulated.')
+  })
+
+  it('shows no demo notice when the server sends none', async () => {
+    mockFetch(HEALTH)
+    renderApp('/login')
+    await screen.findByText('Public demo password: public-demo-hint')
+    expect(screen.queryByRole('complementary', { name: 'Public demo notice' })).toBeNull()
+  })
+
   it('hides the demo help if the setting cannot be read', async () => {
     mockFetch({ ...HEALTH, 'GET /config': () => errorResponse(500, 'INTERNAL_ERROR', 'raw') })
     renderApp('/login')

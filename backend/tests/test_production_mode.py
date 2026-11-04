@@ -183,17 +183,23 @@ def test_config_shows_demo_help_outside_production(client: TestClient, monkeypat
         "get_settings",
         lambda: _settings(app_env="development", demo_password="public-password"),
     )
-    assert client.get("/api/v1/config").json() == {
-        "demo_mode": True,
-        "demo_password_hint": "public-password",
-    }
+    body = client.get("/api/v1/config").json()
+    assert body["demo_mode"] is True
+    assert body["demo_password_hint"] == "public-password"
+    # Development shows the sign-in help, but it is not a public demo.
+    assert body["demo_banner"] is None
 
 
 def test_production_hides_demo_help_by_default(client: TestClient, monkeypatch) -> None:
     monkeypatch.setattr(
         config_router, "get_settings", lambda: _settings(demo_password="public-password")
     )
-    assert client.get("/api/v1/config").json() == {"demo_mode": False, "demo_password_hint": None}
+    assert client.get("/api/v1/config").json() == {
+        "demo_mode": False,
+        "demo_password_hint": None,
+        "demo_banner": None,
+        "ai_notice": None,
+    }
 
 
 def test_a_public_demo_can_show_demo_help(client: TestClient, monkeypatch) -> None:
@@ -203,7 +209,8 @@ def test_a_public_demo_can_show_demo_help(client: TestClient, monkeypatch) -> No
         lambda: _settings(demo_password="public-password", demo_mode=True),
     )
     body = client.get("/api/v1/config").json()
-    assert body == {"demo_mode": True, "demo_password_hint": "public-password"}
+    assert body["demo_mode"] is True
+    assert body["demo_password_hint"] == "public-password"
 
 
 # Guarded scripts

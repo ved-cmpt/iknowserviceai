@@ -10,7 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
-from app.db.models import Base
+from app.db.models import data_tables
 from app.db.session import owner_session
 from app.scripts.seed_demo import seed_demo
 
@@ -27,8 +27,10 @@ def reset_refusal(settings: Settings, *, confirmed: bool, allow_production: bool
 
 
 def reset_demo(db: Session, password: str) -> None:
-    tables = ", ".join(f'"{table.name}"' for table in Base.metadata.sorted_tables)
+    tables = ", ".join(f'"{table.name}"' for table in data_tables())
     db.execute(text(f"TRUNCATE {tables} CASCADE"))
+    # This counts as a reset, so a public demo does not repeat it within the interval (ADR-051).
+    db.execute(text("UPDATE demo_state SET last_reset_at = clock_timestamp()"))
     seed_demo(db, password)
 
 

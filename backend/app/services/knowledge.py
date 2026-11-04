@@ -12,6 +12,7 @@ from app.core.errors import conflict, not_found
 from app.db.models import KnowledgeArticle, User
 from app.db.models.enums import ArticleStatus, Category, Role
 from app.schemas.knowledge import ArticleCreate, ArticleUpdate
+from app.services import demo
 from app.services.audit import record_audit
 from app.services.text import make_snippet, markdown_to_plain_text
 
@@ -171,6 +172,7 @@ def _slug_conflict() -> Exception:
 
 
 def create_article(db: Session, admin: User, payload: ArticleCreate) -> KnowledgeArticle:
+    demo.check_article_cap(db)
     if db.scalar(select(KnowledgeArticle.id).where(KnowledgeArticle.slug == payload.slug)):
         raise _slug_conflict()
 

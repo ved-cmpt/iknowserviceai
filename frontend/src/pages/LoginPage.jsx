@@ -8,6 +8,7 @@ import ApiStatus from '../components/ApiStatus'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
 import Card from '../components/Card'
+import DemoBanner from '../components/DemoBanner'
 import FormField from '../components/FormField'
 
 const DEMO_ACCOUNTS = [
@@ -49,6 +50,7 @@ export default function LoginPage() {
 
   return (
     <main className="page page-narrow">
+      <DemoBanner />
       <h1>Sign in to IknowServiceAI</h1>
       {sessionExpired && (
         <Banner tone="warning" role="status">

@@ -6,6 +6,7 @@ from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import (
     REQUEST_ID_HEADER,
+    DemoResetMiddleware,
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
     UnhandledErrorMiddleware,
@@ -30,6 +31,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     # The last middleware added is the outermost.
+    if settings.demo_mode:
+        app.add_middleware(DemoResetMiddleware, settings=settings)
     app.add_middleware(UnhandledErrorMiddleware)
     app.add_middleware(
         CORSMiddleware,
