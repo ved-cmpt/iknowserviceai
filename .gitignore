@@ -1,0 +1,39 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Node
+node_modules/
+dist/
+coverage/
+*.log
+npm-debug.log*
+
+# Playwright / browser verification output
+playwright-report/
+test-results/
+.verify/
+
+# Project-local tool caches (kept inside the repo folder on purpose)
+.cache/
+
+# Editors / OS
+.idea/
+.vscode/
+.cursor/
+Thumbs.db
+.DS_Store
