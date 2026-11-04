@@ -363,3 +363,23 @@ Each entry records context, alternatives, the decision and its trade-offs. ADR-0
 - **Trade-offs:** A transaction stays open during slow provider calls. It touches only its own rows, so this is harmless at this scale. The evaluation does not go through HTTP, so `AI_MODE=gemini` through the running app remains unverified.
 - **Result:** The first run missed 3 of 22 sensitive cases, and the patterns were widened. `KB_MIN_RANK` stays at 0.5, with the measurements in `docs/EVALUATION.md`.
 
+## ADR-050: CI on GitHub Actions, with pinned actions
+
+- **Context:** The repository needs automated checks with no secrets and least privilege.
+- **Decision:** `.github/workflows/ci.yml` has `permissions: contents: read`, and cancels superseded runs. No job gets a secret, and all use `AI_MODE=mock`. Jobs: `backend` (ruff, format, pytest against a PostgreSQL service with the `app_user` role, `alembic check`), `frontend` (lint, test, build), `e2e` (both browser suites), `docker` (builds the production image, no push), and `secret-scan` (gitleaks over the full history).
+- **E2E on push only:** It builds every image, including a large browser image, so it runs on pushes to `main` and not on pull requests. A failure uploads the Playwright report.
+- **Pinned to commit SHAs,** read with `git ls-remote` on 2026-11-04. These tags are lightweight, so each SHA is the commit itself:
+
+| Action or image | Version | Pin |
+|---|---|---|
+| `actions/checkout` | v7.0.1 | `3d3c42e5aac5ba805825da76410c181273ba90b1` |
+| `actions/setup-python` | v7.1.0 | `6d4fd22b20465ccc0f7354476588e8df7c9ca0e0` |
+| `actions/setup-node` | v7.1.0 | `949feb2413d6458794dcd2491c4babbbce0c15c1` |
+| `astral-sh/setup-uv` | v10.3.3 | `68559e99cc807c1eb7e9238fd43a15bba460eec2` |
+| `actions/upload-artifact` | v7.0.2 | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` |
+| `zricethezav/gitleaks` image | v8.30.1 | `sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f` |
+
+- **Validation:** `actionlint` 1.7.12 passed locally, and the backend and frontend job commands were run from a clean export of `HEAD` in the same base images. **The workflow itself has not run on GitHub at the time of writing,** so hosted runners, caching and the service container are unverified until the owner checks the Actions tab.
+- **Dependabot** proposes updates weekly. `@playwright/test` and its image are excluded, because they must move together (ADR-037).
+- **Trade-offs:** A pull request does not run E2E. Pinned SHAs need Dependabot to stay current.
+

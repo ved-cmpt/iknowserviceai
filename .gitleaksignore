@@ -1,0 +1,6 @@
+# Exact occurrences of fake values in test files, each checked by hand. These are fingerprints, so
+# the same files are still scanned, and a real key added to them later would fail the scan.
+8ce43bc47ca7a837e0dc0100bf36d225de7d1afd:backend/tests/test_production_mode.py:generic-api-key:15
+8ce43bc47ca7a837e0dc0100bf36d225de7d1afd:backend/tests/test_seed.py:generic-api-key:113
+8ce43bc47ca7a837e0dc0100bf36d225de7d1afd:backend/tests/test_sessions.py:generic-api-key:248
+96174a46cc401d9f7ef955a9e32c1146ae65ef93:backend/tests/test_redaction.py:aws-access-token:21

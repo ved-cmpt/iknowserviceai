@@ -1,8 +1,10 @@
 # IknowServiceAI
 
+[![CI](https://github.com/ved-cmpt/iknowserviceai/actions/workflows/ci.yml/badge.svg)](https://github.com/ved-cmpt/iknowserviceai/actions/workflows/ci.yml)
+
 An AI-assisted IT service-request platform with knowledge-grounded suggestions and human review gates. This is a portfolio project that uses only synthetic data.
 
-**Status: complete locally, in mock mode, for requesters, support staff and admins.** Nothing is deployed and there is no CI yet. Live Gemini passed one owner-run smoke test of the adapter, but has not been run through the whole app. See [implementation status](docs/IMPLEMENTATION_STATUS.md) for verified progress.
+**Status: complete locally for requesters, support staff and admins, with an evaluated pipeline and a tested production image.** Nothing is deployed yet. A 10-case live sample has run through the analysis pipeline, but the running app has not been used in live mode. See [implementation status](docs/IMPLEMENTATION_STATUS.md) for verified progress, and [the evaluation](docs/EVALUATION.md) for what the numbers do and do not show.
 
 ![Staff review workspace, showing the AI analysis, risk flags and the reply to publish](assets/screenshots/review-workspace.png)
 
@@ -19,8 +21,13 @@ An AI-assisted IT service-request platform with knowledge-grounded suggestions a
 - [x] Requester screens: dashboard, new request, automatic analysis, labelled suggestion, citations, feedback, comments, timeline
 - [x] Staff screens: queue with filters and assignment, review workspace, status and priority controls, internal comments
 - [x] Admin screens: knowledge editor with safe preview, publish and unpublish, audit log
-- [x] Playwright E2E, axe accessibility checks and a 375 px mobile pass, all in mock mode
-- [ ] Evaluation, CI and hosted demo
+- [x] Playwright E2E, axe accessibility checks and a 375 px mobile pass, against both the dev stack and the production image
+- [x] Sessions that survive a reload, through a rotating refresh token in an `HttpOnly` cookie
+- [x] Pages that keep themselves current, and a server check of a reply before the confirm dialog
+- [x] One production container, a least-privilege database role and security headers
+- [x] [Evaluation](docs/EVALUATION.md): 43 synthetic cases, and a capped live sample
+- [x] GitHub Actions: backend, frontend, E2E, image build and secret scan
+- [ ] Hosted demo
 
 ## Screenshots
 
@@ -34,7 +41,24 @@ An AI-assisted IT service-request platform with knowledge-grounded suggestions a
 
 ## Stack
 
-React and Vite (JavaScript), FastAPI (Python 3.12), PostgreSQL 17, SQLAlchemy 2, Alembic, Docker Compose, pytest, Vitest, Playwright.
+React and Vite (JavaScript), FastAPI (Python 3.12), PostgreSQL 17, SQLAlchemy 2, Alembic, Docker Compose, pytest, Vitest, Playwright, GitHub Actions.
+
+## Architecture
+
+```text
+Browser
+   |  One origin: the page, /api/v1 and an HttpOnly session cookie
+Production container (non-root, read-only)
+   |-- Built React app, with hashed assets cached long-term
+   |-- FastAPI: authentication, roles, state machine, policy gate, review
+   |      |-- Provider adapter: mock by default, or live Gemini. Redacted text only
+   |      '-- SQLAlchemy, connecting as app_user: no DDL, and history cannot be changed
+PostgreSQL (migrations and the demo reset run separately, as the owner role)
+```
+
+This is one service with clear module boundaries, not microservices (ADR-001). In development, Vite serves the frontend and passes `/api` to a separate backend container, so the browser still sees one origin (ADR-044).
+
+The model only proposes text. It has no tools, and application code validates and writes everything. Anything sensitive, uncited, low-confidence or otherwise flagged waits for a person. See [security](docs/SECURITY.md).
 
 ## Quickstart
 
@@ -121,6 +145,20 @@ It needs Node on the host only to start `e2e/run.mjs`, and installs nothing ther
 npm --prefix e2e run e2e -- --grep "Stale update"
 ```
 
+### Evaluation
+
+This runs the 43 cases through the real pipeline, and writes nothing to the database:
+
+```powershell
+docker compose exec backend python -m app.scripts.run_eval --mode mock
+```
+
+Results go to `backend/eval/results/`. See [the evaluation](docs/EVALUATION.md). A live sample spends your quota, so it needs a limit, and the run refuses to make more than 12 calls: `--mode gemini --limit 10 --sleep 6`.
+
+### Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint, tests and builds, with E2E on pushes to `main`, and a gitleaks scan of the full history. It uses mock mode and no secrets (ADR-050).
+
 ### Live Gemini smoke test
 
 This is opt-in, and makes at most 2 API calls:
@@ -179,9 +217,9 @@ docker compose up -d --force-recreate backend
 
 Set `AI_MODE=mock` and recreate it again to switch back.
 
-- **Free tier:** each analysis makes up to 2 provider calls, and free-tier quotas are small. One call took about 15 seconds in the only passing test, so an analysis can take over a minute at worst. A request is always saved first, and a failed analysis can be retried or handled by staff.
+- **Free tier:** each analysis makes up to 2 provider calls, and free-tier quotas are small. In the 10-case sample, the median analysis took about 16 seconds, and one can take over a minute at worst. A request is always saved first, and a failed analysis can be retried or handled by staff.
 - **Synthetic data only:** Google's pricing page says free-tier content may be used to improve its products. Text is redacted before sending, but patterns can miss things. **Do not enter real personal data.** See [security](docs/SECURITY.md).
-- **What has been verified:** the adapter passed one live smoke test. The whole app has not been run in this mode, so this is a good first thing to watch.
+- **What has been verified:** the adapter passed one live smoke test, and 10 evaluation cases ran through the orchestrator ([results](docs/EVALUATION.md)). The running app has not been used in this mode, so this is a good first thing to watch.
 
 ## Useful commands
 
@@ -199,6 +237,7 @@ docker compose down -v     # stop and delete the database volume
 - [API reference](docs/API.md)
 - [Architecture decisions](docs/ARCHITECTURE_DECISIONS.md)
 - [Security](docs/SECURITY.md)
+- [Evaluation](docs/EVALUATION.md)
 - [Implementation status](docs/IMPLEMENTATION_STATUS.md)
 - [Implementation blueprint](docs/IMPLEMENTATION_BLUEPRINT.md)
-- [Latest run report](docs/RUN_REPORTS/RUN_03.md)
+- [Latest run report](docs/RUN_REPORTS/RUN_04.md)

@@ -1,7 +1,7 @@
 # Implementation status
 
 Updated: 2026-11-04
-Current phase: Run 04 in progress. Checkpoints 14 to 16 are committed; see `git log`.
+Current phase: Run 04 in progress. Checkpoints 14 to 17 are committed; see `git log`.
 Branch: main; see `git log --oneline` for the commit
 Deployment status: not deployed; local Docker only
 
