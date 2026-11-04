@@ -1,0 +1,69 @@
+# Blueprint for the public demo: one free web service. PostgreSQL is external, on Neon, and is
+# migrated and seeded from a workstation (docs/DEPLOYMENT.md). See ADR-052 and ADR-053.
+services:
+  - type: web
+    name: iknowserviceai
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    dockerfilePath: deploy/Dockerfile
+    dockerContext: .
+    # Liveness only. A sleeping host and a suspended database must not fail a deploy (ADR-053).
+    healthCheckPath: /healthz
+    envVars:
+      # Secrets. Paste them from the local .env.render file, using "Add from .env".
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+      # Not secret.
+      - key: APP_ENV
+        value: production
+      - key: DEMO_MODE
+        value: "true"
+      # Published on the sign-in page on purpose, and only protects synthetic data. The daily reset
+      # seeds with it, so it must stay the same as the value the database was seeded with.
+      - key: DEMO_PASSWORD
+        value: demo-only-public-2026
+      - key: AI_MODE
+        value: mock
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      # The Render URL. The app is same-origin, so this is only a safe explicit value. Confirm the
+      # real URL when the service exists.
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://iknowserviceai.onrender.com
+      - key: LOG_LEVEL
+        value: INFO
+      - key: HSTS_ENABLED
+        value: "true"
+      # One platform proxy. To be confirmed against the live site in Run 06.
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      # Uvicorn may trust proxy headers from any peer here, because only the platform's proxy can
+      # reach the service. The image's default is 127.0.0.1 (ADR-052).
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+      - key: ACCESS_TOKEN_MINUTES
+        value: "10"
+      - key: REFRESH_TOKEN_HOURS
+        value: "8"
+      - key: RATE_LIMIT_LOGIN_PER_MINUTE
+        value: "5"
+      - key: RATE_LIMIT_ANALYZE_PER_HOUR
+        value: "10"
+      - key: RATE_LIMIT_REFRESH_PER_MINUTE
+        value: "60"
+      - key: DEMO_RESET_INTERVAL_HOURS
+        value: "24"
+      - key: DEMO_MAX_REQUESTS_PER_ACCOUNT_PER_DAY
+        value: "20"
+      - key: DEMO_MAX_REQUESTS_TOTAL
+        value: "300"
+      - key: DEMO_MAX_ARTICLES
+        value: "30"

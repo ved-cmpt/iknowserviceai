@@ -29,6 +29,7 @@ Current blockers: none.
 ## Run 05 progress
 
 - **Checkpoint 18, public-demo safeguards: DONE.** `tests/test_demo_safeguards.py` (31 tests, including as `app_user`), production E2E banner check. See ADR-051.
+- **Checkpoint 19, Render and Neon settings: DONE.** `render.yaml` validates against the schema Render publishes; `tests/test_health.py`; production E2E 43 passed, 1 skipped. See ADR-052 and ADR-053. The Blueprint itself has not been applied to Render.
 
 ## Test results (clean state: `down -v`, rebuild, migrate, seed)
 

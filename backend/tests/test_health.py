@@ -1,13 +1,17 @@
+import time
 from collections.abc import Iterator
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import QueuePool
 
 from app.core.config import Settings
-from app.db.session import get_db
+from app.db.session import PROBE_CONNECT_TIMEOUT_SECONDS, engine, get_db, get_probe_db
 from app.main import app
+from app.services import readiness
 
 
 @pytest.mark.parametrize("path", ["/healthz", "/api/v1/healthz"])
@@ -34,18 +38,91 @@ def test_readyz_503_when_database_unavailable(client: TestClient) -> None:
         with Session(unreachable) as session:
             yield session
 
-    app.dependency_overrides[get_db] = broken_db
+    app.dependency_overrides[get_probe_db] = broken_db
     response = client.get("/readyz")
     assert response.status_code == 503
-    assert response.json()["error"]["code"] == "NOT_READY"
+    body = response.json()
+    assert body["error"]["code"] == "NOT_READY"
+    assert body["database"] == "unavailable"
     assert "secret-value" not in response.text
 
 
-def test_readyz_503_when_migrations_behind(
+def test_readyz_says_clearly_when_migrations_are_behind(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("app.services.readiness.head_revision", lambda: "some-newer-revision")
+    response = client.get("/readyz")
+    assert response.status_code == 503
+    assert response.json()["database"] == "ok"
+    assert response.json()["migrations"] == "behind_head"
+
+
+def test_readiness_retries_once_while_the_database_wakes(monkeypatch) -> None:
+    answers = iter(
+        [
+            (False, {"database": "unavailable", "migrations": "unknown"}),
+            (True, {"database": "ok", "migrations": "at_head"}),
+        ]
+    )
+    monkeypatch.setattr(readiness, "check_readiness", lambda db: next(answers))
+    waits: list[float] = []
+    session = MagicMock()
+    ready, details = readiness.check_readiness_with_retry(session, sleep=waits.append)
+    assert ready is True
+    assert details["migrations"] == "at_head"
+    assert waits == [readiness.RETRY_DELAY_SECONDS]
+    session.rollback.assert_called_once()
+
+
+def test_readiness_does_not_retry_a_schema_problem(monkeypatch) -> None:
+    calls: list[int] = []
+
+    def behind(db: object) -> tuple[bool, dict[str, str]]:
+        calls.append(1)
+        return False, {"database": "ok", "migrations": "behind_head"}
+
+    monkeypatch.setattr(readiness, "check_readiness", behind)
+    ready, _ = readiness.check_readiness_with_retry(MagicMock(), sleep=lambda _: None)
+    assert ready is False
+    assert len(calls) == 1
+
+
+def test_readiness_answers_within_the_time_budget_when_the_database_is_down(
+    client: TestClient,
+) -> None:
+    """The real probe settings, against an address that accepts nothing, and one that hangs."""
+    unreachable = create_engine(
+        "postgresql+psycopg://nobody:x@127.0.0.1:1/none",
+        connect_args={"connect_timeout": PROBE_CONNECT_TIMEOUT_SECONDS},
+    )
+
+    def broken_db() -> Iterator[Session]:
+        with Session(unreachable) as session:
+            yield session
+
+    app.dependency_overrides[get_probe_db] = broken_db
+    started = time.monotonic()
     assert client.get("/readyz").status_code == 503
+    assert time.monotonic() - started < 2 * PROBE_CONNECT_TIMEOUT_SECONDS + 2
+
+
+def test_healthz_never_touches_the_database(client: TestClient) -> None:
+    def fail() -> Iterator[Session]:
+        raise AssertionError("/healthz must not open a database session")
+        yield  # pragma: no cover
+
+    app.dependency_overrides[get_db] = fail
+    app.dependency_overrides[get_probe_db] = fail
+    assert client.get("/healthz").status_code == 200
+
+
+def test_the_pool_suits_a_database_that_suspends_when_idle() -> None:
+    pool = engine.pool
+    assert isinstance(pool, QueuePool)
+    assert pool.size() == 3
+    assert pool._max_overflow == 2  # noqa: SLF001 - SQLAlchemy has no public accessor
+    assert pool._recycle < 300  # noqa: SLF001 - Neon suspends after about 5 idle minutes
+    assert pool._pre_ping is True  # noqa: SLF001
 
 
 def test_unknown_route_uses_error_envelope(client: TestClient) -> None:

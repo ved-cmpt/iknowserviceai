@@ -42,5 +42,6 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
     CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '8000') + '/healthz', timeout=3)"]
 
 # One process, because the rate limiter lives in memory (ADR-030). `exec` lets signals reach uvicorn.
-# Client addresses come from TRUSTED_PROXY_HOPS, so uvicorn's own proxy handling stays off.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --no-access-log --no-proxy-headers"]
+# Uvicorn trusts proxy headers only from FORWARDED_ALLOW_IPS, which defaults to 127.0.0.1. A hosted
+# site sets it to * (ADR-052). The rate limiter uses TRUSTED_PROXY_HOPS either way.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log --proxy-headers"]

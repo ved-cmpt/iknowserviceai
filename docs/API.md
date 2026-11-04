@@ -33,7 +33,7 @@ This covers implemented endpoints only. The base path is `/api/v1`, except that 
 | Method and path | Roles | Response |
 |---|---|---|
 | `GET /healthz` | Public | 200 `{ "status": "ok" }`. Has no dependencies. |
-| `GET /readyz` | Public | 200 `{ "status": "ready", "database": "ok", "migrations": "at_head" }`. 503 `NOT_READY` if the database is unreachable or migrations are not at head. |
+| `GET /readyz` | Public | 200 `{ "status": "ready", "database": "ok", "migrations": "at_head" }`. 503 `NOT_READY` if the database is unreachable or migrations are not at head, with `database` and `migrations` beside `error`. Retries once, and answers in about 4.5 seconds when the database is down. |
 
 ## Auth
 

@@ -1,15 +1,23 @@
 version: 2
 
+# Major upgrades are chosen by hand, so these updates stay small enough to merge on sight. Version
+# jumps of base images count as minor to semver, so those are held by version range as well.
 updates:
   - package-ecosystem: uv
     directory: /backend
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # The Playwright image in e2e/Dockerfile must be upgraded together with @playwright/test (ADR-037),
   # so that pair is left out here and upgraded by hand.
@@ -19,12 +27,18 @@ updates:
       interval: weekly
     ignore:
       - dependency-name: "@playwright/test"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
+  # Base images stay on Python 3.12, Node 24 and PostgreSQL 17.
   - package-ecosystem: docker
     directories:
       - /backend
@@ -32,3 +46,12 @@ updates:
       - /deploy
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: python
+        versions: [">=3.13"]
+      - dependency-name: node
+        versions: [">=25"]
+      - dependency-name: postgres
+        versions: [">=18"]
