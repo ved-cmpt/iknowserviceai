@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { callsTo, countsResponse, errorResponse, HEALTH, jsonResponse, mockFetch, page } from './helpers'
+import { callsTo, countsResponse, errorResponse, HEALTH, mockFetch, page } from './helpers'
 import { renderSignedIn } from './renderApp'
 
 const REQUEST = {
@@ -126,11 +126,5 @@ describe('dashboard', () => {
     expect(await screen.findByRole('link', { name: 'Second page' })).toBeInTheDocument()
     expect(screen.getByText(/Page 2 of 2/)).toBeInTheDocument()
     expect(callsTo(fetchMock, 'GET', '/requests').at(-1)[0]).toContain('offset=20')
-  })
-})
-
-describe('jsonResponse helper', () => {
-  it('keeps the shared test helpers honest', async () => {
-    expect(await jsonResponse({ a: 1 }).json()).toEqual({ a: 1 })
   })
 })

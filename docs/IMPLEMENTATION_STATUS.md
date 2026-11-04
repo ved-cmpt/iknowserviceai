@@ -1,39 +1,70 @@
 # Implementation status
 
 Updated: 2026-11-04
-Current phase: 8 (in progress). Phases 0 to 7 are complete in mock mode.
+Current phase: 9 (not started). Phases 0 to 8 are complete in mock mode.
 Branch: main; see `git log --oneline` for the commit
 Deployment status: not deployed; local Docker only
 
 | Phase | Status | Evidence | Remaining |
 |---|---|---|---|
 | 0 Repository and docs | DONE | `git log`; only `.env.example` tracked; no secret in history | GitHub remote (owner, later chunk) |
-| 1 Scaffolding, Docker, health | DONE | `docker compose up --build -d --wait` from `down -v`; `/healthz` and `/readyz` 200; `/readyz` 503 before migrating; frontend 200 | None |
-| 2 Schema, migrations, auth, seed | DONE | Alembic upgrade, repeat, `check` and down/up test; seed twice gives 4 users, 13 articles, 9 requests; data survives `down` + `up` (Run 01) | None |
-| 3 Request lifecycle | DONE | `tests/test_requests_lifecycle.py` 133 tests including all 49 status pairs; `tests/test_concurrency.py` real two-connection race; `docs/API.md` | None |
-| 4 Knowledge base and retrieval | DONE | `tests/test_knowledge.py` 120 tests; frontend search and article tests | Admin screens belong to Phase 8 |
-| 5 AI orchestration | DONE. Live Gemini DONE, owner-verified | `tests/test_analyze.py`, `tests/test_redaction.py`, `tests/test_gemini_agent.py`, `tests/test_mock_citations.py`; owner's live smoke test, see below | None |
-| 6 Review gates and hardening | DONE | `tests/test_policy.py`, `tests/test_review.py`, `tests/test_adversarial.py`, `tests/test_hardening.py`, `tests/test_append_only.py`; `docs/SECURITY.md` | Staff screens belong to Phase 8 |
-| 7 Requester frontend | DONE at component level | `src/tests/newRequest.test.jsx`, `requestDetail.test.jsx`, `dashboard.test.jsx`, `shell.test.jsx` | Browser journeys, keyboard and mobile checks come with Phase 8 E2E |
-| 8 Staff and admin frontend, E2E | DONE | Component tests: `src/tests/support.test.jsx`, `src/tests/admin.test.jsx`; API: `tests/test_admin_filters.py`; browser: `e2e/tests/` | None |
+| 1 Scaffolding, Docker, health | DONE | `docker compose up --build -d --wait` from `down -v`; `/readyz` 503 before migrating, 200 after; frontend 200 | None |
+| 2 Schema, migrations, auth, seed | DONE | Alembic upgrade and `check`; seed twice gives 4 users, 13 articles, 9 requests | None |
+| 3 Request lifecycle | DONE | `tests/test_requests_lifecycle.py`, `tests/test_request_counts.py`, `tests/test_concurrency.py` | None |
+| 4 Knowledge base and retrieval | DONE | `tests/test_knowledge.py`, `tests/test_admin_filters.py`, `src/tests/knowledge.test.jsx` | None |
+| 5 AI orchestration | DONE. Live adapter DONE, owner-verified | `tests/test_analyze.py`, `tests/test_redaction.py`, `tests/test_gemini_agent.py`, `tests/test_mock_citations.py`; owner's smoke test below | Whole-app run in `AI_MODE=gemini` is UNVERIFIED |
+| 6 Review gates and hardening | DONE | `tests/test_policy.py`, `tests/test_review.py`, `tests/test_adversarial.py`, `tests/test_hardening.py`, `tests/test_append_only.py`; `docs/SECURITY.md` | None |
+| 7 Requester frontend | DONE | `src/tests/newRequest.test.jsx`, `requestDetail.test.jsx`, `dashboard.test.jsx`, `shell.test.jsx`; E2E scenarios 1, 2, 3, 5 at 1440 px; 1, 2, 5 at 375 px; keyboard-only test | None |
+| 8 Staff and admin frontend, E2E | DONE | `src/tests/support.test.jsx`, `admin.test.jsx`; `e2e/tests/`: 28 tests, 38 axe checks; screenshots in `assets/screenshots/` | None |
 | 9 Quality and evaluation | NOT_STARTED | | All |
 | 10 GitHub, CI, deployment | NOT_STARTED | | All |
 | 11 Portfolio packaging | NOT_STARTED | | All |
 
-**Live Gemini: owner-verified after Run 02.** `model=gemini-3.5-flash-lite http_requests=1 latency_ms=14878 tokens={'input': 625, 'output': 216, 'thought': 0, 'total': 841} outcome=pass`, result `category=NETWORK priority=MEDIUM confidence=0.95 citations=1 risk_flags=[] review=False`. The owner ran this, and no agent has observed it. It is the adapter's opt-in test, so the full `AI_MODE=gemini` path through the running app has still not been exercised. No live call was made in Run 03.
+**Live Gemini: DONE, owner-verified after Run 02.** `model=gemini-3.5-flash-lite http_requests=1 latency_ms=14878 tokens={'input': 625, 'output': 216, 'thought': 0, 'total': 841} outcome=pass`, result `category=NETWORK priority=MEDIUM confidence=0.95 citations=1 risk_flags=[] review=False`. The owner ran this, and no agent observed it. It is the adapter's opt-in test, so the full `AI_MODE=gemini` path through the running app has not been exercised. No live call was made in Run 03.
 
-Decisions changed since blueprint: ADR-000 (doc file mapping), ADR-015 (any-term search ordering), ADR-021 (schema refinements), ADR-024 (query-focused snippets), ADR-025 (append-only triggers narrow ADR-007), ADR-027 (uncited replies always need review), ADR-028 (generic failure code for requesters), ADR-029 (Gemini call shape), ADR-031 (escalation withholds a visible reply), ADR-032 (mock citations), ADR-033 (counts and `mine`), ADR-034 (frontend structure), ADR-035 (auto-analysis), ADR-036 (staff screen for every request). See [the ADR log](ARCHITECTURE_DECISIONS.md).
+Decisions changed since blueprint: ADR-000 (doc file mapping), ADR-015 (any-term search ordering), ADR-021 (schema refinements), ADR-024 (query-focused snippets), ADR-025 (append-only triggers narrow ADR-007), ADR-027 (uncited replies always need review), ADR-028 (generic failure code for requesters), ADR-029 (Gemini call shape), ADR-031 (escalation withholds a visible reply), ADR-032 (mock citations), ADR-033 (added API filters and counts), ADR-034 (frontend structure), ADR-035 (auto-analysis), ADR-036 (staff screen for every request), ADR-037 (Playwright in Docker). See [the ADR log](ARCHITECTURE_DECISIONS.md).
 
 Current blockers: none.
 
+## Test results (clean state: `down -v`, rebuild, migrate, seed)
+
+Exit codes were captured directly, with no pipe in between.
+
+| Check | Exit | Result |
+|---|---|---|
+| `pytest -q` | 0 | 694 passed, 1 skipped (the opt-in live test) |
+| `ruff check .` | 0 | Clean |
+| `ruff format --check .` | 0 | 86 files already formatted |
+| `alembic check` | 0 | No new upgrade operations detected |
+| `npm run lint` | 0 | Clean, container |
+| `npm test -- --run` | 0 | 194 passed, container. The clean-state run had 195, then one filler test was removed and this was re-run |
+| `npm run build` | 0 | Succeeds, container |
+| `npm --prefix e2e run e2e` | 0 | 28 passed (17 at 1440 px, 11 at 375 px), plus 5 screenshot captures |
+| axe, tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` | | 38 checks across 19 screens and states: 0 serious or critical, 0 lesser findings |
+
+The E2E safety checks were tested too. Making the backend show held and rejected text to requesters failed scenarios 2 and 3. Lowering muted-text contrast failed axe with `color-contrast (serious)`. Both changes were then reverted.
+
+## Known bugs
+
+None known.
+
 ## Known limitations
 
+- Pages do not refresh themselves. A requester waiting for review must reload, which signs them out (ADR-009), or navigate away and back. Staff see other people's changes on reload, or through the stale-update message.
+- After a failed analysis, a page reload shows the plain Analyze button. The requester response has no attempt count, so the number remaining appears only after the next try.
+- The queue shows "Another team member" rather than a name, because list items hold only an ID. Assignment is to yourself only: there is no picker for other staff.
+- Pressing Search again with an unchanged query does not fetch again, because the URL has not changed.
+- Audit details show raw identifiers and enum values, such as `review state: PENDING_REVIEW`.
+- Staff cannot rate a suggestion on their own request from the UI (ADR-036).
+- While a draft is pending review, the status controls offer no moves, which is stricter than the API. A person can still use the API to move the request, which strands the draft until it is escalated again.
+- Browser checks ran in Chromium only, against the Vite dev server. No real screen reader has been tried. Axe finds only part of what affects accessibility.
 - Pattern-based policy scanning can be evaded by rephrasing or other languages, and produces false positives. Rates have not been measured (Phase 9).
-- Seeded `TRIAGED` and `NEEDS_HUMAN_REVIEW` requests have no suggestion, so `POST /review` on them returns 409 `NO_PENDING_SUGGESTION`. Staff move them with PATCH.
+- Seeded `TRIAGED` and `NEEDS_HUMAN_REVIEW` requests have no suggestion, so staff move them with the status controls.
 - Rate limits are per process, count all login attempts, and do not trust proxy headers (ADR-030).
 - A crashed analysis blocks retries for up to `AI_STALE_RUN_SECONDS` and uses one attempt (ADR-026).
 - A request with history cannot be hard-deleted, because the append-only trigger refuses the cascade (ADR-025).
 - `ai_runs.redacted_input` has no retention job. The demo reset is the only cleanup.
 - The relevance floor is measured on 12 articles and should be re-measured in Phase 9.
-- Base images use floating tags (`postgres:17`, `python:3.12-slim`, `node:24-slim`).
+- Base images use floating tags (`postgres:17`, `python:3.12-slim`, `node:24-slim`). The Playwright image is pinned.
+- The local app database role is a superuser, and the demo password hint has no off switch for hosted use beyond `VITE_SHOW_DEMO_HINT` (`import.meta.env.DEV` also shows it).
 - `docs/ARCHITECTURE.md`, `docs/DEMO.md`, `docs/EVALUATION.md`, CI and `LICENSE` do not exist yet. Later phases add them.

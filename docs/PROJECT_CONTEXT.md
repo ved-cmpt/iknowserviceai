@@ -49,13 +49,13 @@ A modular monolith (ADR-001).
    |-- Request workflow and state machine
    |-- Knowledge base and retriever ---> [PostgreSQL full-text search]
    |-- Audit and event writers
-   |-- Policy engine and AI orchestration (not built yet, Chunk 3)
+   |-- Policy engine and AI orchestration ---> [Mock agent or Gemini]
    '-- SQLAlchemy models, Alembic migrations ---> [PostgreSQL 17]
 ```
 
 ## Tech stack
 
-React, Vite, React Router, Vitest, Testing Library. Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2, psycopg 3, Alembic, argon2-cffi, PyJWT, pytest, ruff, uv. PostgreSQL 17. Docker Compose.
+React, Vite, React Router, Vitest, Testing Library, Playwright, axe. Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2, psycopg 3, Alembic, argon2-cffi, PyJWT, pytest, ruff, uv. PostgreSQL 17. Docker Compose.
 
 ## Owner environment
 
