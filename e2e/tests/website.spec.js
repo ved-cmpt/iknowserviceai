@@ -1,6 +1,6 @@
 // The public website at /, and the move of the app under /app (ADR-063).
 import { expect, test } from './fixtures'
-import { expectAccessible, fillSignIn } from './helpers'
+import { expectAccessible, fillSignIn, signInAt } from './helpers'
 
 // Collects anything that would show the page broke: script errors, refused resources and API calls.
 function watch(page) {
@@ -110,5 +110,52 @@ test.describe('Website demos @mobile', () => {
     await expect(replay).toContainText('Shown to the requester')
     await replay.getByRole('button', { name: 'Sensitive request' }).click()
     await expect(replay).toContainText('Held for staff review')
+  })
+})
+
+test.describe('App shell tools', () => {
+  test('the command palette jumps to a page, and ? lists the shortcuts', async ({ page }) => {
+    await signInAt(page, 'jordan')
+    await page.keyboard.press('Control+k')
+    const palette = page.getByRole('dialog', { name: 'Search' })
+    await expect(palette).toBeVisible()
+    await palette.getByRole('combobox').fill('audit')
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: 'Audit log' })).toBeVisible()
+    await expectAccessible(page, 'audit log, after the palette')
+
+    await page.keyboard.press('?')
+    const help = page.getByRole('dialog', { name: 'Keyboard shortcuts' })
+    await expect(help).toBeVisible()
+    await expectAccessible(page, 'keyboard shortcuts')
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('g')
+    await page.keyboard.press('k')
+    await expect(page.getByRole('heading', { name: 'Knowledge base' })).toBeVisible()
+  })
+
+  test('the palette passes axe while open', async ({ page }) => {
+    await signInAt(page, 'riley')
+    await page.getByRole('button', { name: 'Open search', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Search' })).toBeVisible()
+    await expectAccessible(page, 'command palette')
+  })
+
+  test('the first-visit tour shows once, and passes axe @mobile', async ({ page, context }) => {
+    // Lets the tour show for this context only (fixtures.js marks it seen otherwise).
+    await context.addInitScript(() => sessionStorage.setItem('iks-e2e-tour', '1'))
+    await page.goto('/app/login')
+    await page.evaluate(() => localStorage.removeItem('iks-tour-done'))
+    await fillSignIn(page, 'alex')
+    const tour = page.getByTestId('tour')
+    await expect(tour.getByRole('heading', { name: 'Welcome, Alex' })).toBeVisible()
+    await expectAccessible(page, 'first-visit tour')
+    await tour.getByRole('button', { name: 'Next' }).click()
+    await expect(tour.getByRole('heading', { name: 'Your queue' })).toBeVisible()
+    await tour.getByRole('button', { name: 'Skip the tour' }).click()
+    await expect(tour).toHaveCount(0)
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Support queue' })).toBeVisible()
+    await expect(page.getByTestId('tour')).toHaveCount(0)
   })
 })

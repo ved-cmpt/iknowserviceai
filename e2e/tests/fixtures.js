@@ -13,6 +13,16 @@ export function countRequest(method, url) {
 }
 
 export async function prepareContext(context) {
+  // The first-visit tour has its own test. Everywhere else it has already been seen.
+  if (!process.env.E2E_SHOW_TOUR) {
+    await context.addInitScript(() => {
+      try {
+        if (!sessionStorage.getItem('iks-e2e-tour')) localStorage.setItem('iks-tour-done', '1')
+      } catch {
+        // Storage blocked: the tour shows, and tests close it.
+      }
+    })
+  }
   if (!REQUEST_LOG) return
   await context.route('**/assets/**', async (route) => {
     const url = route.request().url()

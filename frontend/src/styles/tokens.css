@@ -70,6 +70,7 @@
   --color-toast-bg: #202026;
   --color-toast-text: #ededf0;
   --color-toast-border: #33333c;
+  --color-toast-icon: #6ee7b7;
 
   /* Kept for the few components that still name them. */
   --color-topbar: var(--color-bg);
@@ -207,6 +208,7 @@
   --color-toast-bg: #16161a;
   --color-toast-text: #f4f4f6;
   --color-toast-border: #16161a;
+  --color-toast-icon: #6ee7b7;
 
   --shadow-card: 0 1px 2px rgb(22 22 26 / 5%), 0 0 0 1px rgb(22 22 26 / 2%);
   --shadow-raised: 0 1px 2px rgb(22 22 26 / 6%), 0 8px 24px rgb(22 22 26 / 10%);

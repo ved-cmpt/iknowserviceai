@@ -38,12 +38,16 @@ describe('role-aware navigation', () => {
     expect(navLabels()).toEqual(expected)
   })
 
-  it('shows the signed-in person, their role and a way to sign out', () => {
+  it('shows the signed-in person, their role and a way to sign out', async () => {
     mockFetch(ROUTES)
     renderSignedIn('/knowledge', AGENT_USER)
     const banner = screen.getByRole('banner')
-    expect(within(banner).getByText('Alex Chen · Support agent')).toBeInTheDocument()
-    expect(within(banner).getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
+    const account = within(banner).getByRole('button', { name: /^Account menu:\s*Alex Chen\s+Support agent$/ })
+    expect(account).toHaveAttribute('aria-haspopup', 'menu')
+    await userEvent.click(account)
+    const menu = screen.getByRole('menu', { name: 'Account' })
+    expect(within(menu).getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: 'Use the light theme' })).toBeInTheDocument()
   })
 
   it('shows the public demo notice in the app shell', async () => {

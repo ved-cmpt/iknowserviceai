@@ -45,11 +45,13 @@ async function signInAs(page, name) {
   await page.getByRole('button', { name: new RegExp(name) }).click()
   await page.waitForTimeout(900)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Account menu/ })).toBeVisible()
 }
 
 async function signOut(page) {
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await page.getByRole('button', { name: /^Account menu/ }).click()
+  await page.waitForTimeout(500)
+  await page.getByRole('menuitem', { name: 'Sign out' }).click()
   await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
 }
 

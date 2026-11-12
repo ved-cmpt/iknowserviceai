@@ -59,8 +59,21 @@ export async function fillSignIn(page, who) {
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await paceLogin()
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  await expect(accountMenu(page)).toBeVisible()
 }
+
+// The signed-in person's menu in the top bar, which holds Sign out (ADR-066).
+export function accountMenu(page) {
+  return page.getByRole('button', { name: /^Account menu/ })
+}
+
+export async function signOut(page) {
+  await accountMenu(page).click()
+  await page.getByRole('menuitem', { name: 'Sign out' }).click()
+}
+
+// Display preferences are the only things the app keeps on the device.
+export const PREFERENCE_KEYS = ['iks-theme', 'iks-tour-done', 'iks-sidebar-collapsed']
 
 // Opens a path signed out, signs in, and lands back on that path.
 export async function signInAt(page, who, path = '/app/login') {
@@ -71,7 +84,7 @@ export async function signInAt(page, who, path = '/app/login') {
 
 // On narrow screens the links sit behind the menu button.
 export async function openNav(page, name) {
-  const menu = page.getByRole('button', { name: 'Menu' })
+  const menu = page.getByRole('button', { name: 'Menu', exact: true })
   if ((await menu.isVisible()) && (await menu.getAttribute('aria-expanded')) === 'false') {
     await menu.click()
   }

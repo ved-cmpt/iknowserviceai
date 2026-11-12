@@ -32,6 +32,7 @@ Current blockers: none.
 - **Checkpoint 30, routes: DONE.** ADR-063. The website is at `/`, the app under `/app`, and old paths redirect on the client. `robots.txt`, `sitemap.xml`, social tags, origin compression. Backend SPA tests cover both pages and every old path. New browser spec `e2e/tests/website.spec.js`: 10 passed on the dev stack, with the 404 checks.
 - **Checkpoint 31, website data snapshot: DONE.** ADR-064. `scripts/landing_snapshot.py` and `--check`, `backend/tests/test_landing_snapshot.py` (7 passed), and a CI step after the backend tests.
 - **Checkpoint 32, public website: DONE.** ADR-065. Every section, the hero replay and four demo tabs from the snapshot, deep links into the app as a demo person. Frontend 286 passed. Browser: website, demo-tab, deep-link and redirect tests passed on the dev stack, with axe on the page in both themes.
+- **Checkpoint 33, app shell and screens: DONE.** ADR-066. Frontend 298 passed, lint clean. Dev browser suite: 60 passed, every axe check 0 findings in both themes at 1440 and 375 px.
 
 ## Run 06 progress
 

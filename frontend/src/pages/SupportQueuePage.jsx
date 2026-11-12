@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { friendlyMessage } from '../api/errors'
 import { requestCountsPath, requestsPath, updateRequest } from '../api/requests'
@@ -21,12 +21,33 @@ import { CATEGORIES, categoryLabel } from '../knowledge/categories'
 import { formatDate } from '../lib/format'
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../lib/labels'
 import { usePolling } from '../lib/usePolling'
+import { useHotkeys } from '../lib/useHotkeys'
 import { DEFAULT_SORT, PAGE_SIZE, SORT_OPTIONS, sortParams } from '../requests/options'
 import StatusCounts from '../requests/StatusCounts'
 import { useListParams } from '../requests/useListParams'
 
 const REVIEW_STATUS = 'NEEDS_HUMAN_REVIEW'
 const AUTO_REFRESH_MS = 30000
+// Quick views beside "All requests" and "Needs review". The filters below hold every status.
+const MORE_SEGMENTS = [
+  ['NEW', 'New'],
+  ['IN_PROGRESS', 'In progress'],
+]
+
+// j and k move between rows, and Enter opens the focused one, because the row's title is a link.
+function useRowKeys(tableRef) {
+  const bindings = useMemo(() => {
+    function move(step) {
+      const links = [...(tableRef.current?.querySelectorAll('td[data-primary="true"] a') ?? [])]
+      if (links.length === 0) return
+      const index = links.indexOf(document.activeElement)
+      const next = index === -1 ? (step > 0 ? 0 : links.length - 1) : Math.min(Math.max(index + step, 0), links.length - 1)
+      links[next].focus()
+    }
+    return { j: () => move(1), k: () => move(-1) }
+  }, [tableRef])
+  useHotkeys(bindings)
+}
 
 function FilterSelect({ label, value, options, onChange, allLabel }) {
   return (
@@ -63,6 +84,8 @@ function Queue({ list, filtered, onPage }) {
   const { loading, data, error, retry, reload } = list
   const [assigning, setAssigning] = useState(null)
   const [assignError, setAssignError] = useState(null)
+  const tableRef = useRef(null)
+  useRowKeys(tableRef)
 
   async function assignToMe(request) {
     setAssigning(request.id)
@@ -150,7 +173,7 @@ function Queue({ list, filtered, onPage }) {
       {data.items.length === 0 ? (
         <EmptyState title={filtered ? 'No requests match these filters.' : 'The queue is empty.'} />
       ) : (
-        <>
+        <div ref={tableRef}>
           <Table
             caption="Support queue"
             columns={columns}
@@ -158,7 +181,10 @@ function Queue({ list, filtered, onPage }) {
             rowClassName={(request) => (request.status === REVIEW_STATUS ? 'row-attention' : undefined)}
           />
           <Pagination total={data.total} limit={data.limit} offset={data.offset} onChange={onPage} />
-        </>
+          <p className="meta keyboard-hint">
+            <kbd>j</kbd> <kbd>k</kbd> move between rows, <kbd>Enter</kbd> opens one.
+          </p>
+        </div>
       )}
     </>
   )
@@ -215,6 +241,18 @@ export default function SupportQueuePage() {
               <Icon name="eye" size={14} />
               Needs review{reviewCount !== undefined ? ` (${reviewCount})` : ''}
             </button>
+            {MORE_SEGMENTS.map(([status, label]) => (
+              <button
+                key={status}
+                type="button"
+                className="segment-option"
+                aria-pressed={filters.status === status}
+                onClick={() => setFilters({ status: filters.status === status ? '' : status })}
+              >
+                {label}
+                {counts && ` (${counts.counts[status] ?? 0})`}
+              </button>
+            ))}
           </div>
           <Button
             variant="secondary"
