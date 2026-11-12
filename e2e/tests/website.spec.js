@@ -45,6 +45,40 @@ test.describe('Website @mobile', () => {
   })
 })
 
+// The headline and buttons start near the top of the first screen, with the replay beside them on wide
+// screens and below them on phones.
+async function expectHeroAtTop(page) {
+  await page.goto('/')
+  const replay = page.getByRole('figure', { name: /A replay of two recorded runs/ })
+  await expect(replay).toBeVisible()
+  const viewport = page.viewportSize()
+  const heading = await page.getByRole('heading', { level: 1 }).boundingBox()
+  const buttons = await page.getByRole('link', { name: 'Try the live demo' }).first().boundingBox()
+  const panel = await replay.boundingBox()
+  expect(heading.y).toBeLessThan(240)
+  expect(buttons.y + buttons.height).toBeLessThan(Math.min(viewport.height, 640))
+  if (viewport.width >= 1100) {
+    expect(panel.x).toBeGreaterThan(heading.x + heading.width)
+    expect(panel.y).toBeLessThan(heading.y)
+  } else {
+    expect(panel.y).toBeGreaterThan(buttons.y + buttons.height)
+  }
+}
+
+test.describe('Website hero @mobile', () => {
+  test('the headline and buttons are near the top of the first screen', async ({ page }) => {
+    await expectHeroAtTop(page)
+  })
+})
+
+test.describe('Website hero at 1920 px', () => {
+  test.use({ viewport: { width: 1920, height: 1080 } })
+
+  test('the headline and buttons are near the top of the first screen', async ({ page }) => {
+    await expectHeroAtTop(page)
+  })
+})
+
 test.describe('Old app addresses @mobile', () => {
   for (const [old, moved] of [
     ['/login', '/app/login'],

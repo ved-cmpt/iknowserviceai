@@ -1,8 +1,8 @@
 # Maintenance handoff
 
-Last updated: 2026-11-11
+Last updated: 2026-11-12
 
-**State:** `v1.1.0` is released. The public website is at https://iknowserviceai.onrender.com and the app at `/app`. The project is in maintenance. No work is in progress. Run 07's report is `docs/RUN_REPORTS/RUN_07.md`.
+**State:** `v1.1.0` is released. The public website is at https://iknowserviceai.onrender.com and the app at `/app`. The project is in maintenance. No work is in progress. Run 07's report is `docs/RUN_REPORTS/RUN_07.md`. Since then, the hero spacing fix (#21) is merged.
 
 Read `AGENTS.md`, `docs/IMPLEMENTATION_STATUS.md`, `docs/RUN_REPORTS/RUN_06.md`, `docs/DEPLOYMENT.md` and `docs/RUNBOOK.md`. Code and tests are ground truth.
 

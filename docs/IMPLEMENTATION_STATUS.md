@@ -1,6 +1,6 @@
 # Implementation status
 
-Updated: 2026-11-11
+Updated: 2026-11-12
 Current phase: complete, in maintenance. `v1.1.0` adds a brand, a public website at `/` and a redesigned app under `/app` (Run 07). The public demo is live and verified.
 Branch: main; see `git log --oneline` for the commit
 Deployment status: live at https://iknowserviceai.onrender.com, on Render and Neon. Remote: `origin`, private until the owner makes it public
@@ -26,6 +26,10 @@ Deployment status: live at https://iknowserviceai.onrender.com, on Render and Ne
 Decisions changed since blueprint: ADR-000 (doc file mapping), ADR-015 (any-term search ordering), ADR-021 (schema refinements), ADR-024 (query-focused snippets), ADR-025 (append-only triggers narrow ADR-007), ADR-027 (uncited replies always need review), ADR-028 (generic failure code for requesters), ADR-029 (Gemini call shape), ADR-031 (escalation withholds a visible reply), ADR-032 (mock citations), ADR-033 (added API filters and counts), ADR-034 (frontend structure), ADR-035 (auto-analysis), ADR-036 (staff screen for every request), ADR-037 (Playwright in Docker), ADR-038 to ADR-043 (Run 04 behavior changes), ADR-044 (one production container, replacing the blueprint's separate hosts), ADR-045 (refresh cookie, replacing ADR-009's reload behavior), ADR-046 to ADR-050 (demo help, database role, headers, evaluation, CI), ADR-061 (three proxy hops on Render, replacing part of ADR-052). See [the ADR log](ARCHITECTURE_DECISIONS.md).
 
 Current blockers: none.
+
+## Maintenance fixes
+
+- **Hero spacing (#21): DONE.** On desktop the hero's headline started at 368 px and its buttons ended at 868 of 900 px. A stale `.site-hero` rule in `site.css` overrode `sections.css`, and the copy was centred against the replay's 700 px. Now the headline starts at 191 px at 1440 and 1920 px, and 171 px at 375 px, with CLS 0 when the replay's data arrives 2 s late. `e2e/tests/website.spec.js` checks the position at 375, 1440 and 1920 px.
 
 ## Run 07 progress: product-grade redesign and a public website (v1.1.0)
 
