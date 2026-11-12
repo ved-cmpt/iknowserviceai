@@ -154,3 +154,36 @@ describe('sidebar and breadcrumbs', () => {
     expect(within(crumbs).getByText('Request')).toHaveAttribute('aria-current', 'page')
   })
 })
+
+describe('support queue keyboard', () => {
+  it('moves between rows with j and k, and leaves g sequences alone', async () => {
+    const rows = [
+      { id: 'q1', title: 'First request', status: 'NEW', category: 'OTHER', priority: 'LOW', created_at: '2026-11-10T10:00:00Z', version: 1 },
+      { id: 'q2', title: 'Second request', status: 'NEW', category: 'OTHER', priority: 'LOW', created_at: '2026-11-10T11:00:00Z', version: 1 },
+    ]
+    mockFetch({ ...ROUTES, 'GET /requests': () => page(rows) })
+    renderSignedIn('/support', AGENT_USER)
+    const first = await screen.findByRole('link', { name: 'First request' })
+    await userEvent.keyboard('j')
+    expect(first).toHaveFocus()
+    await userEvent.keyboard('j')
+    expect(screen.getByRole('link', { name: 'Second request' })).toHaveFocus()
+    await userEvent.keyboard('k')
+    expect(first).toHaveFocus()
+    await userEvent.keyboard('gk')
+    expect(await screen.findByRole('heading', { name: 'Knowledge base' })).toBeInTheDocument()
+  })
+})
+
+describe('reply diff', () => {
+  it('shows what staff changed in the draft, in words', async () => {
+    const { render } = await import('@testing-library/react')
+    const { default: ReplyDiff } = await import('../components/ReplyDiff')
+    render(<ReplyDiff draft="Please send us your password." reply="Please never share your password." />)
+    const diff = screen.getByTestId('reply-diff')
+    expect(diff).toHaveTextContent('+2 words')
+    expect(diff).toHaveTextContent('−2 words')
+    expect(diff.querySelectorAll('ins')).toHaveLength(1)
+    expect(diff.querySelectorAll('del')).toHaveLength(1)
+  })
+})

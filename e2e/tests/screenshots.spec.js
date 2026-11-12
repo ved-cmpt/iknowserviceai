@@ -1,8 +1,9 @@
-// Captures the README screenshots from synthetic demo data, against the production image, so the
-// public demo banner is in them. run-prod.mjs resets the data first.
+// Captures the README screenshots from synthetic demo data, with the public demo banner in them.
+//   npm --prefix e2e run screenshots            the local production image, reset first
+//   npm --prefix e2e run e2e:live -- screenshots   the live demo, paced (run-live.mjs)
 //
-// Tracked set: light desktop and mobile, plus two dark. SCREENSHOT_ALL_DARK=1 adds every screen in
-// dark, for reviewing the redesign by eye.
+// Tracked set: every screen in light, and the main ones in dark too, on desktop and phone.
+// SCREENSHOT_ALL_DARK=1 adds every screen in dark, for reviewing by eye.
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import {
@@ -20,7 +21,19 @@ import {
 
 const DIRECTORY = process.env.SCREENSHOT_DIR ?? 'screenshots'
 const ALL_DARK = Boolean(process.env.SCREENSHOT_ALL_DARK)
-const TRACKED_DARK = new Set(['review-workspace', 'request-suggestion'])
+const TRACKED_DARK = new Set([
+  'website',
+  'website-demos',
+  'login',
+  'requester-dashboard',
+  'request-suggestion',
+  'support-queue',
+  'review-workspace',
+  'command-palette',
+  'mobile-website',
+  'mobile-dashboard',
+  'mobile-review-workspace',
+])
 const MOBILE = { width: 375, height: 812 }
 const SAFE_REPLY =
   'Our support team will contact you through a verified channel. Please do not share your password with anyone.'
@@ -34,6 +47,8 @@ async function setTheme(page, theme) {
 async function capture(page, name, fullPage = false, scrollTo = null) {
   // Let the health check and any late layout settle, so pictures are stable.
   await expect(page.getByText('Checking API…')).toHaveCount(0)
+  // A fixed settle, not network idle: a live origin can hold a connection open.
+  await page.waitForTimeout(800)
   await page.evaluate(() => document.fonts.ready)
   // A full-page picture of a sticky column is only right from the top of the page.
   await page.evaluate(() => document.activeElement?.blur())
@@ -49,6 +64,29 @@ async function capture(page, name, fullPage = false, scrollTo = null) {
 }
 
 test.describe.configure({ mode: 'serial' })
+
+// The first-visit tour is for people, not for pictures.
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem('iks-tour-done', '1')
+    } catch {
+      // Storage blocked: nothing to do.
+    }
+  })
+})
+
+test('website', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('figure', { name: /A replay of two recorded runs/ })).toBeVisible()
+  await capture(page, 'website')
+  await page.locator('#demo').scrollIntoViewIfNeeded()
+  await page.getByRole('tab', { name: 'Sensitive request' }).click()
+  await capture(page, 'website-demos', false, page.locator('#demo'))
+
+  await page.setViewportSize(MOBILE)
+  await capture(page, 'mobile-website')
+})
 
 test('sign-in page', async ({ page }) => {
   await page.goto('/app/login')
@@ -146,4 +184,9 @@ test('admin pages', async ({ page }) => {
   await openNav(page, 'Audit')
   await expect(page.getByRole('table')).toBeVisible()
   await capture(page, 'audit-log')
+
+  await page.keyboard.press('Control+k')
+  await page.getByRole('dialog', { name: 'Search' }).getByRole('combobox').fill('wi-fi')
+  await expect(page.getByRole('option', { name: /Wi-Fi connected but websites not loading/ })).toBeVisible()
+  await capture(page, 'command-palette')
 })

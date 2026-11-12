@@ -229,7 +229,8 @@
   backdrop-filter: saturate(1.4) blur(12px);
 }
 
-.topbar .nav-toggle {
+.topbar .nav-toggle,
+.topbar-brand {
   display: none;
 }
 
@@ -445,7 +446,8 @@
     padding: var(--space-2) var(--space-4);
   }
 
-  .topbar .nav-toggle {
+  .topbar .nav-toggle,
+  .topbar-brand {
     display: inline-flex;
   }
 

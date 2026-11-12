@@ -1,6 +1,6 @@
 # Three-minute demo
 
-A guided walkthrough for someone seeing the project for the first time. On the sign-in page, a demo account card fills in the form, and then you choose **Sign in**. The password is public: `demo-only-public-2026`.
+A guided walkthrough for someone seeing the project for the first time. Start on [the website](https://iknowserviceai.onrender.com): the hero replays two recorded runs, and the demo tabs show what each person sees. Then choose **Try the live demo**. On the sign-in page, a demo account card fills in the form, and then you choose **Sign in**. The password is public: `demo-only-public-2026`.
 
 The AI in the public demo is a built-in mock agent, so answers are simulated, and the same input gives the same result. The checks around it are the real ones.
 
@@ -21,10 +21,10 @@ The AI in the public demo is a built-in mock agent, so answers are simulated, an
 
 ## Support agent: review (60 seconds)
 
-8. In a private window, or after signing out, sign in as **Alex Chen**.
+8. In a private window, or after signing out from the account menu at the top right, sign in as **Alex Chen**.
 9. In the **Support queue**, choose **Needs review**, and open Riley's request.
 10. Point out the confidence meter, the risk flags, and the citations.
-11. In **Reply to publish**, enter `Please send us your password.` Add a reason, such as `Sensitive issue; safe wording`, and choose **Approve**. It is refused on the field, and no dialog opens.
+11. In **Reply to publish**, enter `Please send us your password.` The panel below shows what you changed from the AI draft. Add a reason, such as `Sensitive issue; safe wording`, and choose **Approve**. It is refused on the field, and no dialog opens.
 12. Replace the reply with `Our support team will contact you through a verified channel. Please do not share your password with anyone.` Choose **Approve**, then **Approve and publish**.
 
 ## Back to the requester (15 seconds)
@@ -38,7 +38,8 @@ The AI in the public demo is a built-in mock agent, so answers are simulated, an
 
 ## If there is time
 
-- Use the moon button in the header to switch to the dark theme.
+- Press **Ctrl K**, or ⌘ K on a Mac, to jump to any page, request or article. Press **?** for every shortcut.
+- Use the sun button in the header to switch to the light theme. Dark is the default.
 - As **Sam Patel**, try to open Riley's request by its URL. You get "not found", so IDs reveal nothing.
 - Narrow the window to phone width. Tables become cards.
 

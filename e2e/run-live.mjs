@@ -19,8 +19,10 @@ const IMAGE = 'iknowserviceai-live-e2e'
 const LOG_DIR = join(root, '.cache', 'live-e2e')
 
 const [project = 'desktop', ...extra] = process.argv.slice(2)
-if (!['desktop', 'mobile'].includes(project)) {
-  console.error('Choose desktop or mobile.')
+// "screenshots" captures the README pictures from the live demo, into assets/screenshots.
+const screenshots = project === 'screenshots'
+if (!['desktop', 'mobile', 'screenshots'].includes(project)) {
+  console.error('Choose desktop, mobile or screenshots.')
   process.exit(2)
 }
 
@@ -56,7 +58,10 @@ const status = docker([
   '-e', `API_URL=${BASE_URL}/api/v1`,
   '-e', 'HOST_RULES=',
   '-e', 'DEMO_PASSWORD=demo-only-public-2026',
-  '-e', 'E2E_TITLE_LABEL=[verification]',
+  // Pictures show clean titles. The demo data is reset after a screenshot run.
+  ...(screenshots
+    ? ['-v', `${join(root, 'assets', 'screenshots')}:/screenshots`, '-e', 'SCREENSHOT_DIR=/screenshots']
+    : ['-e', 'E2E_TITLE_LABEL=[verification]']),
   '-e', 'E2E_LOGIN_GAP_MS=13000',
   '-e', 'E2E_TEST_TIMEOUT_MS=240000',
   '-e', 'E2E_EXPECT_TIMEOUT_MS=30000',
@@ -64,7 +69,7 @@ const status = docker([
   IMAGE,
   'npx', 'playwright', 'test',
   `--project=${project}`,
-  `--grep-invert=${SKIPPED.join('|')}`,
+  ...(screenshots ? [] : [`--grep-invert=${SKIPPED.join('|')}`]),
   ...extra,
 ])
 

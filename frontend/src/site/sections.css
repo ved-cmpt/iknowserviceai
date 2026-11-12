@@ -54,6 +54,13 @@
     padding-top: var(--space-9);
     padding-bottom: var(--space-9);
   }
+
+  /* Holds the replay's height before its data arrives, so the copy beside it never moves. */
+  .site-hero-visual {
+    display: grid;
+    align-items: center;
+    min-height: 700px;
+  }
 }
 
 .site-hero h1 {
@@ -191,8 +198,15 @@
     box-shadow var(--motion-slow) var(--ease-out);
 }
 
+/* Not reached yet: quieter, but the text keeps its contrast. Opacity on text would fail it. */
 .replay-panel-pending {
-  opacity: 0.4;
+  border-style: dashed;
+  background: transparent;
+}
+
+.replay-panel-pending .replay-step {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .replay-panel-active {
@@ -470,12 +484,15 @@
   grid-template-columns: 40px minmax(0, 1fr);
   gap: var(--space-4);
   padding: var(--space-4) 0;
-  opacity: 0.45;
-  transition: opacity var(--motion-slower) var(--ease-out);
 }
 
-.pipeline-step-lit {
-  opacity: 1;
+/* The step's text never dims, so it keeps its contrast. Only the marker lights up. */
+.pipeline-step h3 {
+  transition: color var(--motion-slower) var(--ease-out);
+}
+
+.pipeline-step:not(.pipeline-step-lit) h3 {
+  color: var(--color-text-muted);
 }
 
 .pipeline-index {

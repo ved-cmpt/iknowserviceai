@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-11
 
-**State:** `v1.0.0` is released, and the public demo is live at https://iknowserviceai.onrender.com. **Run 07 is in progress** (`docs/prompts/AUTOPILOT_RUN_07.md`): a new brand, a public website at `/` and a redesigned app under `/app`, for `v1.1.0`. Its progress is in `docs/IMPLEMENTATION_STATUS.md`.
+**State:** `v1.1.0` is released. The public website is at https://iknowserviceai.onrender.com and the app at `/app`. The project is in maintenance. No work is in progress. Run 07's report is `docs/RUN_REPORTS/RUN_07.md`.
 
 Read `AGENTS.md`, `docs/IMPLEMENTATION_STATUS.md`, `docs/RUN_REPORTS/RUN_06.md`, `docs/DEPLOYMENT.md` and `docs/RUNBOOK.md`. Code and tests are ground truth.
 
@@ -50,9 +50,15 @@ After any exposure, rotate first and investigate afterwards. `docs/RUNBOOK.md` h
 
 ## Recording the demo again
 
-After any visible change, run `npm --prefix e2e ci` once, then `npm --prefix e2e run screenshots` and `npm --prefix e2e run demo:record`. They use the production image, on a throwaway stack. **Look at the results:** automated checks do not catch layout problems. Close other applications first, because the suites together have nearly run this machine out of memory.
+After any visible change, run `npm --prefix e2e ci` once, then `npm --prefix e2e run screenshots` and `npm --prefix e2e run demo:record`. The README's pictures came from the live demo in Run 07, with `node e2e/run-live.mjs screenshots`, which creates requests: reset the demo data afterwards. They use the production image, on a throwaway stack. **Look at the results:** automated checks do not catch layout problems. Close other applications first, because the suites together have nearly run this machine out of memory.
 
 ## Things that will catch you out
+
+- **The website's data is generated.** After any change to replies, flags, labels or the requester and staff responses, run `python scripts/landing_snapshot.py` and commit the file. CI fails otherwise (ADR-064).
+- **The app lives under `/app`.** Its routes are written without the prefix, because the router's `basename` adds it. Old paths are listed twice, in `backend/app/core/spa.py` and `frontend/src/lib/legacyPaths.js` (ADR-063).
+- **Never run two Playwright suites at once.** They share `e2e/test-results`, and one clears it under the other.
+- **The tour is marked seen in every browser test** by `e2e/tests/fixtures.js`. A spec that imports `test` from `@playwright/test` directly must do it itself.
+- **Live Lighthouse:** `LH_URL=https://iknowserviceai.onrender.com/ LH_RUNS=1 node lighthouse.mjs`, inside the E2E image (ADR-067).
 
 - **`TRUSTED_PROXY_HOPS=3` depends on a proxy chain that the host could change.** If it does, the limiter degrades silently (ADR-061).
 - **`.env.render` must match Neon.** Running `provision.py` again rotates the password, and Render loses its database until you paste the new file.
