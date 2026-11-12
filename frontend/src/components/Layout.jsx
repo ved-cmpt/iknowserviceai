@@ -189,6 +189,10 @@ export default function Layout() {
               <Icon name="panel" />
               Menu
             </button>
+            {/* On narrow screens the sidebar is hidden, so the mark keeps the page anchored. */}
+            <Link to={homeFor(user)} className="topbar-brand" aria-label="IknowServiceAI home">
+              <LogoMark size={22} />
+            </Link>
             <Breadcrumbs />
             <div className="topbar-actions">
               <button
