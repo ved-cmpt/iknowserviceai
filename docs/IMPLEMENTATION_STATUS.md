@@ -1,6 +1,6 @@
 # Implementation status
 
-Updated: 2026-11-04
+Updated: 2026-11-11
 Current phase: complete, in maintenance. The public demo is live and verified, and `v1.0.0` is the first release.
 Branch: main; see `git log --oneline` for the commit
 Deployment status: live at https://iknowserviceai.onrender.com, on Render and Neon. Remote: `origin`, private until the owner makes it public
@@ -25,6 +25,10 @@ Deployment status: live at https://iknowserviceai.onrender.com, on Render and Ne
 Decisions changed since blueprint: ADR-000 (doc file mapping), ADR-015 (any-term search ordering), ADR-021 (schema refinements), ADR-024 (query-focused snippets), ADR-025 (append-only triggers narrow ADR-007), ADR-027 (uncited replies always need review), ADR-028 (generic failure code for requesters), ADR-029 (Gemini call shape), ADR-031 (escalation withholds a visible reply), ADR-032 (mock citations), ADR-033 (added API filters and counts), ADR-034 (frontend structure), ADR-035 (auto-analysis), ADR-036 (staff screen for every request), ADR-037 (Playwright in Docker), ADR-038 to ADR-043 (Run 04 behavior changes), ADR-044 (one production container, replacing the blueprint's separate hosts), ADR-045 (refresh cookie, replacing ADR-009's reload behavior), ADR-046 to ADR-050 (demo help, database role, headers, evaluation, CI), ADR-061 (three proxy hops on Render, replacing part of ADR-052). See [the ADR log](ARCHITECTURE_DECISIONS.md).
 
 Current blockers: none.
+
+## Run 07 progress: product-grade redesign and a public website (v1.1.0)
+
+- **Checkpoint 29, brand and design system: DONE.** `scripts/brand/build.mjs`, `docs/BRAND.md`, ADR-062. Dark is the default theme. Inter and JetBrains Mono replace IBM Plex. Frontend 242 passed, lint clean.
 
 ## Run 06 progress
 

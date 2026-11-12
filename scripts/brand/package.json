@@ -1,0 +1,15 @@
+{
+  "name": "iknowserviceai-brand",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Rebuilds the brand assets: npm --prefix scripts/brand ci, then npm --prefix scripts/brand run build",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "5.3.0",
+    "opentype.js": "2.0.0",
+    "sharp": "0.34.5"
+  }
+}

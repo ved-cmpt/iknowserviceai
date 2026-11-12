@@ -1,66 +1,93 @@
-/* Design tokens. Every text and background pair meets WCAG AA, in both themes (axe checks them). */
+/* Design tokens (ADR-062). Dark is the reference theme and the default. The light theme is tuned
+   separately, not inverted. Every text and background pair meets WCAG AA in both themes, and axe
+   checks them. Status colors carry meaning only: pass, fail, warning and info. */
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  /* Ink-navy neutrals */
-  --color-bg: #f3f5f8;
-  --color-surface: #ffffff;
-  --color-surface-muted: #ecf0f4;
-  --color-border: #d6dce4;
-  --color-border-strong: #748092;
-  --color-text: #0f1c2e;
-  --color-text-muted: #4c5a6c;
+  /* Surfaces: the page, then three levels, each a step lighter. Depth comes from these layers. */
+  --color-bg: #0a0a0c;
+  --color-surface: #111114;
+  --color-surface-2: #18181c;
+  --color-surface-3: #202026;
+  --color-surface-muted: var(--color-surface-2);
+  --color-surface-hover: #1c1c21;
+  --color-overlay: rgb(10 10 12 / 72%);
+  --color-border: #26262d;
+  --color-border-subtle: #1d1d23;
+  --color-border-strong: #6b6b78;
+  --color-highlight: rgb(255 255 255 / 4%);
 
-  /* The one accent, for primary actions and focus */
-  --color-accent: #0b7a75;
-  --color-accent-strong: #075e5a;
-  --color-accent-soft: #dff3f0;
-  --color-on-accent: #ffffff;
-  --color-link: #086a65;
-  --color-link-hover: #054e4a;
+  /* Text levels */
+  --color-text: #ededf0;
+  --color-text-muted: #a1a1aa;
+  --color-text-subtle: #8a8a96;
 
-  /* The header stays dark in both themes */
-  --color-topbar: #0f1c2e;
-  --color-topbar-text: #eef3f8;
-  --color-topbar-muted: #b8c4d2;
-  --color-topbar-border: #5c6d82;
-  --color-topbar-hover: #1e3048;
-  --color-topbar-accent: #5fd6cd;
-  --color-pitch-card: #182a40;
+  /* The accent: violet, for interaction, selection and focus. */
+  --color-accent: #a78bfa;
+  --color-accent-strong: #c4b5fd;
+  --color-accent-soft: #221a3a;
+  --color-accent-border: #3f3270;
+  --color-on-accent: #12081f;
+  --color-link: #b9a5ff;
+  --color-link-hover: #d6cbff;
+  --focus-color: #c4b5fd;
 
-  /* Semantic tones. Always paired with text or an icon, never the only signal. */
-  --color-info-bg: #e4f0fb;
-  --color-info-text: #0f4c8a;
-  --color-info-border: #a6c8ec;
-  --color-success-bg: #e3f4ea;
-  --color-success-text: #14633c;
-  --color-success-border: #a0d3b4;
-  --color-warning-bg: #fdf1d6;
-  --color-warning-text: #6b4500;
-  --color-warning-border: #e2c377;
-  --color-danger-bg: #fcebec;
-  --color-danger-text: #9a1f2b;
-  --color-danger-border: #e8abb0;
-  --color-danger-solid: #a8222f;
-  --color-danger-solid-hover: #861a25;
-  --color-on-danger: #ffffff;
-  --color-violet-bg: #f0ebfb;
-  --color-violet-text: #57379e;
-  --color-violet-border: #c9b9ec;
-  --color-teal-bg: #dff3f0;
-  --color-teal-text: #07605b;
-  --color-teal-border: #9ed8d2;
-  --color-neutral-bg: #ecf0f4;
-  --color-neutral-text: #2f3c4d;
-  --color-neutral-border: #c3ccd6;
+  /* The signature gradient, "Ember": primary actions and a few headline words only. */
+  --gradient-ember: linear-gradient(115deg, #ff9a3c 0%, #ff4f7b 52%, #8b5cf6 100%);
+  --gradient-ember-text: linear-gradient(100deg, #ffb066 0%, #ff6b8f 45%, #a78bfa 100%);
+  --color-on-ember: #140a1c;
+  --color-ember-solid: #ff4f7b;
 
-  --color-skeleton: #e2e7ed;
-  --color-skeleton-shine: #f2f4f7;
-  --color-backdrop: rgb(15 28 46 / 60%);
-  --color-toast-bg: #0f1c2e;
-  --color-toast-text: #eef3f8;
+  /* Status: meaning only, always with text or an icon. */
+  --color-info-bg: #0f2236;
+  --color-info-text: #93c5fd;
+  --color-info-border: #1e3a5f;
+  --color-success-bg: #0d2a1e;
+  --color-success-text: #6ee7b7;
+  --color-success-border: #1c5a40;
+  --color-warning-bg: #2e2209;
+  --color-warning-text: #fcd34d;
+  --color-warning-border: #5c4813;
+  --color-danger-bg: #2f1216;
+  --color-danger-text: #fda4af;
+  --color-danger-border: #6b2330;
+  --color-danger-solid: #f87171;
+  --color-danger-solid-hover: #fca5a5;
+  --color-on-danger: #2a0a0e;
+  --color-violet-bg: #221a3a;
+  --color-violet-text: #c4b5fd;
+  --color-violet-border: #3f3270;
+  --color-teal-bg: #0b2a2a;
+  --color-teal-text: #5eead4;
+  --color-teal-border: #1a5552;
+  --color-neutral-bg: #1c1c22;
+  --color-neutral-text: #d4d4da;
+  --color-neutral-border: #33333c;
 
-  /* Spacing scale */
+  --color-skeleton: #1c1c22;
+  --color-skeleton-shine: #26262d;
+  --color-backdrop: rgb(4 4 6 / 72%);
+  --color-toast-bg: #202026;
+  --color-toast-text: #ededf0;
+  --color-toast-border: #33333c;
+
+  /* Kept for the few components that still name them. */
+  --color-topbar: var(--color-bg);
+  --color-topbar-text: var(--color-text);
+  --color-topbar-muted: var(--color-text-muted);
+  --color-topbar-border: var(--color-border);
+  --color-topbar-hover: var(--color-surface-hover);
+  --color-topbar-accent: var(--color-accent);
+  --color-pitch-card: var(--color-surface-2);
+
+  /* Depth: layered surfaces with a hairline highlight in dark. */
+  --shadow-card: inset 0 1px 0 var(--color-highlight);
+  --shadow-raised: 0 0 0 1px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 45%);
+  --shadow-dialog: 0 0 0 1px rgb(255 255 255 / 6%), 0 24px 64px rgb(0 0 0 / 65%);
+  --shadow-glow: 0 0 0 1px rgb(167 139 250 / 25%), 0 8px 32px rgb(139 92 246 / 18%);
+
+  /* Spacing, on a 4 px grid */
+  --space-0: 2px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -68,149 +95,121 @@
   --space-5: 24px;
   --space-6: 32px;
   --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 128px;
 
-  /* Type scale */
-  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  /* Type */
+  --font-sans: 'Inter Variable', 'Inter Fallback', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --text-2xs: 0.6875rem;
   --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
   --text-md: 1rem;
   --text-lg: 1.125rem;
   --text-xl: 1.375rem;
   --text-2xl: 1.75rem;
   --text-3xl: 2.25rem;
+  --text-4xl: 3rem;
+  --text-5xl: 4rem;
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-normal: 1.55;
+  --tracking-tight: -0.02em;
+  --tracking-tighter: -0.035em;
 
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-full: 999px;
 
-  --shadow-card: 0 1px 2px rgb(15 28 46 / 7%);
-  --shadow-raised: 0 6px 18px rgb(15 28 46 / 12%);
-  --shadow-dialog: 0 12px 40px rgb(15 28 46 / 30%);
-
-  --focus-ring: 3px solid var(--color-accent);
+  --focus-ring: 2px solid var(--focus-color);
   --focus-offset: 2px;
 
+  /* Motion. Everything eases out, and reduced motion turns it off (base.css). */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 360ms;
+  --motion-slower: 700ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: var(--motion-fast) var(--ease-out);
+
   --content-width: 1240px;
-  --transition-fast: 120ms ease-out;
+  --site-width: 1160px;
+  --sidebar-width: 240px;
+  --topbar-height: 52px;
 }
 
-/* Dark values appear twice: for a system preference, and for the header's manual choice. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
+/* The light theme, chosen from the header. Tuned for paper: soft shadows instead of layers. */
+:root[data-theme='light'] {
+  color-scheme: light;
 
-    --color-bg: #0c1522;
-    --color-surface: #152232;
-    --color-surface-muted: #1e2d40;
-    --color-border: #2e3f54;
-    --color-border-strong: #71849b;
-    --color-text: #e8eef5;
-    --color-text-muted: #a8b6c7;
+  --color-bg: #fafafb;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f4f6;
+  --color-surface-3: #ececf0;
+  --color-surface-hover: #f1f1f4;
+  --color-overlay: rgb(250 250 251 / 80%);
+  --color-border: #e4e4e9;
+  --color-border-subtle: #eeeef2;
+  --color-border-strong: #8a8a96;
+  --color-highlight: rgb(255 255 255 / 0%);
 
-    --color-accent: #36b9b0;
-    --color-accent-strong: #5ccdc5;
-    --color-accent-soft: #113a39;
-    --color-on-accent: #04201e;
-    --color-link: #63d1c9;
-    --color-link-hover: #8ee2db;
+  --color-text: #16161a;
+  --color-text-muted: #52525b;
+  --color-text-subtle: #63636e;
 
-    --color-topbar: #09111c;
-    --color-topbar-hover: #1a293b;
-    --color-pitch-card: #16263a;
+  --color-accent: #6d28d9;
+  --color-accent-strong: #5b21b6;
+  --color-accent-soft: #f1ebff;
+  --color-accent-border: #d8c8fb;
+  --color-on-accent: #ffffff;
+  --color-link: #5b21b6;
+  --color-link-hover: #4c1d95;
+  --focus-color: #6d28d9;
 
-    --color-info-bg: #13304f;
-    --color-info-text: #a3cdf7;
-    --color-info-border: #2c5d8d;
-    --color-success-bg: #123729;
-    --color-success-text: #8adcb5;
-    --color-success-border: #27684f;
-    --color-warning-bg: #3a2d0d;
-    --color-warning-text: #f2d083;
-    --color-warning-border: #705819;
-    --color-danger-bg: #401b20;
-    --color-danger-text: #f6adb4;
-    --color-danger-border: #7d3039;
-    --color-danger-solid: #f28b95;
-    --color-danger-solid-hover: #f6adb4;
-    --color-on-danger: #2c0a0e;
-    --color-violet-bg: #2a2250;
-    --color-violet-text: #cbbcf6;
-    --color-violet-border: #4f4187;
-    --color-teal-bg: #113a39;
-    --color-teal-text: #86ded6;
-    --color-teal-border: #1f6964;
-    --color-neutral-bg: #233245;
-    --color-neutral-text: #cdd7e3;
-    --color-neutral-border: #3f5168;
+  --gradient-ember: linear-gradient(115deg, #c2410c 0%, #be185d 52%, #6d28d9 100%);
+  --gradient-ember-text: linear-gradient(100deg, #c2410c 0%, #be185d 45%, #6d28d9 100%);
+  --color-on-ember: #ffffff;
+  --color-ember-solid: #be185d;
 
-    --color-skeleton: #223245;
-    --color-skeleton-shine: #2d4057;
-    --color-backdrop: rgb(2 6 12 / 72%);
-    --color-toast-bg: #e8eef5;
-    --color-toast-text: #0f1c2e;
+  --color-info-bg: #eff6ff;
+  --color-info-text: #1d4ed8;
+  --color-info-border: #bfdbfe;
+  --color-success-bg: #ecfdf5;
+  --color-success-text: #047857;
+  --color-success-border: #a7f3d0;
+  --color-warning-bg: #fffbeb;
+  --color-warning-text: #92400e;
+  --color-warning-border: #fde68a;
+  --color-danger-bg: #fef2f2;
+  --color-danger-text: #b91c1c;
+  --color-danger-border: #fecaca;
+  --color-danger-solid: #b91c1c;
+  --color-danger-solid-hover: #991b1b;
+  --color-on-danger: #ffffff;
+  --color-violet-bg: #f5f3ff;
+  --color-violet-text: #6d28d9;
+  --color-violet-border: #ddd6fe;
+  --color-teal-bg: #f0fdfa;
+  --color-teal-text: #0f766e;
+  --color-teal-border: #99f6e4;
+  --color-neutral-bg: #f4f4f5;
+  --color-neutral-text: #3f3f46;
+  --color-neutral-border: #e4e4e7;
 
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 35%);
-    --shadow-raised: 0 6px 18px rgb(0 0 0 / 45%);
-    --shadow-dialog: 0 12px 40px rgb(0 0 0 / 60%);
-  }
-}
+  --color-skeleton: #ececf0;
+  --color-skeleton-shine: #f6f6f8;
+  --color-backdrop: rgb(22 22 26 / 45%);
+  --color-toast-bg: #16161a;
+  --color-toast-text: #f4f4f6;
+  --color-toast-border: #16161a;
 
-:root[data-theme='dark'] {
-  color-scheme: dark;
-
-  --color-bg: #0c1522;
-  --color-surface: #152232;
-  --color-surface-muted: #1e2d40;
-  --color-border: #2e3f54;
-  --color-border-strong: #71849b;
-  --color-text: #e8eef5;
-  --color-text-muted: #a8b6c7;
-
-  --color-accent: #36b9b0;
-  --color-accent-strong: #5ccdc5;
-  --color-accent-soft: #113a39;
-  --color-on-accent: #04201e;
-  --color-link: #63d1c9;
-  --color-link-hover: #8ee2db;
-
-  --color-topbar: #09111c;
-  --color-topbar-hover: #1a293b;
-  --color-pitch-card: #16263a;
-
-  --color-info-bg: #13304f;
-  --color-info-text: #a3cdf7;
-  --color-info-border: #2c5d8d;
-  --color-success-bg: #123729;
-  --color-success-text: #8adcb5;
-  --color-success-border: #27684f;
-  --color-warning-bg: #3a2d0d;
-  --color-warning-text: #f2d083;
-  --color-warning-border: #705819;
-  --color-danger-bg: #401b20;
-  --color-danger-text: #f6adb4;
-  --color-danger-border: #7d3039;
-  --color-danger-solid: #f28b95;
-  --color-danger-solid-hover: #f6adb4;
-  --color-on-danger: #2c0a0e;
-  --color-violet-bg: #2a2250;
-  --color-violet-text: #cbbcf6;
-  --color-violet-border: #4f4187;
-  --color-teal-bg: #113a39;
-  --color-teal-text: #86ded6;
-  --color-teal-border: #1f6964;
-  --color-neutral-bg: #233245;
-  --color-neutral-text: #cdd7e3;
-  --color-neutral-border: #3f5168;
-
-  --color-skeleton: #223245;
-  --color-skeleton-shine: #2d4057;
-  --color-backdrop: rgb(2 6 12 / 72%);
-  --color-toast-bg: #e8eef5;
-  --color-toast-text: #0f1c2e;
-
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 35%);
-  --shadow-raised: 0 6px 18px rgb(0 0 0 / 45%);
-  --shadow-dialog: 0 12px 40px rgb(0 0 0 / 60%);
+  --shadow-card: 0 1px 2px rgb(22 22 26 / 5%), 0 0 0 1px rgb(22 22 26 / 2%);
+  --shadow-raised: 0 1px 2px rgb(22 22 26 / 6%), 0 8px 24px rgb(22 22 26 / 10%);
+  --shadow-dialog: 0 24px 64px rgb(22 22 26 / 22%), 0 0 0 1px rgb(22 22 26 / 6%);
+  --shadow-glow: 0 0 0 1px rgb(109 40 217 / 18%), 0 8px 28px rgb(109 40 217 / 12%);
 }

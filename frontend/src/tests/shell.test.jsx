@@ -257,15 +257,15 @@ describe('theme', () => {
     localStorage.clear()
   })
 
-  it('switches theme from the header, and remembers the choice', async () => {
+  it('starts dark, switches theme from the header, and remembers the choice', async () => {
     mockFetch(ROUTES)
     renderSignedIn('/knowledge', DEFAULT_USER)
-    await userEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }))
-    expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(localStorage.getItem('iks-theme')).toBe('dark')
     await userEvent.click(screen.getByRole('button', { name: 'Switch to light theme' }))
     expect(document.documentElement.dataset.theme).toBe('light')
     expect(localStorage.getItem('iks-theme')).toBe('light')
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }))
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(localStorage.getItem('iks-theme')).toBe('dark')
   })
 
   it('still switches when storage is blocked', async () => {
@@ -274,8 +274,8 @@ describe('theme', () => {
     })
     mockFetch(ROUTES)
     renderSignedIn('/knowledge', DEFAULT_USER)
-    await userEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }))
-    expect(document.documentElement.dataset.theme).toBe('dark')
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to light theme' }))
+    expect(document.documentElement.dataset.theme).toBe('light')
   })
 
   it('shows announcements as a toast through the same live region', async () => {
