@@ -67,3 +67,48 @@ test.describe('Old app addresses @mobile', () => {
     await expect(page.getByRole('heading', { name: 'Support queue' })).toBeVisible()
   })
 })
+
+test.describe('Website demos @mobile', () => {
+  test('each demo tab shows its recorded run, with no accessibility findings', async ({ page }) => {
+    const { problems, apiCalls } = watch(page)
+    await page.goto('/#demo')
+    const tabs = page.getByRole('tablist', { name: 'Demos' })
+    await expect(tabs).toBeVisible()
+
+    await expect(page.getByRole('tabpanel')).toContainText('AI-generated suggestion — verify before acting')
+    await tabs.getByRole('tab', { name: 'Sensitive request' }).click()
+    await expect(page.getByRole('tabpanel')).toContainText('Awaiting staff review')
+    await expectAccessible(page, 'website: sensitive demo')
+    await tabs.getByRole('tab', { name: 'Prompt injection' }).click()
+    await expect(page.getByRole('tabpanel')).toContainText('Possible prompt injection')
+    await tabs.getByRole('tab', { name: 'Staff review' }).click()
+    const panel = page.getByRole('tabpanel')
+    await panel.getByRole('button', { name: /Try an unsafe reply/ }).click()
+    await expect(panel).toContainText('UNSAFE_REPLY')
+    await panel.getByRole('button', { name: /Publish a safe reply/ }).click()
+    await expect(panel).toContainText('Reviewed by the support team')
+    await expectAccessible(page, 'website: staff review demo')
+    expect(apiCalls).toEqual([])
+    expect(problems).toEqual([])
+  })
+
+  test('"See it in the app" signs in as the matching person and opens the right page @smoke', async ({ page }) => {
+    await page.goto('/#demo')
+    await page.getByRole('link', { name: 'See it in the app' }).click()
+    await expect(page).toHaveURL(/\/app\/login\?as=riley&next=/)
+    await expect(page.getByLabel('Email', { exact: true })).toHaveValue('riley.morgan@demo.iknowservice.test')
+    await page.getByLabel('Password', { exact: true }).fill(process.env.DEMO_PASSWORD)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page).toHaveURL(/\/app\/requests\/new$/)
+  })
+
+  test('the hero replay can be paused', async ({ page }) => {
+    await page.goto('/')
+    const replay = page.getByRole('figure', { name: /A replay of two recorded runs/ })
+    // Tests run with reduced motion, so it starts paused on its last frame.
+    await expect(replay.getByRole('button', { name: 'Play the replay' })).toBeVisible()
+    await expect(replay).toContainText('Shown to the requester')
+    await replay.getByRole('button', { name: 'Sensitive request' }).click()
+    await expect(replay).toContainText('Held for staff review')
+  })
+})

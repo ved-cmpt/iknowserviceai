@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { friendlyMessage } from '../api/errors'
 import { useApiData } from '../api/useApiData'
 import { useAuth } from '../auth/authContext'
+import { safeNext } from '../auth/deepLink'
 import { homeFor } from '../auth/roles'
 import ApiStatus from '../components/ApiStatus'
 import Banner from '../components/Banner'
@@ -20,24 +21,28 @@ const FEATURES = [
 
 const DEMO_ACCOUNTS = [
   {
+    key: 'riley',
     email: 'riley.morgan@demo.iknowservice.test',
     name: 'Riley Morgan',
     role: 'Requester',
     tryThis: 'Report a problem and get a cited suggestion.',
   },
   {
+    key: 'sam',
     email: 'sam.patel@demo.iknowservice.test',
     name: 'Sam Patel',
     role: 'Requester',
     tryThis: "Sam can't see Riley's requests. Try it.",
   },
   {
+    key: 'alex',
     email: 'alex.chen@demo.iknowservice.test',
     name: 'Alex Chen',
     role: 'Support agent',
     tryThis: 'Review a held draft, and publish a safe reply.',
   },
   {
+    key: 'jordan',
     email: 'jordan.reyes@demo.iknowservice.test',
     name: 'Jordan Reyes',
     role: 'Admin',
@@ -51,14 +56,20 @@ export default function LoginPage() {
   // The server decides this at run time, so one image can serve demo and non-demo sites (ADR-046).
   const { data: config } = useApiData('/config')
   const demoMode = config?.demo_mode === true
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  // A link from the website names a demo person and where to go after signing in.
+  const params = new URLSearchParams(location.search)
+  const suggested = DEMO_ACCOUNTS.find((account) => account.key === params.get('as'))
+  const next = safeNext(params.get('next'))
+  const [email, setEmail] = useState(suggested?.email ?? '')
+  // null means "not typed yet": a suggested person then gets the public demo password.
+  const [typedPassword, setPassword] = useState(suggested ? null : '')
+  const password = typedPassword ?? (demoMode ? (config.demo_password_hint ?? '') : '')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const submitRef = useRef(null)
 
   // Signing in re-renders this page with a user, which redirects from here.
-  if (user) return <Navigate to={location.state?.from ?? homeFor(user)} replace />
+  if (user) return <Navigate to={location.state?.from ?? next ?? homeFor(user)} replace />
 
   async function handleSubmit(event) {
     event.preventDefault()
