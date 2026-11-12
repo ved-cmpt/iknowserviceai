@@ -30,6 +30,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      # Read-only, for tests/test_landing_snapshot.py, which compares the website's data with a fresh run.
+      - ./frontend/public/data:/frontend-data:ro
     healthcheck:
       test:
         - CMD
