@@ -2,6 +2,7 @@
 //
 // Uses its own project, volume and throwaway secrets, so the dev stack and its data are untouched.
 // Everything is removed afterwards. Extra arguments go to Playwright, in place of the two projects.
+// With --lighthouse, it runs lighthouse.mjs against the same stack instead of Playwright.
 import { randomBytes } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -11,7 +12,8 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const envFile = join(root, '.cache', 'e2e-prod.env')
 const FILES = ['--env-file', envFile, '-f', 'compose.prod.yaml', '-f', 'compose.prod.e2e.yaml']
-const extraArgs = process.argv.slice(2)
+const lighthouseMode = process.argv.includes('--lighthouse')
+const extraArgs = process.argv.slice(2).filter((arg) => arg !== '--lighthouse')
 
 function secret() {
   return randomBytes(24).toString('hex')
@@ -56,11 +58,15 @@ try {
     'python', '-m', 'app.scripts.reset_demo', '--yes', '--allow-production',
   ])
   required('Build the E2E image', ['compose', ...FILES, '--profile', 'e2e', 'build', 'e2e'])
-  exitCode = run('Journeys, accessibility and production checks', [
-    'compose', ...FILES, '--profile', 'e2e', 'run', '--rm', 'e2e',
-    'npx', 'playwright', 'test',
-    ...(extraArgs.length > 0 ? extraArgs : ['--project=desktop', '--project=mobile']),
-  ])
+  exitCode = lighthouseMode
+    ? run('Lighthouse, three runs per preset', [
+        'compose', ...FILES, '--profile', 'e2e', 'run', '--rm', 'e2e', 'node', 'lighthouse.mjs',
+      ])
+    : run('Journeys, accessibility and production checks', [
+        'compose', ...FILES, '--profile', 'e2e', 'run', '--rm', 'e2e',
+        'npx', 'playwright', 'test',
+        ...(extraArgs.length > 0 ? extraArgs : ['--project=desktop', '--project=mobile']),
+      ])
 } catch (error) {
   console.error(error.message)
 } finally {
