@@ -1,5 +1,5 @@
-// The chosen theme. public/theme-init.js applies it before the first paint. With no choice, CSS
-// follows the system preference.
+// The chosen theme. public/theme-init.js applies it before the first paint. With no choice, the
+// dark reference theme applies (ADR-062).
 const KEY = 'iks-theme'
 
 function stored() {
@@ -12,9 +12,7 @@ function stored() {
 }
 
 export function currentTheme() {
-  const applied = document.documentElement.dataset.theme
-  if (applied) return applied
-  return stored() ?? (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  return document.documentElement.dataset.theme ?? stored() ?? 'dark'
 }
 
 export function applyTheme(theme) {

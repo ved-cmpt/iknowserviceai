@@ -29,7 +29,7 @@ test.describe('Production image @mobile', () => {
   })
 
   test('the public demo banner is on the sign-in page and in the app shell', async ({ page }) => {
-    await page.goto('/login')
+    await page.goto('/app/login')
     const banner = page.getByTestId('demo-banner')
     await expect(banner).toContainText('Public demo — shared synthetic data, resets daily.')
     await expect(banner).toContainText('simulated by the built-in mock agent')
@@ -38,9 +38,9 @@ test.describe('Production image @mobile', () => {
     await expectAccessible(page, 'production: shell with demo banner')
   })
 
-  test('the theme follows the system, and a choice survives a reload, with no violations', async ({ browser }) => {
+  test('dark is the default even on a light system, and a choice survives a reload, with no violations', async ({ browser }) => {
     const { baseURL, viewport, isMobile, hasTouch } = test.info().project.use
-    const context = await browser.newContext({ baseURL, viewport, isMobile, hasTouch, colorScheme: 'dark' })
+    const context = await browser.newContext({ baseURL, viewport, isMobile, hasTouch, colorScheme: 'light' })
     const page = await context.newPage()
     const problems = []
     page.on('console', (message) => {
@@ -48,19 +48,19 @@ test.describe('Production image @mobile', () => {
     })
     const background = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
 
-    await page.goto('/login')
+    await page.goto('/app/login')
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
-    expect(await background()).toBe('rgb(12, 21, 34)')
+    expect(await background()).toBe('rgb(10, 10, 12)')
 
     await page.getByRole('button', { name: 'Switch to light theme' }).click()
-    expect(await background()).toBe('rgb(243, 245, 248)')
+    expect(await background()).toBe('rgb(250, 250, 251)')
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
-    expect(await background()).toBe('rgb(243, 245, 248)')
+    expect(await background()).toBe('rgb(250, 250, 251)')
     await expect(page.getByRole('button', { name: 'Switch to dark theme' })).toBeVisible()
 
     // Self-hosted fonts load under the policy, with no external request.
-    expect(await page.evaluate(() => document.fonts.check('16px "IBM Plex Sans"'))).toBe(true)
+    expect(await page.evaluate(() => document.fonts.check('16px "Inter Variable"'))).toBe(true)
     expect(problems).toEqual([])
     await context.close()
   })
@@ -70,7 +70,7 @@ test.describe('Production image @mobile', () => {
     page.on('response', (response) => {
       if (response.url().includes('/assets/')) assets.push(response.headers()['cache-control'])
     })
-    await page.goto('/login')
+    await page.goto('/app/login')
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
     expect(assets.length).toBeGreaterThan(0)
     for (const value of assets) expect(value).toContain('immutable')
@@ -83,15 +83,15 @@ test.describe('Production image @mobile', () => {
     })
     page.on('pageerror', (error) => problems.push(error.message))
 
-    await signInAt(page, 'jordan', '/admin/knowledge')
+    await signInAt(page, 'jordan', '/app/admin/knowledge')
     await expect(page.getByRole('heading', { name: 'Knowledge admin' })).toBeVisible()
-    await page.goto('/knowledge')
+    await page.goto('/app/knowledge')
     await expect(page.getByRole('heading', { name: 'Knowledge base' })).toBeVisible()
     await expectAccessible(page, 'production: knowledge list')
-    await page.goto('/support')
+    await page.goto('/app/support')
     await expect(page.getByRole('heading', { name: 'Support queue' })).toBeVisible()
     await expectAccessible(page, 'production: support queue')
-    await page.goto('/admin/audit')
+    await page.goto('/app/admin/audit')
     await expect(page.getByRole('table')).toBeVisible()
     await expectAccessible(page, 'production: audit log')
     expect(problems).toEqual([])

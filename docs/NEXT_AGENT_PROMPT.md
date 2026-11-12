@@ -1,8 +1,8 @@
 # Maintenance handoff
 
-Last updated: 2026-11-04
+Last updated: 2026-11-11
 
-**State:** `v1.0.0` is released, and the public demo is live at https://iknowserviceai.onrender.com. The project is in maintenance. No work is in progress.
+**State:** `v1.0.0` is released, and the public demo is live at https://iknowserviceai.onrender.com. **Run 07 is in progress** (`docs/prompts/AUTOPILOT_RUN_07.md`): a new brand, a public website at `/` and a redesigned app under `/app`, for `v1.1.0`. Its progress is in `docs/IMPLEMENTATION_STATUS.md`.
 
 Read `AGENTS.md`, `docs/IMPLEMENTATION_STATUS.md`, `docs/RUN_REPORTS/RUN_06.md`, `docs/DEPLOYMENT.md` and `docs/RUNBOOK.md`. Code and tests are ground truth.
 

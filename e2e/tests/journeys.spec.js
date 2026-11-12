@@ -77,7 +77,7 @@ test.describe('1. Ordinary', () => {
     }
     const title = labelled(`${WIFI_TITLE} ${uniqueTag()}`)
 
-    await page.goto('/login')
+    await page.goto('/app/login')
     await pressTabUntilFocused(page.getByLabel('Email', { exact: true }))
     await page.keyboard.type(USERS.riley)
     await page.keyboard.press('Tab')
@@ -153,7 +153,7 @@ test.describe('2. Sensitive', () => {
     }
 
     // Alex finds it from the queue.
-    const staff = await newSession(browser, 'alex', '/support')
+    const staff = await newSession(browser, 'alex', '/app/support')
     const alex = staff.page
     await alex.getByRole('button', { name: /^Needs review/ }).click()
     await alex.getByRole('link', { name: title, exact: true }).click()
@@ -197,7 +197,7 @@ test.describe('3. Reject', () => {
     await expect(page.getByText(AWAITING_TEXT)).toBeVisible()
     const requestUrl = page.url()
 
-    const staff = await newSession(browser, 'alex', '/support?status=NEEDS_HUMAN_REVIEW')
+    const staff = await newSession(browser, 'alex', '/app/support?status=NEEDS_HUMAN_REVIEW')
     const alex = staff.page
     await alex.getByRole('link', { name: title, exact: true }).click()
     const heldReply = await alex.getByTestId('ai-draft').textContent()
@@ -250,7 +250,7 @@ test.describe('4. Admin knowledge', () => {
     await expect(page.getByText('Version 1')).toBeVisible()
 
     // A draft is not searchable yet.
-    const requester = await newSession(browser, 'riley', `/knowledge?q=${term}`)
+    const requester = await newSession(browser, 'riley', `/app/knowledge?q=${term}`)
     const riley = requester.page
     await expect(riley.getByText(/No articles match your search/)).toBeVisible()
 
@@ -283,7 +283,7 @@ test.describe('4. Admin knowledge', () => {
   })
 
   test('a duplicate slug is explained on the field', async ({ page }) => {
-    await signInAt(page, 'jordan', '/admin/knowledge/new')
+    await signInAt(page, 'jordan', '/app/admin/knowledge/new')
     await page.getByLabel(/^Title/).fill('A duplicate slug')
     await page.getByLabel(/^Slug/).fill('wifi-connected-no-internet')
     await page.getByLabel(/^Body/).fill('Body text')
@@ -294,7 +294,7 @@ test.describe('4. Admin knowledge', () => {
 
 test.describe('5. Authorization', () => {
   test('a requester sees the access page at /support @mobile', async ({ page }) => {
-    await signInAt(page, 'riley', '/support')
+    await signInAt(page, 'riley', '/app/support')
     await expect(page.getByRole('heading', { name: "You don't have access" })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Go to my requests' })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Support queue' })).toHaveCount(0)
@@ -323,7 +323,7 @@ test.describe('5. Authorization', () => {
     expect(stored).toEqual([0, 0])
 
     // A direct visit to a deep link works too.
-    await page.goto('/knowledge')
+    await page.goto('/app/knowledge')
     await expect(page.getByRole('heading', { name: 'Knowledge base' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Sign out' }).click()
@@ -331,19 +331,19 @@ test.describe('5. Authorization', () => {
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0)
-    await page.goto('/dashboard')
+    await page.goto('/app/dashboard')
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
   })
 
   test('an agent cannot open the admin pages', async ({ page }) => {
-    await signInAt(page, 'alex', '/admin/audit')
+    await signInAt(page, 'alex', '/app/admin/audit')
     await expect(page.getByRole('heading', { name: "You don't have access" })).toBeVisible()
   })
 })
 
 test.describe('7. Staying current', () => {
   test('the Refresh button brings a new request into the queue', async ({ page }) => {
-    await signInAt(page, 'alex', '/support')
+    await signInAt(page, 'alex', '/app/support')
     await expect(page.getByRole('table')).toBeVisible()
 
     const title = labelled(`Arrived after loading ${uniqueTag()}`)
@@ -391,7 +391,7 @@ test.describe('7. Staying current, staff', () => {
       description: 'My monitor flickers on and off.',
       analyze: false,
     })
-    const staff = await newSession(browser, 'alex', `/support/${id}`)
+    const staff = await newSession(browser, 'alex', `/app/support/${id}`)
     await expect(staff.page.getByRole('heading', { level: 1, name: title })).toBeVisible()
     const comment = staff.page.getByLabel(/^Add a comment/)
     await comment.fill('Half-written note')
@@ -415,8 +415,8 @@ test.describe('6. Stale update', () => {
       description: 'The second floor printer needs attention soon.',
       analyze: false,
     })
-    const first = await newSession(browser, 'alex', `/support/${id}`)
-    const second = await newSession(browser, 'jordan', `/support/${id}`)
+    const first = await newSession(browser, 'alex', `/app/support/${id}`)
+    const second = await newSession(browser, 'jordan', `/app/support/${id}`)
     await expect(second.page.getByRole('heading', { level: 1, name: title })).toBeVisible()
     await expect(first.page.getByRole('heading', { level: 1, name: title })).toBeVisible()
 

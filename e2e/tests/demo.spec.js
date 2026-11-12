@@ -65,7 +65,7 @@ async function submit(page, title, description) {
 test('walkthrough', async ({ page }) => {
   test.setTimeout(240_000)
 
-  await page.goto('/login')
+  await page.goto('/app/login')
   await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
   await page.evaluate(() => document.fonts.ready)
   await caption(page, 'IknowServiceAI: an IT service desk where AI drafts and people decide', 4000)

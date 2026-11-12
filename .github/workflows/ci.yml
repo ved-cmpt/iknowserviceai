@@ -65,6 +65,8 @@ jobs:
         run: uv run --frozen pytest -q
       - name: Check models match migrations
         run: uv run --frozen alembic check
+      - name: Check the website's data snapshot against a fresh run
+        run: uv run --frozen python ../scripts/landing_snapshot.py --check
 
   frontend:
     runs-on: ubuntu-24.04

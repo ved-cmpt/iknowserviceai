@@ -36,7 +36,8 @@ def _settings(**overrides) -> Settings:
 @pytest.fixture
 def spa_dir(tmp_path: Path) -> Path:
     (tmp_path / "assets").mkdir()
-    (tmp_path / "index.html").write_text("<html>the app</html>", encoding="utf-8")
+    (tmp_path / "index.html").write_text("<html>the website</html>", encoding="utf-8")
+    (tmp_path / "app.html").write_text("<html>the app</html>", encoding="utf-8")
     (tmp_path / "assets" / "main-abc123.js").write_text("console.log(1)", encoding="utf-8")
     (tmp_path / "robots.txt").write_text("User-agent: *", encoding="utf-8")
     (tmp_path.parent / "secret.txt").write_text("private", encoding="utf-8")
@@ -97,19 +98,66 @@ def test_docs_path_never_serves_the_docs_with_the_spa(production: TestClient) ->
 # The SPA
 
 
-def test_index_is_served_at_the_root_and_must_revalidate(production: TestClient) -> None:
+def test_the_website_is_served_at_the_root_and_must_revalidate(production: TestClient) -> None:
     response = production.get("/")
     assert response.status_code == 200
-    assert "the app" in response.text
+    assert "the website" in response.text
     assert response.headers["cache-control"] == "no-cache"
 
 
-@pytest.mark.parametrize("path", ["/dashboard", "/requests/abc", "/admin/knowledge/x/edit"])
-def test_client_routes_fall_back_to_index(production: TestClient, path: str) -> None:
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/app",
+        "/app/",
+        "/app/login",
+        "/app/dashboard",
+        "/app/requests/abc",
+        "/app/support/abc",
+        "/app/admin/knowledge/x/edit",
+        "/app/no-such-page",
+    ],
+)
+def test_app_routes_fall_back_to_the_app(production: TestClient, path: str) -> None:
     response = production.get(path)
     assert response.status_code == 200
     assert "the app" in response.text
     assert response.headers["cache-control"] == "no-cache"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/login",
+        "/dashboard",
+        "/requests/new",
+        "/requests/abc",
+        "/knowledge",
+        "/knowledge/abc",
+        "/support",
+        "/support/abc",
+        "/admin/knowledge/x/edit",
+        "/admin/audit",
+    ],
+)
+def test_old_app_paths_get_the_app_which_redirects_them(production: TestClient, path: str) -> None:
+    response = production.get(path)
+    assert response.status_code == 200
+    assert "the app" in response.text
+
+
+@pytest.mark.parametrize("path", ["/no-such-page", "/applications", "/loginx/abc"])
+def test_other_paths_get_the_website_and_its_not_found_page(
+    production: TestClient, path: str
+) -> None:
+    response = production.get(path)
+    assert response.status_code == 200
+    assert "the website" in response.text
+
+
+@pytest.mark.parametrize("path", ["/index.html", "/app.html"])
+def test_pages_are_only_served_through_their_routes(production: TestClient, path: str) -> None:
+    assert production.get(path).status_code == 404
 
 
 def test_hashed_assets_are_cached_for_a_long_time(production: TestClient) -> None:
@@ -149,6 +197,12 @@ def test_head_works_for_the_spa(production: TestClient) -> None:
 def test_a_wrong_static_dir_fails_at_startup(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="index.html"):
         create_app(_settings(static_dir=str(tmp_path / "missing")))
+
+
+def test_a_build_without_the_app_page_fails_at_startup(tmp_path: Path) -> None:
+    (tmp_path / "index.html").write_text("<html>the website</html>", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="app.html"):
+        create_app(_settings(static_dir=str(tmp_path)))
 
 
 # Secrets
@@ -226,3 +280,31 @@ def test_reset_is_refused_in_production_without_the_flag() -> None:
     settings = _settings(allow_demo_reset=True)
     assert reset_refusal(settings, confirmed=True, allow_production=False)
     assert reset_refusal(settings, confirmed=True, allow_production=True) is None
+
+
+# Compression (ADR-063)
+
+
+@pytest.fixture
+def large_spa_dir(spa_dir: Path) -> Path:
+    (spa_dir / "assets" / "big-abc123.js").write_text("console.log(1);\n" * 400, encoding="utf-8")
+    (spa_dir / "assets" / "font-abc123.woff2").write_bytes(b"\x00" * 4000)
+    page = "<html>" + "the website " * 200 + "</html>"
+    (spa_dir / "index.html").write_text(page, encoding="utf-8")
+    return spa_dir
+
+
+def test_text_is_compressed_and_keeps_its_headers(large_spa_dir: Path) -> None:
+    client = TestClient(create_app(_settings(static_dir=str(large_spa_dir))))
+    for path in ["/", "/assets/big-abc123.js"]:
+        response = client.get(path, headers={"Accept-Encoding": "gzip"})
+        assert response.headers["content-encoding"] == "gzip"
+        assert set(response.headers) >= HEADERS
+    assert "immutable" in client.get("/assets/big-abc123.js").headers["cache-control"]
+
+
+def test_compressed_formats_are_not_compressed_again(large_spa_dir: Path) -> None:
+    client = TestClient(create_app(_settings(static_dir=str(large_spa_dir))))
+    response = client.get("/assets/font-abc123.woff2", headers={"Accept-Encoding": "gzip"})
+    assert response.status_code == 200
+    assert "content-encoding" not in response.headers

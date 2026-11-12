@@ -1,12 +1,17 @@
 version: 2
 
-# Major upgrades are chosen by hand, so these updates stay small enough to merge on sight. Version
-# jumps of base images count as minor to semver, so those are held by version range as well.
+# Quiet on purpose: one grouped pull request per ecosystem, once a month, and at most two open at a
+# time. Major upgrades are chosen by hand, so they are ignored here. Version jumps of base images
+# count as minor to semver, so those are held by version range as well.
 updates:
   - package-ecosystem: uv
     directory: /backend
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      backend:
+        patterns: ["*"]
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -14,7 +19,11 @@ updates:
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      frontend:
+        patterns: ["*"]
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -24,7 +33,11 @@ updates:
   - package-ecosystem: npm
     directory: /e2e
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      e2e:
+        patterns: ["*"]
     ignore:
       - dependency-name: "@playwright/test"
       - dependency-name: "*"
@@ -33,7 +46,11 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns: ["*"]
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -45,7 +62,11 @@ updates:
       - /frontend
       - /deploy
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      images:
+        patterns: ["*"]
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]

@@ -6,6 +6,7 @@ from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import (
     REQUEST_ID_HEADER,
+    CompressTextMiddleware,
     DemoResetMiddleware,
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
@@ -30,7 +31,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url="/openapi.json" if docs_enabled else None,
     )
 
-    # The last middleware added is the outermost.
+    # The last middleware added is the outermost. Compression is innermost, so every header the
+    # others add, and every error they produce, still applies to the compressed response.
+    app.add_middleware(CompressTextMiddleware)
     if settings.demo_mode:
         app.add_middleware(DemoResetMiddleware, settings=settings)
     app.add_middleware(UnhandledErrorMiddleware)

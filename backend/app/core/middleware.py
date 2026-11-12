@@ -7,6 +7,7 @@ import uuid
 
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import Headers, MutableHeaders
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import Settings
@@ -97,6 +98,27 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_with_headers)
+
+
+# Already compressed, so gzip would cost CPU on a small host and save nothing.
+_COMPRESSED_SUFFIXES = (".woff2", ".woff", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".mp4")
+
+
+class CompressTextMiddleware:
+    """Gzips text responses: pages, scripts, styles, JSON and SVG (ADR-063).
+
+    Binary files that are compressed already pass straight through.
+    """
+
+    def __init__(self, app: ASGIApp, *, minimum_size: int = 500) -> None:
+        self.app = app
+        self.gzip = GZipMiddleware(app, minimum_size=minimum_size)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and not scope["path"].lower().endswith(_COMPRESSED_SUFFIXES):
+            await self.gzip(scope, receive, send)
+            return
+        await self.app(scope, receive, send)
 
 
 class DemoResetMiddleware:

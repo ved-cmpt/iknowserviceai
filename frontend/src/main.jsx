@@ -3,15 +3,16 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import AuthProvider from './auth/AuthProvider'
-import '@fontsource/ibm-plex-sans/latin-400.css'
-import '@fontsource/ibm-plex-sans/latin-500.css'
-import '@fontsource/ibm-plex-sans/latin-600.css'
-import '@fontsource/ibm-plex-mono/latin-400.css'
+import { APP_BASE, legacyRedirect } from './lib/legacyPaths'
 import './styles/index.css'
+
+// An old link, such as /requests/abc, becomes /app/requests/abc before the router reads it.
+const moved = legacyRedirect(window.location)
+if (moved) window.history.replaceState(window.history.state, '', moved)
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={APP_BASE}>
       <AuthProvider>
         <App />
       </AuthProvider>

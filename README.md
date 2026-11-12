@@ -229,8 +229,9 @@ This project is under the [MIT license](LICENSE).
 
 | Used | License |
 |---|---|
-| [IBM Plex Sans and Mono](https://github.com/IBM/plex), through Fontsource, self-hosted | SIL Open Font License 1.1 |
+| [Inter](https://rsms.me/inter/) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/), through Fontsource, self-hosted | SIL Open Font License 1.1 |
+| [Lucide](https://lucide.dev) icons | ISC |
 | React, React Router, react-markdown, Vite, FastAPI, SQLAlchemy, Alembic, Playwright, axe-core | MIT (Playwright: Apache-2.0; axe-core: MPL-2.0) |
-| sharp, for optimizing screenshots | Apache-2.0 |
+| sharp, for screenshots and brand assets; opentype.js, for the wordmark outlines | Apache-2.0; MIT |
 
-The logo and icons are original to this project. All people, requests and articles in the demo are fictional.
+The logo and brand are original to this project, and [the brand guide](docs/BRAND.md) explains them. All people, requests and articles in the demo are fictional.
