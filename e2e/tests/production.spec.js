@@ -97,6 +97,34 @@ test.describe('Production image @mobile', () => {
     expect(problems).toEqual([])
   })
 
+  test('the website runs under the policy, compressed, with search and sharing metadata @smoke', async ({ page }) => {
+    const problems = []
+    page.on('console', (message) => {
+      if (/Content Security Policy|Refused to/i.test(message.text())) problems.push(message.text())
+    })
+    page.on('pageerror', (error) => problems.push(error.message))
+    const response = await page.goto('/')
+    expect(response.headers()['content-security-policy']).toContain("script-src 'self'")
+    await expect(page.getByRole('tablist', { name: 'Demos' })).toBeVisible()
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://iknowserviceai.onrender.com/')
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /og-image\.png$/)
+    await expect(page.locator('link[rel="preload"][as="font"]')).toHaveCount(1)
+    expect(await page.evaluate(() => document.fonts.check('16px "Inter Variable"'))).toBe(true)
+    expect(problems).toEqual([])
+
+    const api = await playwrightRequest.newContext()
+    const html = await api.get(`${BASE}/`, { headers: { 'Accept-Encoding': 'gzip' } })
+    expect(html.headers()['content-encoding']).toBe('gzip')
+    const robots = await (await api.get(`${BASE}/robots.txt`)).text()
+    expect(robots).toContain('Disallow: /app/')
+    expect(await (await api.get(`${BASE}/sitemap.xml`)).text()).toContain('<loc>https://iknowserviceai.onrender.com/</loc>')
+    expect((await api.get(`${BASE}/og-image.png`)).headers()['content-type']).toBe('image/png')
+    expect((await api.get(`${BASE}/data/landing-snapshot.json`)).ok()).toBeTruthy()
+    const app = await api.get(`${BASE}/app/dashboard`)
+    expect(await app.text()).toContain('noindex')
+    await api.dispose()
+  })
+
   test('the session cookie is HttpOnly, Secure and SameSite=Strict, on the auth path only @smoke', async ({ page, context, baseURL }) => {
     await signInAt(page, 'riley')
     const cookie = (await context.cookies(`${baseURL}/api/v1/auth/refresh`)).find(
