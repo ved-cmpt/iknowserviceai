@@ -1,6 +1,6 @@
 # One production container: the built SPA and the API on the same origin (ADR-044).
 # Build from the repository root: docker build -f deploy/Dockerfile -t iknowserviceai .
-FROM node:24.22.2-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS frontend
+FROM node:24.22.2-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS frontend
 
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
@@ -10,7 +10,7 @@ ENV VITE_API_BASE_URL=/api/v1
 RUN npm run build
 
 
-FROM python:3.12.16-slim@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30 AS runtime
+FROM python:3.12.16-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
