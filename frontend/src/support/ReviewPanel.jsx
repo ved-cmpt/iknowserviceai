@@ -9,6 +9,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import ErrorState from '../components/ErrorState'
 import FormField from '../components/FormField'
 import Icon from '../components/icons'
+import ReplyDiff from '../components/ReplyDiff'
 import { riskFlagLabel } from '../lib/labels'
 import { REASON_MAX, REASON_MIN, REPLY_MAX } from '../requests/limits'
 
@@ -132,6 +133,7 @@ export default function ReviewPanel({ request, onReviewed, onConflict }) {
           </FormField>
         </div>
       </div>
+      <ReplyDiff draft={suggestion.proposed_reply} reply={reply} />
       <FormField
         label="Review reason"
         required

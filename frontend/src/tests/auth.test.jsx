@@ -4,6 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { callsTo, errorResponse, HEALTH, jsonResponse, mockFetch } from './helpers'
 import { AGENT_USER, DEFAULT_USER, renderApp } from './renderApp'
 
+const PREFERENCE_KEYS = ['iks-theme', 'iks-tour-done', 'iks-sidebar-collapsed']
+
+// Sign-out lives in the account menu (ADR-066).
+async function signOut() {
+  await userEvent.click(await screen.findByRole('button', { name: /^Account menu/ }))
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }))
+}
+
 const EMPTY_PAGE = { items: [], total: 0, limit: 20, offset: 0 }
 const EMPTY_COUNTS = { counts: {}, total: 0 }
 
@@ -197,7 +205,10 @@ describe('login', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     await screen.findByRole('heading', { name: 'My requests' })
 
-    expect(window.localStorage.length).toBe(0)
+    // Only display preferences are stored on the device, never a token.
+    const stored = Object.keys(window.localStorage)
+    expect(stored.every((key) => PREFERENCE_KEYS.includes(key))).toBe(true)
+    expect(stored.map((key) => window.localStorage.getItem(key)).join(' ')).not.toContain('test-token')
     expect(window.sessionStorage.length).toBe(0)
   })
 
@@ -207,7 +218,7 @@ describe('login', () => {
     await userEvent.type(screen.getByLabelText('Email'), DEFAULT_USER.email)
     await userEvent.type(screen.getByLabelText('Password'), 'demo-password')
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+    await signOut()
 
     expect(await screen.findByRole('heading', { name: /sign in/i })).toBeInTheDocument()
   })
@@ -237,7 +248,7 @@ describe('login', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     await screen.findByRole('heading', { name: 'Knowledge base' })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    await signOut()
     await screen.findByRole('heading', { name: /sign in/i })
     await userEvent.type(screen.getByLabelText('Email'), DEFAULT_USER.email)
     await userEvent.type(screen.getByLabelText('Password'), 'demo-password')
@@ -339,7 +350,7 @@ describe('keeping the session', () => {
       }),
     )
     renderApp('/dashboard')
-    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+    await signOut()
 
     expect(await screen.findByRole('heading', { name: /sign in/i })).toBeInTheDocument()
     const [, options] = callsTo(fetchMock, 'POST', '/auth/logout')[0]
@@ -356,7 +367,7 @@ describe('keeping the session', () => {
       }),
     )
     renderApp('/dashboard')
-    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+    await signOut()
     expect(await screen.findByRole('heading', { name: /sign in/i })).toBeInTheDocument()
   })
 })

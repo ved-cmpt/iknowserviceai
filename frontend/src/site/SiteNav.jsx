@@ -1,11 +1,15 @@
+import { Moon, Sun } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import LogoMark from '../components/icons/LogoMark'
 import { appHref } from '../lib/legacyPaths'
+import { applyTheme, currentTheme } from '../lib/theme'
 import { DOCS_URL, REPO_URL } from './links'
 
 // sections: [href, label] pairs for this page's own anchors.
 export default function SiteNav({ sections = [] }) {
   const [open, setOpen] = useState(false)
+  const [theme, setTheme] = useState(currentTheme)
+  const nextTheme = theme === 'dark' ? 'light' : 'dark'
   const buttonRef = useRef(null)
 
   useEffect(() => {
@@ -58,6 +62,17 @@ export default function SiteNav({ sections = [] }) {
               <a href={REPO_URL}>GitHub</a>
             </li>
           </ul>
+          <button
+            type="button"
+            className="site-theme"
+            aria-label={`Switch to ${nextTheme} theme`}
+            onClick={() => {
+              applyTheme(nextTheme)
+              setTheme(nextTheme)
+            }}
+          >
+            {nextTheme === 'dark' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}
+          </button>
           <a className="site-btn site-btn-primary site-btn-sm" href={appHref('/login')}>
             Open the app
           </a>

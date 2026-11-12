@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures'
 import {
+  accountMenu,
   AI_LABEL,
   apiAs,
   AWAITING_TEXT,
@@ -9,11 +10,13 @@ import {
   newSession,
   openNav,
   paceLogin,
+  PREFERENCE_KEYS,
   REVIEWED_LABEL,
   scenarioTitle,
   seedRequest,
   SENSITIVE_TEXT,
   signInAt,
+  signOut,
   submitNewRequest,
   uniqueTag,
   USERS,
@@ -260,7 +263,7 @@ test.describe('4. Admin knowledge', () => {
 
     const search = async () => {
       await riley.getByLabel('Search articles').fill(term)
-      await riley.getByRole('button', { name: 'Search' }).click()
+      await riley.getByRole('button', { name: 'Search', exact: true }).click()
     }
     await riley.reload()
     await search()
@@ -318,19 +321,26 @@ test.describe('5. Authorization', () => {
 
     await page.reload()
     await expect(page.getByRole('heading', { name: 'My requests' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
-    const stored = await page.evaluate(() => [localStorage.length, sessionStorage.length])
-    expect(stored).toEqual([0, 0])
+    await expect(accountMenu(page)).toBeVisible()
+    // No token on the device: only display preferences, and nothing in session storage.
+    const stored = await page.evaluate(() => ({
+      keys: Object.keys(localStorage),
+      values: Object.values(localStorage).join(' '),
+      session: sessionStorage.length,
+    }))
+    expect(stored.keys.every((key) => PREFERENCE_KEYS.includes(key))).toBe(true)
+    expect(stored.values).not.toMatch(/ey[A-Za-z0-9_-]{10,}\./)
+    expect(stored.session).toBe(0)
 
     // A direct visit to a deep link works too.
     await page.goto('/app/knowledge')
     await expect(page.getByRole('heading', { name: 'Knowledge base' })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Sign out' }).click()
+    await signOut(page)
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0)
+    await expect(accountMenu(page)).toHaveCount(0)
     await page.goto('/app/dashboard')
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
   })
@@ -361,14 +371,14 @@ test.describe('7. Staying current', () => {
     test.skip(testInfo.project.name !== 'desktop', 'This is about the wide layout.')
     await signInAt(page, 'riley')
     await expect(page.getByRole('heading', { name: 'My requests' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Menu' })).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Menu', exact: true })).toBeHidden()
     await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Knowledge' })).toBeVisible()
   })
 
   test('the narrow-screen menu opens, navigates and closes @mobile', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'The menu button only shows on narrow screens.')
     await signInAt(page, 'riley')
-    const menu = page.getByRole('button', { name: 'Menu' })
+    const menu = page.getByRole('button', { name: 'Menu', exact: true })
     const nav = page.getByRole('navigation', { name: 'Main' })
     await expect(menu).toHaveAttribute('aria-expanded', 'false')
     await expect(nav.getByRole('link', { name: 'Knowledge' })).toHaveCount(0)

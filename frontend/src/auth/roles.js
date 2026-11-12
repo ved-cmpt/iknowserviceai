@@ -20,16 +20,36 @@ export function homeLabel(user) {
   return isStaff(user) ? 'Go to the support queue' : 'Go to my requests'
 }
 
-export function navItemsFor(user) {
-  const items = [
-    { to: '/dashboard', label: 'My requests' },
-    { to: '/requests/new', label: 'New request' },
-    { to: '/knowledge', label: 'Knowledge' },
+// The sidebar's sections, in order. Each item has a keyboard shortcut ("g" then the key).
+export function navSectionsFor(user) {
+  const sections = [
+    {
+      label: 'Requests',
+      items: [
+        { to: '/dashboard', label: 'My requests', icon: 'dashboard', key: 'd' },
+        { to: '/requests/new', label: 'New request', icon: 'newRequest', key: 'n' },
+      ],
+    },
+    { label: 'Help', items: [{ to: '/knowledge', label: 'Knowledge', icon: 'book', key: 'k' }] },
   ]
-  if (isStaff(user)) items.push({ to: '/support', label: 'Support queue' })
-  if (isAdmin(user)) {
-    items.push({ to: '/admin/knowledge', label: 'Knowledge admin' })
-    items.push({ to: '/admin/audit', label: 'Audit' })
+  if (isStaff(user)) {
+    sections.push({
+      label: 'Support',
+      items: [{ to: '/support', label: 'Support queue', icon: 'inbox', key: 's' }],
+    })
   }
-  return items
+  if (isAdmin(user)) {
+    sections.push({
+      label: 'Admin',
+      items: [
+        { to: '/admin/knowledge', label: 'Knowledge admin', icon: 'library', key: 'e' },
+        { to: '/admin/audit', label: 'Audit', icon: 'audit', key: 'a' },
+      ],
+    })
+  }
+  return sections
+}
+
+export function navItemsFor(user) {
+  return navSectionsFor(user).flatMap((section) => section.items)
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { safeNext } from '../auth/deepLink'
 import { appHref, legacyRedirect } from '../lib/legacyPaths'
 
 describe('old app paths', () => {
@@ -36,4 +37,22 @@ describe('old app paths', () => {
     expect(appHref()).toBe('/app/')
     expect(appHref('/login')).toBe('/app/login')
   })
+})
+
+describe('deep links from the website', () => {
+  it.each([
+    ['/requests/new', '/requests/new'],
+    ['/support?status=NEEDS_HUMAN_REVIEW', '/support?status=NEEDS_HUMAN_REVIEW'],
+    ['/app/support', '/support'],
+    ['/app', '/'],
+  ])('accepts the app path %s', (value, expected) => {
+    expect(safeNext(value)).toBe(expected)
+  })
+
+  it.each([null, '', 'requests', '//evil.example', 'https://evil.example', '/\\evil.example', '/ x', '/login'])(
+    'refuses %s',
+    (value) => {
+      expect(safeNext(value)).toBeNull()
+    },
+  )
 })
