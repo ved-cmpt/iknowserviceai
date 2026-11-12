@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The website's hero no longer starts halfway down the first screen on desktop. An older `.site-hero` rule in `site.css` overrode the current one and doubled the top padding, and the copy was centred against the replay's reserved 700 px. The headline now starts 126 px below the navigation at 1440 and 1920 px, and the buttons are in the first screen at 375 px. CLS stays 0. A browser test checks it at 375, 1440 and 1920 px (#21).
+
 ## v1.1.0: 2026-11-12
 
 A new brand, a public website, and a redesigned app. No change to the AI workflow, its safety gates, the API or the data model.
