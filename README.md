@@ -1,16 +1,19 @@
 # IknowServiceAI
 
 [![CI](https://github.com/ved-cmpt/iknowserviceai/actions/workflows/ci.yml/badge.svg)](https://github.com/ved-cmpt/iknowserviceai/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-0b7a75.svg)](LICENSE)
-[![Status: v1.0, live demo](https://img.shields.io/badge/status-v1.0%20%E2%80%94%20live%20demo-0b7a75.svg)](https://iknowserviceai.onrender.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-8b5cf6.svg)](LICENSE)
+[![Status: v1.1, live demo](https://img.shields.io/badge/status-v1.1%20%E2%80%94%20live%20demo-8b5cf6.svg)](https://iknowserviceai.onrender.com)
 
 **An IT service desk where AI drafts the answer and people stay in charge.** A bounded AI workflow triages requests and suggests fixes from a real knowledge base, while deterministic code decides what a person must review first.
 
 This is a portfolio project that uses only synthetic data.
 
+[![The IknowServiceAI website: the headline, and a replay of a recorded run through the pipeline](assets/screenshots/website-dark.png)](https://iknowserviceai.onrender.com)
+
 ## Live demo
 
-### [Open the live demo: iknowserviceai.onrender.com](https://iknowserviceai.onrender.com)
+- **[The website: iknowserviceai.onrender.com](https://iknowserviceai.onrender.com)** explains the product, replays recorded runs, and has four interactive demos. It makes no API calls.
+- **[The app: iknowserviceai.onrender.com/app](https://iknowserviceai.onrender.com/app/login)** is the service desk itself. Links to the old addresses, such as `/login` or `/support`, still work: they move to `/app/...`.
 
 - **The first load after idle may take about a minute,** because it runs on free hosting that sleeps when nobody is using it.
 - **The AI here is the built-in mock agent,** so the public site shows the workflow and its safety gates, not model quality. The real provider's results are in [the evaluation](docs/EVALUATION.md).
@@ -29,7 +32,7 @@ Sign in with these fictional accounts, on the reserved `.test` domain. Their pas
 
 ![Walkthrough: a requester gets a cited suggestion, a sensitive request is held, staff refuse an unsafe reply and approve a safe one, and the audit log shows it all](assets/demo/iknowserviceai-demo.gif)
 
-[Watch the full video](assets/demo/iknowserviceai-demo.mp4) (86 seconds, silent, with captions).
+[Watch the full video](assets/demo/iknowserviceai-demo.mp4) (103 seconds, silent, with captions). It starts on the website, then walks through the app.
 
 ## The problem
 
@@ -89,23 +92,24 @@ flowchart TD
 
 ## Screenshots
 
-Taken from the production image, with synthetic data. All screens pass axe in both themes, at 1440 and 375 px.
+Captured from the live demo, with synthetic data, in both themes. Dark is the default. Every screen passes axe in both themes at 375, 768, 1280 and 1440 px.
 
-| | |
+| Dark | Light |
 |---|---|
-| ![Sign-in page with a product pitch and demo account cards](assets/screenshots/login.png) | ![Requester dashboard with summary cards and a request list](assets/screenshots/requester-dashboard.png) |
-| ![Request with a labeled AI suggestion and its source](assets/screenshots/request-suggestion.png) | ![Held request: awaiting staff review, with no AI text](assets/screenshots/awaiting-review.png) |
-| ![Support queue with status and priority badges, and held requests highlighted](assets/screenshots/support-queue.png) | ![Reply labeled as reviewed by the support team](assets/screenshots/reviewed-reply.png) |
-| ![Knowledge article](assets/screenshots/knowledge-article.png) | ![Audit log with actors, actions and safe details](assets/screenshots/audit-log.png) |
-| ![Article editor with a live, inert preview](assets/screenshots/knowledge-admin-preview.png) | ![Staff review workspace in the dark theme](assets/screenshots/review-workspace-dark.png) |
+| ![Website: the interactive demos, with the requester's view beside the staff view](assets/screenshots/website-demos-dark.png) | ![Website demos in the light theme](assets/screenshots/website-demos.png) |
+| ![Sign-in: a centered card, and four demo people to pick from](assets/screenshots/login-dark.png) | ![Requester dashboard with summary cards, status counts and a request list](assets/screenshots/requester-dashboard.png) |
+| ![A request with a labeled AI suggestion and its source](assets/screenshots/request-suggestion-dark.png) | ![Held request: awaiting staff review, with no AI text](assets/screenshots/awaiting-review.png) |
+| ![Support queue with status segments, and held requests marked](assets/screenshots/support-queue-dark.png) | ![Reply labeled as reviewed by the support team](assets/screenshots/reviewed-reply.png) |
+| ![Command palette: search pages, requests and articles from anywhere](assets/screenshots/command-palette-dark.png) | ![Audit log with actors, actions and safe details](assets/screenshots/audit-log.png) |
+| ![Knowledge article](assets/screenshots/knowledge-article.png) | ![Article editor with a live, inert preview](assets/screenshots/knowledge-admin-preview.png) |
 
-**Staff review workspace,** with the AI draft beside the reply to publish:
+**Staff review workspace,** with the AI draft beside the reply to publish, and a word diff of what changed:
 
-![Staff review workspace: AI analysis with a confidence meter and risk flags, the draft beside the reply, and a side column for status and assignment](assets/screenshots/review-workspace.png)
+![Staff review workspace: AI analysis with a confidence meter and risk flags, the draft beside the reply, the changes from the draft, and a side column for status and assignment](assets/screenshots/review-workspace-dark.png)
 
 **On a phone:**
 
-<img src="assets/screenshots/mobile-login.png" alt="Sign-in page at 375 pixels wide" width="200"> <img src="assets/screenshots/mobile-dashboard.png" alt="Dashboard at 375 pixels wide" width="200"> <img src="assets/screenshots/mobile-request-suggestion.png" alt="Suggestion at 375 pixels wide" width="200"> <img src="assets/screenshots/mobile-review-workspace.png" alt="Review workspace at 375 pixels wide" width="200">
+<img src="assets/screenshots/mobile-website-dark.png" alt="Website at 375 pixels wide" width="200"> <img src="assets/screenshots/mobile-dashboard-dark.png" alt="Dashboard at 375 pixels wide" width="200"> <img src="assets/screenshots/mobile-request-suggestion.png" alt="Suggestion at 375 pixels wide" width="200"> <img src="assets/screenshots/mobile-review-workspace-dark.png" alt="Review workspace at 375 pixels wide" width="200">
 
 ## Architecture
 
@@ -113,7 +117,7 @@ Taken from the production image, with synthetic data. All screens pass axe in bo
 flowchart LR
     B[Browser] -->|"HTTPS, one origin"| A
     subgraph A["One non-root container"]
-      S[Built React app] --- F[FastAPI: auth, roles,<br/>state machine, policy, review]
+      S["Built website and app<br/>(/ and /app)"] --- F[FastAPI: auth, roles,<br/>state machine, policy, review]
     end
     F -->|"app_user: no DDL,<br/>history cannot change"| D[(PostgreSQL)]
     F -->|"Redacted text only"| P["Provider adapter:<br/>mock or Gemini"]
@@ -152,7 +156,7 @@ You need Docker Desktop running. Commands are for PowerShell, from the project r
    docker compose exec backend python -m app.scripts.seed_demo
    ```
 
-3. Open http://localhost:5173 and pick a demo account. API docs are at http://localhost:8000/docs, in development only.
+3. Open http://localhost:5173 for the website, or http://localhost:5173/app for the app, and pick a demo account. API docs are at http://localhost:8000/docs, in development only.
 
 If another PostgreSQL already uses port 5432, set `POSTGRES_HOST_PORT` in `.env`. After pulling a change to frontend dependencies, run `docker compose up -d --build --renew-anon-volumes frontend`.
 
@@ -182,11 +186,18 @@ npm --prefix e2e run e2e:live -- desktop
 
 # Evaluation, which writes nothing to the database
 docker compose exec backend python -m app.scripts.run_eval --mode mock
+
+# The website's data, from real mock-mode runs, and the check that CI runs
+python scripts/landing_snapshot.py
+python scripts/landing_snapshot.py --check
+
+# Lighthouse on the production image, three runs per preset
+npm --prefix e2e run lighthouse
 ```
 
-**Latest results:** in CI on 2026-11-04, from a clean checkout: 876 backend tests and 242 frontend tests passed, the browser suites passed 34 tests on the development stack and 46 on the production image, and 172 axe checks had no findings. A paced subset also passed against the live site. [The status document](docs/IMPLEMENTATION_STATUS.md) has the details.
+**Latest results, for `v1.1.0`:** 906 backend and 300 frontend tests passed. The browser suites passed 67 tests on the development stack and 81 on the production image, and 190 axe checks there had no findings. Lighthouse on the production image scored 100 for performance, accessibility, best practices and SEO, on mobile and desktop. A paced subset also passed against the live site. [The status document](docs/IMPLEMENTATION_STATUS.md) and [the Run 07 report](docs/RUN_REPORTS/RUN_07.md) have the details.
 
-To regenerate the pictures, run `npm --prefix e2e ci` once, then `npm --prefix e2e run screenshots` and `npm --prefix e2e run demo:record`.
+To regenerate the pictures, run `npm --prefix e2e ci` once, then `npm --prefix e2e run screenshots` and `npm --prefix e2e run demo:record`. The brand assets are rebuilt with `npm --prefix scripts/brand ci` and `npm --prefix scripts/brand run build` ([the brand guide](docs/BRAND.md)).
 
 ### Live mode
 
@@ -221,7 +232,7 @@ This is a demo. It has had no independent review. [The security document](docs/S
 
 ## Documentation
 
-[Architecture](docs/ARCHITECTURE.md) · [Demo script](docs/DEMO.md) · [Deployment](docs/DEPLOYMENT.md) · [Runbook](docs/RUNBOOK.md) · [Security](docs/SECURITY.md) · [Evaluation](docs/EVALUATION.md) · [API](docs/API.md) · [Decision log](docs/ARCHITECTURE_DECISIONS.md) · [Status](docs/IMPLEMENTATION_STATUS.md) · [Product contract](docs/PRODUCT_CONTRACT.md) · [Project context](docs/PROJECT_CONTEXT.md) · [Blueprint](docs/IMPLEMENTATION_BLUEPRINT.md)
+[Architecture](docs/ARCHITECTURE.md) · [Brand](docs/BRAND.md) · [Demo script](docs/DEMO.md) · [Deployment](docs/DEPLOYMENT.md) · [Runbook](docs/RUNBOOK.md) · [Security](docs/SECURITY.md) · [Evaluation](docs/EVALUATION.md) · [API](docs/API.md) · [Decision log](docs/ARCHITECTURE_DECISIONS.md) · [Status](docs/IMPLEMENTATION_STATUS.md) · [Product contract](docs/PRODUCT_CONTRACT.md) · [Project context](docs/PROJECT_CONTEXT.md) · [Blueprint](docs/IMPLEMENTATION_BLUEPRINT.md)
 
 ## Credits and licenses
 

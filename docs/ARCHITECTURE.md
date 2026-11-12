@@ -6,7 +6,8 @@ How the system fits together. Why it is built this way is in [the decision log](
 
 | Part | Where | What it does |
 |---|---|---|
-| Web app | `frontend/src/` | React and plain CSS. Requester, staff and admin screens. The server decides every permission, and the browser never calls the AI provider |
+| Website | `frontend/src/site/` | The public page at `/`. It makes no API calls, and replays a checked snapshot of real runs (ADR-063 to ADR-065) |
+| Web app | `frontend/src/` | React and plain CSS, under `/app`. Requester, staff and admin screens in a shell with a command palette (ADR-066). The server decides every permission, and the browser never calls the AI provider |
 | API | `backend/app/routers/` | FastAPI routes under `/api/v1`, with explicit schemas for each role |
 | Services | `backend/app/services/` | The state machine, policy gate, review, redaction, retrieval and demo safeguards. All decisions are made here |
 | Provider adapter | `backend/app/services/ai/` | A mock agent and a Gemini adapter behind one interface, plus the orchestrator |

@@ -20,9 +20,10 @@ async function caption(page, text, holdMs = 3500) {
         maxWidth: '86%',
         padding: '12px 22px',
         borderRadius: '8px',
-        background: 'rgb(15 28 46 / 94%)',
+        background: 'rgb(20 20 24 / 94%)',
+        border: '1px solid rgb(255 255 255 / 12%)',
         color: '#ffffff',
-        font: '500 20px "IBM Plex Sans", sans-serif',
+        font: '500 20px "Inter Variable", sans-serif',
         textAlign: 'center',
         boxShadow: '0 6px 24px rgb(0 0 0 / 35%)',
         pointerEvents: 'none',
@@ -67,11 +68,19 @@ async function submit(page, title, description) {
 test('walkthrough', async ({ page }) => {
   test.setTimeout(240_000)
 
-  await page.goto('/app/login')
-  await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
+  // The first-visit tour is for people, not for the recording.
+  await page.context().addInitScript(() => localStorage.setItem('iks-tour-done', '1'))
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await page.evaluate(() => document.fonts.ready)
   await caption(page, 'IknowServiceAI: an IT service desk where AI drafts and people decide', 4000)
-  await caption(page, 'A requester signs in, using a public demo account', 2000)
+  await caption(page, 'The website replays real recorded runs through the pipeline', 6500)
+  await page.locator('#demo').scrollIntoViewIfNeeded()
+  await page.getByRole('tab', { name: 'Sensitive request' }).click()
+  await caption(page, 'Interactive demos show what each person sees, with no API calls', 4500)
+  await page.getByRole('link', { name: 'Try the live demo' }).first().click()
+  await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
+  await caption(page, 'In the app, a requester signs in with a public demo account', 2500)
   await signInAs(page, 'Riley Morgan')
   await caption(page, 'Riley follows their own requests from here', 3000)
 
@@ -128,5 +137,9 @@ test('walkthrough', async ({ page }) => {
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Audit' }).click()
   await expect(page.getByRole('table')).toBeVisible()
   await caption(page, 'An admin can trace every step in the append-only audit log', 5500)
+  await page.keyboard.press('Control+k')
+  await page.getByRole('dialog', { name: 'Search' }).getByRole('combobox').pressSequentially('compromised', { delay: 60 })
+  await caption(page, 'Ctrl K finds any page, request or article, from anywhere', 4000)
+  await page.keyboard.press('Escape')
   await caption(page, 'AI proposes. Code enforces. People decide.', 3500)
 })

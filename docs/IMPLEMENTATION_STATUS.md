@@ -1,7 +1,7 @@
 # Implementation status
 
 Updated: 2026-11-11
-Current phase: complete, in maintenance. The public demo is live and verified, and `v1.0.0` is the first release.
+Current phase: complete, in maintenance. `v1.1.0` adds a brand, a public website at `/` and a redesigned app under `/app` (Run 07). The public demo is live and verified.
 Branch: main; see `git log --oneline` for the commit
 Deployment status: live at https://iknowserviceai.onrender.com, on Render and Neon. Remote: `origin`, private until the owner makes it public
 
@@ -18,6 +18,7 @@ Deployment status: live at https://iknowserviceai.onrender.com, on Render and Ne
 | 8 Staff and admin frontend, E2E | DONE | `src/tests/support.test.jsx`, `admin.test.jsx`; `e2e/tests/`: 28 tests, 38 axe checks; screenshots in `assets/screenshots/` | None |
 | 9 Quality and evaluation | DONE | `docs/EVALUATION.md`, `backend/eval/`, `tests/test_eval_regression.py`. Sensitive hold recall 100% on a tuned fixture; 0 invented citations kept | A held-out set, and scoring reply quality, are future work |
 | 10 GitHub, CI, deployment | DONE | CI confirmed on GitHub. Live site verified in Run 06: `e2e/verify-live.mjs` 54 of 54, browser subset 21 and 7 passed, data survives a redeploy, cold start 32.2 s. See `docs/DEPLOYMENT.md` | Testing the limiter from a second network |
+| 12 Redesign and website (Run 07) | DONE | ADR-062 to ADR-067, `docs/RUN_REPORTS/RUN_07.md`, `e2e/tests/website.spec.js`, `viewports.spec.js`, Lighthouse | None |
 | 11 Portfolio packaging | DONE | Redesign (ADR-056), `README.md`, `CHANGELOG.md`, `docs/ARCHITECTURE.md`, `docs/DEMO.md`, `docs/RUNBOOK.md`, `LICENSE`, screenshots, video, tag `v1.0.0` | None |
 
 **Live Gemini:** the owner's adapter smoke test passed after Run 02. In Run 04, a 10-case sample ran through the real orchestrator, using 11 of the 12 allowed calls, with no failures. Results are in `docs/EVALUATION.md`. In Run 05, the running app in `AI_MODE=gemini` handled 2 requests through its HTTP endpoints, using at most 3 calls.
@@ -33,6 +34,7 @@ Current blockers: none.
 - **Checkpoint 31, website data snapshot: DONE.** ADR-064. `scripts/landing_snapshot.py` and `--check`, `backend/tests/test_landing_snapshot.py` (7 passed), and a CI step after the backend tests.
 - **Checkpoint 32, public website: DONE.** ADR-065. Every section, the hero replay and four demo tabs from the snapshot, deep links into the app as a demo person. Frontend 286 passed. Browser: website, demo-tab, deep-link and redirect tests passed on the dev stack, with axe on the page in both themes.
 - **Checkpoint 33, app shell and screens: DONE.** ADR-066. Frontend 298 passed, lint clean. Dev browser suite: 60 passed, every axe check 0 findings in both themes at 1440 and 375 px.
+- **Checkpoint 35, release: DONE, except what follows the merge.** README, live screenshots, demo video (103 s), changelog, release notes. Live, before PR 3 deployed: `verify-live.mjs` 54 of 54, browser smoke subset 10 passed, Lighthouse 100 performance on both presets. The tag and the post-merge checks are in the tag's annotation and the Run 07 report's last section.
 - **Checkpoint 34, tests, accessibility, performance and review: DONE.** ADR-067. Every screen at 768 and 1280 px as well, a motion check, website checks in the production suite. Local Lighthouse on the production image, median of 3: mobile and desktop 100 for performance, accessibility, best practices and SEO, CLS 0, 186 KiB. Design review of 64 captures, both themes, 1440 and 375 px, findings in `docs/RUN_REPORTS/RUN_07.md`.
 
 ## Run 06 progress
@@ -53,24 +55,19 @@ Current blockers: none.
 
 ## Test results
 
-**GitHub CI, run 41933225104, on `86e2390`, tagged `v1.0.0`, from a clean checkout: success.** Later commits change docs only.
+**Local, 2026-11-12, on the `v1.1.0` code:**
 
 | Check | Result |
 |---|---|
-| `pytest -q`, ruff, format, `alembic check` | 876 passed, 1 skipped (the opt-in live test). Clean |
-| `npm run lint`, `npm test -- --run`, `npm run build` | 242 passed. Clean |
-| `npm --prefix e2e run e2e` | 34 passed, 13 skipped by design |
-| `npm --prefix e2e run e2e:prod` | 46 passed, 1 skipped by design |
-| axe, tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, both themes, 1440 and 375 px | 172 checks, no findings of any severity |
-| `docker build`, gitleaks over the full history | Success |
+| `pytest -q`, ruff, format | 906 passed, 1 skipped (the opt-in live test). Clean |
+| `npm run lint`, `npm test -- --run`, `npm run build` | 300 passed. Clean. Website JavaScript about 86 KB compressed |
+| `npm --prefix e2e run e2e` | 67 passed, 15 skipped by design. One test was interrupted by my own parallel run and passed on rerun |
+| `npm --prefix e2e run e2e:prod` | 81 passed, 1 skipped by design, the same way |
+| axe, `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, both themes, 375, 768, 1280 and 1440 px | 190 checks on the production image, no findings |
+| `npm --prefix e2e run lighthouse`, median of 3 | Mobile and desktop: 100 performance, accessibility, best practices and SEO. CLS 0. 186 KiB |
+| `python scripts/landing_snapshot.py --check` | Matches a fresh run |
 
-**Local, 2026-11-04:** from `down -v`: `/readyz` 503 `behind_head`, upgrade and `alembic check` exit 0, seed twice gives 4 users, 13 articles, 9 requests, `/readyz` 200. **The local run was stopped there by the system, for low memory, and was not restarted.** Also local: backend suite on PostgreSQL 18, 873 passed, 1 skipped; production image on Neon, 43 passed, 1 skipped, before the redesign; `actionlint` and lychee clean; 7 Mermaid diagrams render.
-
-**Live site, 2026-11-04:** `node e2e/verify-live.mjs` 54 of 54. `npm --prefix e2e run e2e:live`: desktop 21 passed, 1 skipped, and a narrowed mobile run 7 passed, with 72 axe checks and no findings.
-
-**Not done:** a local fresh-clone walkthrough of the README.
-
-Skips by design: production-only checks on the dev stack, and the layout tests on the viewport they do not apply to.
+GitHub CI runs the full suites on every push to `main`. The runs for the merges of PR 1 and PR 2 succeeded.
 
 ## Known bugs
 
