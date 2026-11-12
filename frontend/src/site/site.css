@@ -1,0 +1,308 @@
+/* The public website. It shares fonts, tokens and base styles with the app, and nothing else. */
+@import '../styles/fonts.css';
+@import '../styles/tokens.css';
+@import '../styles/base.css';
+
+body {
+  font-size: var(--text-md);
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -100px;
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-3);
+  color: var(--color-text);
+}
+
+.skip-link:focus {
+  top: var(--space-3);
+}
+
+.site-main {
+  flex: 1;
+}
+
+.site-section-inner,
+.site-nav-inner,
+.site-footer-inner {
+  width: 100%;
+  max-width: var(--site-width);
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+}
+
+/* Buttons */
+
+.site-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  font-weight: 550;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--ease-out),
+    filter var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
+}
+
+.site-btn:active {
+  transform: translateY(1px);
+}
+
+.site-btn-sm {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.site-btn-primary {
+  background: var(--gradient-ember);
+  color: var(--color-on-ember);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 25%) inset, 0 8px 24px rgb(255 79 123 / 20%);
+}
+
+.site-btn-primary:hover {
+  color: var(--color-on-ember);
+  filter: brightness(1.08) saturate(1.05);
+}
+
+.site-btn-secondary {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.site-btn-secondary:hover {
+  background: var(--color-surface-3);
+  color: var(--color-text);
+}
+
+/* Navigation */
+
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+}
+
+.site-nav-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  height: 64px;
+}
+
+.site-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-weight: 650;
+  font-size: var(--text-md);
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.site-brand:hover {
+  color: var(--color-text);
+}
+
+.site-menu {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-left: auto;
+}
+
+.site-menu ul {
+  display: flex;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-menu ul a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.site-menu ul a:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.site-nav-toggle {
+  display: none;
+  margin-left: auto;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+@media (width <= 900px) {
+  .site-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .site-menu {
+    display: none;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-5) var(--space-5);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+
+  .site-menu-open {
+    display: flex;
+  }
+
+  .site-menu ul {
+    flex-direction: column;
+  }
+
+  .site-menu ul a {
+    min-height: 44px;
+    font-size: var(--text-md);
+  }
+}
+
+/* Type */
+
+.site-eyebrow {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site-lede {
+  max-width: 620px;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: var(--leading-normal);
+}
+
+.site-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+/* Hero */
+
+.site-hero {
+  max-width: var(--site-width);
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-5) var(--space-8);
+}
+
+.site-hero h1 {
+  max-width: 900px;
+  margin-bottom: var(--space-4);
+  font-size: clamp(2.25rem, 1.2rem + 4.2vw, 4rem);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+}
+
+/* Not found */
+
+.site-not-found {
+  max-width: var(--site-width);
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-5);
+}
+
+/* Footer */
+
+.site-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--color-border-subtle);
+  padding: var(--space-7) 0 var(--space-8);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.site-footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.site-footer-brand p {
+  margin-top: var(--space-3);
+  max-width: 320px;
+}
+
+.site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-7);
+}
+
+.site-footer-links h2 {
+  margin-bottom: var(--space-3);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  letter-spacing: 0;
+}
+
+.site-footer-links ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer-links a,
+.site-footer-brand p a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.site-footer-links a:hover,
+.site-footer-brand p a:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}

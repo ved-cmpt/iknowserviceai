@@ -1,0 +1,13 @@
+# The public website is at /. The app, under /app/, is a shared demo with no content to index.
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /api/
+Disallow: /login
+Disallow: /dashboard
+Disallow: /requests/
+Disallow: /knowledge
+Disallow: /support
+Disallow: /admin/
+
+Sitemap: https://iknowserviceai.onrender.com/sitemap.xml

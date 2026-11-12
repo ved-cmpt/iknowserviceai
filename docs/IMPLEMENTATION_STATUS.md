@@ -29,6 +29,7 @@ Current blockers: none.
 ## Run 07 progress: product-grade redesign and a public website (v1.1.0)
 
 - **Checkpoint 29, brand and design system: DONE.** `scripts/brand/build.mjs`, `docs/BRAND.md`, ADR-062. Dark is the default theme. Inter and JetBrains Mono replace IBM Plex. Frontend 242 passed, lint clean.
+- **Checkpoint 30, routes: DONE.** ADR-063. The website is at `/`, the app under `/app`, and old paths redirect on the client. `robots.txt`, `sitemap.xml`, social tags, origin compression. Backend SPA tests cover both pages and every old path. New browser spec `e2e/tests/website.spec.js`: 10 passed on the dev stack, with the 404 checks.
 
 ## Run 06 progress
 

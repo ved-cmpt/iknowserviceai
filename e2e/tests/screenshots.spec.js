@@ -51,7 +51,7 @@ async function capture(page, name, fullPage = false, scrollTo = null) {
 test.describe.configure({ mode: 'serial' })
 
 test('sign-in page', async ({ page }) => {
-  await page.goto('/login')
+  await page.goto('/app/login')
   await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
   await expect(page.getByTestId('demo-banner')).toBeVisible()
   await capture(page, 'login')
@@ -96,7 +96,7 @@ test('mobile requester pages', async ({ page }) => {
 })
 
 test('staff pages', async ({ page }) => {
-  await signInAt(page, 'alex', '/support')
+  await signInAt(page, 'alex', '/app/support')
   await expect(page.getByRole('table')).toBeVisible()
   await capture(page, 'support-queue')
 
@@ -131,7 +131,7 @@ test('reviewed reply', async ({ page }) => {
 })
 
 test('admin pages', async ({ page }) => {
-  await signInAt(page, 'jordan', '/admin/knowledge/new')
+  await signInAt(page, 'jordan', '/app/admin/knowledge/new')
   await page.getByLabel(/^Title/).fill('Docking station not detected')
   await page.getByLabel(/^Category/).selectOption('HARDWARE')
   await page.getByLabel(/^Tags/).fill('docking, hardware')

@@ -63,7 +63,7 @@ export async function fillSignIn(page, who) {
 }
 
 // Opens a path signed out, signs in, and lands back on that path.
-export async function signInAt(page, who, path = '/login') {
+export async function signInAt(page, who, path = '/app/login') {
   await page.goto(path)
   await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
   await fillSignIn(page, who)

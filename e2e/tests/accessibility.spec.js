@@ -15,7 +15,7 @@ import {
 
 test.describe('Accessibility and mobile layout @mobile', () => {
   test('login page', async ({ page }) => {
-    await page.goto('/login')
+    await page.goto('/app/login')
     await expect(page.getByRole('heading', { name: 'Sign in to IknowServiceAI' })).toBeVisible()
     await expect(page.getByText('API connected')).toBeVisible()
     await expectAccessible(page, 'login')
@@ -111,7 +111,7 @@ test.describe('Accessibility and mobile layout @mobile', () => {
     const tag = uniqueTag()
     const id = await seedRequest('riley', { title: labelled(`Review page ${tag}`), description: SENSITIVE_TEXT })
 
-    await signInAt(page, 'alex', '/support')
+    await signInAt(page, 'alex', '/app/support')
     await expect(page.getByRole('heading', { name: 'Support queue' })).toBeVisible()
     await expect(page.getByRole('table')).toBeVisible()
     await expectAccessible(page, 'support queue')
@@ -132,7 +132,7 @@ test.describe('Accessibility and mobile layout @mobile', () => {
   })
 
   test('admin pages', async ({ page }) => {
-    await signInAt(page, 'jordan', '/admin/knowledge')
+    await signInAt(page, 'jordan', '/app/admin/knowledge')
     await expect(page.getByRole('heading', { name: 'Knowledge admin' })).toBeVisible()
     await expect(page.getByRole('table')).toBeVisible()
     await expectAccessible(page, 'knowledge admin')
@@ -150,14 +150,18 @@ test.describe('Accessibility and mobile layout @mobile', () => {
   })
 
   test('access and not-found pages', async ({ page }) => {
-    await signInAt(page, 'riley', '/support')
+    await signInAt(page, 'riley', '/app/support')
     await expect(page.getByRole('heading', { name: "You don't have access" })).toBeVisible()
     await expectAccessible(page, '403 page')
   })
 
-  test('not-found page, signed out', async ({ page }) => {
+  test('not-found pages, signed out, on the website and in the app', async ({ page }) => {
     await page.goto('/no-such-page')
     await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
-    await expectAccessible(page, '404 page')
+    await expectAccessible(page, '404 page, website')
+    await page.goto('/app/no-such-page')
+    await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute('href', '/app/login')
+    await expectAccessible(page, '404 page, app')
   })
 })
